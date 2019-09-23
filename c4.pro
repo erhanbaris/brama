@@ -1,0 +1,18 @@
+TEMPLATE = app
+CONFIG += console
+CONFIG -= app_bundle
+CONFIG -= qt
+
+INCLUDEPATH += /usr/local/include
+
+SOURCES += \
+    main.c \
+    static_py.c \
+    map.c \
+    vector.c
+
+HEADERS += \
+    static_py.h \
+    map.h \
+    vector.h \
+    string_stream.h
