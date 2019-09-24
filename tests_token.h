@@ -4,8 +4,15 @@
 #include "tests_core.h"
 #include "static_py.h"
 
-#define KEYWORD_EQUAL(INDEX, KEYWORD) munit_assert_int (((t_token*)vector_get(&context->tokinizer->tokens, INDEX ))->type, ==, TOKEN_KEYWORD); \
-                                      munit_assert_int ((((t_token*)vector_get(&context->tokinizer->tokens, INDEX ))->int_), ==, KEYWORD );
+#define KEYWORD_EQUAL(INDEX, KEYWORD) \
+    if ((t_token*)vector_get(&context->tokinizer->tokens, INDEX ) == NULL) return MUNIT_FAIL;\
+    munit_assert_int (((t_token*)vector_get(&context->tokinizer->tokens, INDEX ))->type, ==, TOKEN_KEYWORD); \
+    munit_assert_int ((((t_token*)vector_get(&context->tokinizer->tokens, INDEX ))->int_), ==, KEYWORD );
+
+#define OPERATOR_EQUAL_CHECK(INDEX, OPERATOR) \
+    if ((t_token*)vector_get(&context->tokinizer->tokens, INDEX ) == NULL) return MUNIT_FAIL;\
+    munit_assert_int (((t_token*)vector_get(&context->tokinizer->tokens, INDEX ))->type, ==, TOKEN_OPERATOR); \
+    munit_assert_int ((((t_token*)vector_get(&context->tokinizer->tokens, INDEX ))->int_), ==, OPERATOR );
 
 
 /* STRING TESTS BEGIN --> */
@@ -274,6 +281,55 @@ MunitResult symbol_token_2(const MunitParameter params[], void* user_data_or_fix
 
 /* <-- SYMBOL TESTS END */
 
+/* OPERATOR TESTS BEGIN --> */
+
+MunitResult keyword_operator(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "+ - * / % ++ -- = += -= *= /= %= == === != !== ! && || & | ~ ^ << >> > < >= <= ? : &= |= ^=");
+    munit_assert_int (context->tokinizer->tokens.count, ==, 35);
+    OPERATOR_EQUAL_CHECK(0,  OPERATOR_ADDITION);
+    OPERATOR_EQUAL_CHECK(1,  OPERATOR_SUBTRACTION);
+    OPERATOR_EQUAL_CHECK(2,  OPERATOR_MULTIPLICATION);
+    OPERATOR_EQUAL_CHECK(3,  OPERATOR_DIVISION);
+    OPERATOR_EQUAL_CHECK(4,  OPERATOR_MODULES);
+    OPERATOR_EQUAL_CHECK(5,  OPERATOR_INCREMENT);
+    OPERATOR_EQUAL_CHECK(6,  OPERATOR_DECCREMENT);
+    OPERATOR_EQUAL_CHECK(7,  OPERATOR_ASSIGN);
+    OPERATOR_EQUAL_CHECK(8,  OPERATOR_ASSIGN_ADDITION);
+    OPERATOR_EQUAL_CHECK(9,  OPERATOR_ASSIGN_SUBTRACTION);
+    OPERATOR_EQUAL_CHECK(10, OPERATOR_ASSIGN_MULTIPLICATION);
+    OPERATOR_EQUAL_CHECK(11, OPERATOR_ASSIGN_DIVISION);
+    OPERATOR_EQUAL_CHECK(12, OPERATOR_ASSIGN_MODULUS);
+    OPERATOR_EQUAL_CHECK(13, OPERATOR_EQUAL);
+    OPERATOR_EQUAL_CHECK(14, OPERATOR_EQUAL_VALUE);
+    OPERATOR_EQUAL_CHECK(15, OPERATOR_NOT_EQUAL);
+    OPERATOR_EQUAL_CHECK(16, OPERATOR_NOT_EQUAL_VALUE);
+    OPERATOR_EQUAL_CHECK(17, OPERATOR_NOT);
+    OPERATOR_EQUAL_CHECK(18, OPERATOR_AND);
+    OPERATOR_EQUAL_CHECK(19, OPERATOR_OR);
+    OPERATOR_EQUAL_CHECK(20, OPERATOR_BITWISE_AND);
+    OPERATOR_EQUAL_CHECK(21, OPERATOR_BITWISE_OR);
+    OPERATOR_EQUAL_CHECK(22, OPERATOR_BITWISE_NOT);
+    OPERATOR_EQUAL_CHECK(23, OPERATOR_BITWISE_XOR);
+    OPERATOR_EQUAL_CHECK(24, OPERATOR_BITWISE_LEFT_SHIFT);
+    OPERATOR_EQUAL_CHECK(25, OPERATOR_BITWISE_RIGHT_SHIFT);
+    OPERATOR_EQUAL_CHECK(26, OPERATOR_GREATER_THAN);
+    OPERATOR_EQUAL_CHECK(27, OPERATOR_LESS_THAN);
+    OPERATOR_EQUAL_CHECK(28, OPERATOR_GREATER_EQUAL_THAN);
+    OPERATOR_EQUAL_CHECK(29, OPERATOR_LESS_EQUAL_THAN);
+    OPERATOR_EQUAL_CHECK(30, OPERATOR_QUESTION_MARK);
+    OPERATOR_EQUAL_CHECK(31, OPERATOR_COLON_MARK);
+    OPERATOR_EQUAL_CHECK(32, OPERATOR_BITWISE_AND_ASSIGN);
+    OPERATOR_EQUAL_CHECK(33, OPERATOR_BITWISE_OR_ASSIGN);
+    OPERATOR_EQUAL_CHECK(34, OPERATOR_BITWISE_XOR_ASSIGN);
+
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+/* <-- OPERATOR TESTS END */
+
 MunitTest TOKEN_TESTS[] = {
     ADD_TEST(string_token_1),
     ADD_TEST(string_token_2),
@@ -289,6 +345,8 @@ MunitTest TOKEN_TESTS[] = {
 
     ADD_TEST(symbol_token_1),
     ADD_TEST(symbol_token_2),
+
+    ADD_TEST(keyword_operator),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 static const MunitSuite TOKEN_SUITE = {

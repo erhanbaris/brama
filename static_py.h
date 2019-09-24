@@ -74,35 +74,42 @@
 #define KEYWORD_INSTANCEOF 47
 
 /* OPERATOR TYPES */
-#define OPERATOR_NONE                 1
-#define OPERATOR_OPERATION            2
-#define OPERATOR_PLUS                 3
-#define OPERATOR_MINUS                4
-#define OPERATOR_MULTIPLICATION       5
-#define OPERATOR_DIVISION             6
-#define OPERATOR_EQUAL                7
-#define OPERATOR_NOT_EQUAL            8
-#define OPERATOR_GREATOR              9
-#define OPERATOR_LOWER                10
-#define OPERATOR_GREATOR_EQUAL        11
-#define OPERATOR_LOWER_EQUAL          12
-#define OPERATOR_SINGLE_QUOTES        13
-#define OPERATOR_DOUBLE_QUOTES        14
-#define OPERATOR_LEFT_PARENTHESES     15
-#define OPERATOR_RIGHT_PARENTHESES    16
-#define OPERATOR_SQUARE_BRACKET_START 17
-#define OPERATOR_SQUARE_BRACKET_END   18
-#define OPERATOR_BLOCK_START          19
-#define OPERATOR_BLOCK_END            20
-#define OPERATOR_OR                   21
-#define OPERATOR_AND                  22
-#define OPERATOR_COMMA                23
-#define OPERATOR_ASSIGN               24
-#define OPERATOR_SINGLE_COLON         25
-#define OPERATOR_DOUBLE_COLON         26
-#define OPERATOR_UNDERLINE            27
-#define OPERATOR_APPEND               28
-#define OPERATOR_INDEXER              29
+#define OPERATOR_NONE                  0
+#define OPERATOR_ADDITION              1
+#define OPERATOR_SUBTRACTION           2
+#define OPERATOR_MULTIPLICATION        3
+#define OPERATOR_DIVISION              4
+#define OPERATOR_MODULES               5
+#define OPERATOR_INCREMENT             6
+#define OPERATOR_DECCREMENT            7
+#define OPERATOR_ASSIGN                8
+#define OPERATOR_ASSIGN_ADDITION       9
+#define OPERATOR_ASSIGN_SUBTRACTION    10
+#define OPERATOR_ASSIGN_MULTIPLICATION 11
+#define OPERATOR_ASSIGN_DIVISION       12
+#define OPERATOR_ASSIGN_MODULUS        13
+#define OPERATOR_EQUAL                 14
+#define OPERATOR_EQUAL_VALUE           15
+#define OPERATOR_NOT_EQUAL             16
+#define OPERATOR_NOT_EQUAL_VALUE       17
+#define OPERATOR_NOT                   18
+#define OPERATOR_AND                   19
+#define OPERATOR_OR                    20
+#define OPERATOR_BITWISE_AND           21
+#define OPERATOR_BITWISE_OR            22
+#define OPERATOR_BITWISE_NOT           23
+#define OPERATOR_BITWISE_XOR           24
+#define OPERATOR_BITWISE_LEFT_SHIFT    25
+#define OPERATOR_BITWISE_RIGHT_SHIFT   26
+#define OPERATOR_GREATER_THAN          27
+#define OPERATOR_LESS_THAN             28
+#define OPERATOR_GREATER_EQUAL_THAN    29
+#define OPERATOR_LESS_EQUAL_THAN       30
+#define OPERATOR_QUESTION_MARK         31
+#define OPERATOR_COLON_MARK            32
+#define OPERATOR_BITWISE_AND_ASSIGN    33
+#define OPERATOR_BITWISE_OR_ASSIGN     34
+#define OPERATOR_BITWISE_XOR_ASSIGN    35
 
 typedef struct {
   char* name;
@@ -135,6 +142,90 @@ typedef struct {
 typedef struct {
     t_tokinizer* tokinizer;
 } t_context;
+
+#define OPERATOR_CASE_DOUBLE_START_WITH(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_3_SYMBOL, OPERATOR_1, OPERATOR_2, OPERATOR_3) \
+    case OPERATOR_1_SYMBOL :                       \
+        if (chNext == OPERATOR_2_SYMBOL ) {        \
+            token->int_ = OPERATOR_2 ;             \
+            increase(tokinizer);                   \
+        } else if (chNext == OPERATOR_3_SYMBOL ) { \
+            token->int_ = OPERATOR_3 ;             \
+            increase(tokinizer);                   \
+        } else token->int_ = OPERATOR_1 ;          \
+        break;
+
+#define OPERATOR_CASE_DOUBLE(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_1, OPERATOR_2)  \
+    case OPERATOR_1_SYMBOL :                \
+        if (chNext == OPERATOR_2_SYMBOL ) { \
+            token->int_ = OPERATOR_2 ;      \
+            increase(tokinizer);            \
+        } else token->int_ = OPERATOR_1 ;   \
+        break;
+
+#define OPERATOR_CASE_TRIBLE(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_3_SYMBOL, OPERATOR_1, OPERATOR_2, OPERATOR_3) \
+case OPERATOR_1_SYMBOL :                     \
+    if (chNext == OPERATOR_2_SYMBOL ) {      \
+        increase(tokinizer);                 \
+        if (chThird == OPERATOR_3_SYMBOL ) { \
+            token->int_ = OPERATOR_3 ;       \
+            increase(tokinizer);             \
+        } else token->int_ = OPERATOR_2 ;    \
+    } else token->int_ = OPERATOR_1 ;        \
+    break;
+
+#define OPERATOR_CASE_SINGLE(OPERATOR_SYMBOL, OPERATOR)  case OPERATOR_SYMBOL :\
+                                                                token->int_ = OPERATOR ;\
+                                                            break;
+
+static KeywordPair KEYWORDS_PAIR[] = {
+   { "do",  KEYWORD_DO },
+   { "if",  KEYWORD_IF },
+   { "in",  KEYWORD_IN },
+   { "for",  KEYWORD_FOR },
+   { "let",  KEYWORD_LET },
+   { "new",  KEYWORD_NEW },
+   { "try",  KEYWORD_TRY },
+   { "var",  KEYWORD_VAR },
+   { "case",  KEYWORD_CASE },
+   { "else",  KEYWORD_ELSE },
+   { "enum",  KEYWORD_ENUM },
+   { "eval",  KEYWORD_EVAL },
+   { "null",  KEYWORD_NULL },
+   { "this",  KEYWORD_THIS },
+   { "true",  KEYWORD_TRUE },
+   { "void",  KEYWORD_VOID },
+   { "with",  KEYWORD_WITH },
+   { "break",  KEYWORD_BREAK },
+   { "catch",  KEYWORD_CATCH },
+   { "class",  KEYWORD_CLASS },
+   { "const",  KEYWORD_CONST },
+   { "false",  KEYWORD_FALSE },
+   { "super",  KEYWORD_SUPER },
+   { "throw",  KEYWORD_THROW },
+   { "while",  KEYWORD_WHILE },
+   { "yield",  KEYWORD_YIELD },
+   { "delete",  KEYWORD_DELETE },
+   { "export",  KEYWORD_EXPORT },
+   { "import",  KEYWORD_IMPORT },
+   { "public",  KEYWORD_PUBLIC },
+   { "return",  KEYWORD_RETURN },
+   { "static",  KEYWORD_STATIC },
+   { "switch",  KEYWORD_SWITCH },
+   { "typeof",  KEYWORD_TYPEOF },
+   { "default",  KEYWORD_DEFAULT },
+   { "extends",  KEYWORD_EXTENDS },
+   { "finally",  KEYWORD_FINALLY },
+   { "package",  KEYWORD_PACKAGE },
+   { "private",  KEYWORD_PRIVATE },
+   { "continue",  KEYWORD_CONTINUE },
+   { "debugger",  KEYWORD_DEBUGGER },
+   { "function",  KEYWORD_FUNCTION },
+   { "arguments",  KEYWORD_ARGUMENTS },
+   { "interface",  KEYWORD_INTERFACE },
+   { "protected",  KEYWORD_PROTECTED },
+   { "implements",  KEYWORD_IMPLEMENTS },
+   { "instanceof",  KEYWORD_INSTANCEOF }
+ };
 
 
 t_context* static_py_init();

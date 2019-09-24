@@ -23,6 +23,13 @@ char getNextChar(t_tokinizer* tokinizer) {
     return '\0';
 }
 
+char getThirdChar(t_tokinizer* tokinizer) {
+    if (tokinizer->contentLength > (tokinizer->index + 2))
+        return tokinizer->content[tokinizer->index + 2];
+
+    return '\0';
+}
+
 
 void increase(t_tokinizer* tokinizer) {
     ++tokinizer->index;
@@ -46,13 +53,11 @@ bool isSymbol(char ch) {
             (ch >= 'A' && ch <= 'Z'));
 }
 
-void getSymbol(t_tokinizer* tokinizer)
-{
+void getSymbol(t_tokinizer* tokinizer) {
     t_string_stream* stream = string_stream_init();
 
     char ch;
-    while (!isEnd(tokinizer))
-    {
+    while (!isEnd(tokinizer)) {
         ch = getChar(tokinizer);
 
         if (!isSymbol(ch) && !isInteger(ch) && ch != '_')
@@ -68,7 +73,7 @@ void getSymbol(t_tokinizer* tokinizer)
     char* data = string_stream_get(stream);
     int* keywordInfo = (int*)map_get(&tokinizer->keywords, data);
 
-    if (keywordInfo){
+    if (keywordInfo) {
         //printf("%s = %d\r\n", data, *keywordInfo);
 
         t_token* token = (t_token*)malloc(sizeof (t_token));
@@ -95,28 +100,24 @@ void getSymbol(t_tokinizer* tokinizer)
     string_stream_destroy(stream);
 }
 
-int getText(t_tokinizer* tokinizer, char symbol)
-{
+int getText(t_tokinizer* tokinizer, char symbol) {
     t_string_stream* stream = string_stream_init();
 
     increase(tokinizer);
     char ch = getChar(tokinizer);
     char chNext;
 
-    while (!isEnd(tokinizer) && ch != symbol)
-    {
+    while (!isEnd(tokinizer) && ch != symbol) {
         ch = getChar(tokinizer);
         chNext = getNextChar(tokinizer);
 
         if (ch == '$')
             getSymbol(tokinizer);
-        else if (ch == '\\' && chNext == symbol)
-        {
+        else if (ch == '\\' && chNext == symbol) {
             string_stream_add_char(stream, symbol);
             increase(tokinizer);
         }
-        else if (ch == symbol)
-        {
+        else if (ch == symbol) {
             increase(tokinizer);
             break;
         }
@@ -142,8 +143,7 @@ int getText(t_tokinizer* tokinizer, char symbol)
     return STATIC_PY_OK;
 }
 
-void getNumber(t_tokinizer* tokinizer)
-{
+void getNumber(t_tokinizer* tokinizer) {
     bool isMinus       = false;
     int dotPlace       = 0;
     int beforeTheComma = 0;
@@ -153,32 +153,26 @@ void getNumber(t_tokinizer* tokinizer)
     char ch            = getChar(tokinizer);
     char chNext        = getNextChar(tokinizer);
 
-    while (!isEnd(tokinizer))
-    {
-        if (ch == '-')
-        {
+    while (!isEnd(tokinizer)) {
+        if (ch == '-') {
             if (isMinus || (beforeTheComma > 0 || afterTheComma > 0))
                 break;
 
             isMinus = true;
         }
-        else if (ch == '.')
-        {
+        else if (ch == '.') {
             if (chNext == '.')
                 break;
 
-            if (isDouble)
-            {
+            if (isDouble) {
                 //error(_T("Number problem"));
                 break;
             }
 
             isDouble = true;
         }
-        else if ((ch >= '0' && ch <= '9'))
-        {
-            if (isDouble)
-            {
+        else if ((ch >= '0' && ch <= '9')) {
+            if (isDouble) {
                 ++dotPlace;
 
                 afterTheComma *= pow(10, 1);
@@ -215,7 +209,7 @@ void getNumber(t_tokinizer* tokinizer)
         token->type    = TOKEN_OPERATOR;
         token->current = tokinizer->column;
         token->line    = tokinizer->line;
-        token->int_    = OPERATOR_MINUS;
+        token->int_    = OPERATOR_SUBTRACTION;
 
         vector_add(&tokinizer->tokens, token);
     }
@@ -223,9 +217,43 @@ void getNumber(t_tokinizer* tokinizer)
     vector_add(&tokinizer->tokens, token);
 }
 
-void getOperator(t_tokinizer* tokinizer)
-{
+void getOperator(t_tokinizer* tokinizer) {
+    char ch      = getChar(tokinizer);
+    char chNext  = getNextChar(tokinizer);
+    char chThird = getThirdChar(tokinizer);
+    increase(tokinizer);
 
+    if (ch == '-' && (isInteger(getNextChar(tokinizer)) || getNextChar(tokinizer) == '.'))
+        getNumber(tokinizer);
+    else {
+        t_token* token = (t_token*)malloc(sizeof (t_token));
+        token->type    = TOKEN_OPERATOR;
+        token->current = tokinizer->column;
+        token->line    = tokinizer->line;
+
+        switch (ch) {
+            OPERATOR_CASE_DOUBLE_START_WITH('+', '+', '=', OPERATOR_ADDITION,     OPERATOR_INCREMENT,          OPERATOR_ASSIGN_ADDITION);
+            OPERATOR_CASE_DOUBLE_START_WITH('-', '-', '=', OPERATOR_SUBTRACTION,  OPERATOR_DECCREMENT,         OPERATOR_ASSIGN_SUBTRACTION);
+            OPERATOR_CASE_DOUBLE_START_WITH('>', '=', '>', OPERATOR_GREATER_THAN, OPERATOR_GREATER_EQUAL_THAN, OPERATOR_BITWISE_RIGHT_SHIFT);
+            OPERATOR_CASE_DOUBLE_START_WITH('<', '=', '<', OPERATOR_LESS_THAN,    OPERATOR_LESS_EQUAL_THAN,    OPERATOR_BITWISE_LEFT_SHIFT);
+            OPERATOR_CASE_DOUBLE_START_WITH('&', '&', '=', OPERATOR_BITWISE_AND,  OPERATOR_AND,                OPERATOR_BITWISE_AND_ASSIGN);
+            OPERATOR_CASE_DOUBLE_START_WITH('|', '|', '=', OPERATOR_BITWISE_OR,   OPERATOR_OR,                 OPERATOR_BITWISE_OR_ASSIGN);
+
+            OPERATOR_CASE_TRIBLE('=', '=', '=', OPERATOR_ASSIGN, OPERATOR_EQUAL,     OPERATOR_EQUAL_VALUE);
+            OPERATOR_CASE_TRIBLE('!', '=', '=', OPERATOR_NOT,    OPERATOR_NOT_EQUAL, OPERATOR_NOT_EQUAL_VALUE);
+
+            OPERATOR_CASE_DOUBLE('*', '=', OPERATOR_MULTIPLICATION, OPERATOR_ASSIGN_MULTIPLICATION);
+            OPERATOR_CASE_DOUBLE('/', '=', OPERATOR_DIVISION,       OPERATOR_ASSIGN_DIVISION);
+            OPERATOR_CASE_DOUBLE('%', '=', OPERATOR_MODULES,        OPERATOR_ASSIGN_MODULUS);
+            OPERATOR_CASE_DOUBLE('^', '=', OPERATOR_BITWISE_XOR,    OPERATOR_BITWISE_XOR_ASSIGN);
+
+            OPERATOR_CASE_SINGLE('?', OPERATOR_QUESTION_MARK);
+            OPERATOR_CASE_SINGLE(':', OPERATOR_COLON_MARK);
+            OPERATOR_CASE_SINGLE('~', OPERATOR_BITWISE_NOT);
+        }
+
+        vector_add(&tokinizer->tokens, token);
+    }
 }
 
 t_context* static_py_init() {
@@ -236,53 +264,10 @@ t_context* static_py_init() {
     context->tokinizer->line   = 1;
     map_init(&context->tokinizer->keywords);
 
-    map_set(&context->tokinizer->keywords, "do",  KEYWORD_DO);
-    map_set(&context->tokinizer->keywords, "if",  KEYWORD_IF);
-    map_set(&context->tokinizer->keywords, "in",  KEYWORD_IN);
-    map_set(&context->tokinizer->keywords, "for",  KEYWORD_FOR);
-    map_set(&context->tokinizer->keywords, "let",  KEYWORD_LET);
-    map_set(&context->tokinizer->keywords, "new",  KEYWORD_NEW);
-    map_set(&context->tokinizer->keywords, "try",  KEYWORD_TRY);
-    map_set(&context->tokinizer->keywords, "var",  KEYWORD_VAR);
-    map_set(&context->tokinizer->keywords, "case",  KEYWORD_CASE);
-    map_set(&context->tokinizer->keywords, "else",  KEYWORD_ELSE);
-    map_set(&context->tokinizer->keywords, "enum",  KEYWORD_ENUM);
-    map_set(&context->tokinizer->keywords, "eval",  KEYWORD_EVAL);
-    map_set(&context->tokinizer->keywords, "null",  KEYWORD_NULL);
-    map_set(&context->tokinizer->keywords, "this",  KEYWORD_THIS);
-    map_set(&context->tokinizer->keywords, "true",  KEYWORD_TRUE);
-    map_set(&context->tokinizer->keywords, "void",  KEYWORD_VOID);
-    map_set(&context->tokinizer->keywords, "with",  KEYWORD_WITH);
-    map_set(&context->tokinizer->keywords, "break",  KEYWORD_BREAK);
-    map_set(&context->tokinizer->keywords, "catch",  KEYWORD_CATCH);
-    map_set(&context->tokinizer->keywords, "class",  KEYWORD_CLASS);
-    map_set(&context->tokinizer->keywords, "const",  KEYWORD_CONST);
-    map_set(&context->tokinizer->keywords, "false",  KEYWORD_FALSE);
-    map_set(&context->tokinizer->keywords, "super",  KEYWORD_SUPER);
-    map_set(&context->tokinizer->keywords, "throw",  KEYWORD_THROW);
-    map_set(&context->tokinizer->keywords, "while",  KEYWORD_WHILE);
-    map_set(&context->tokinizer->keywords, "yield",  KEYWORD_YIELD);
-    map_set(&context->tokinizer->keywords, "delete",  KEYWORD_DELETE);
-    map_set(&context->tokinizer->keywords, "export",  KEYWORD_EXPORT);
-    map_set(&context->tokinizer->keywords, "import",  KEYWORD_IMPORT);
-    map_set(&context->tokinizer->keywords, "public",  KEYWORD_PUBLIC);
-    map_set(&context->tokinizer->keywords, "return",  KEYWORD_RETURN);
-    map_set(&context->tokinizer->keywords, "static",  KEYWORD_STATIC);
-    map_set(&context->tokinizer->keywords, "switch",  KEYWORD_SWITCH);
-    map_set(&context->tokinizer->keywords, "typeof",  KEYWORD_TYPEOF);
-    map_set(&context->tokinizer->keywords, "default",  KEYWORD_DEFAULT);
-    map_set(&context->tokinizer->keywords, "extends",  KEYWORD_EXTENDS);
-    map_set(&context->tokinizer->keywords, "finally",  KEYWORD_FINALLY);
-    map_set(&context->tokinizer->keywords, "package",  KEYWORD_PACKAGE);
-    map_set(&context->tokinizer->keywords, "private",  KEYWORD_PRIVATE);
-    map_set(&context->tokinizer->keywords, "continue",  KEYWORD_CONTINUE);
-    map_set(&context->tokinizer->keywords, "debugger",  KEYWORD_DEBUGGER);
-    map_set(&context->tokinizer->keywords, "function",  KEYWORD_FUNCTION);
-    map_set(&context->tokinizer->keywords, "arguments",  KEYWORD_ARGUMENTS);
-    map_set(&context->tokinizer->keywords, "interface",  KEYWORD_INTERFACE);
-    map_set(&context->tokinizer->keywords, "protected",  KEYWORD_PROTECTED);
-    map_set(&context->tokinizer->keywords, "implements",  KEYWORD_IMPLEMENTS);
-    map_set(&context->tokinizer->keywords, "instanceof",  KEYWORD_INSTANCEOF);
+    size_t keywordCount = sizeof (KEYWORDS_PAIR) / sizeof(KeywordPair);
+    for (size_t i = 0; i < keywordCount; ++i)
+        map_set(&context->tokinizer->keywords, KEYWORDS_PAIR[i].name,  KEYWORDS_PAIR[i].keyword);
+
     return context;
 }
 
@@ -296,12 +281,10 @@ void static_py_execute(t_context* context, char* data) {
         char chNext = getNextChar(tokinizer);
 
         if (isWhitespace(ch)) {
-            while (!isEnd(tokinizer) && isWhitespace(ch))
-            {
+            while (!isEnd(tokinizer) && isWhitespace(ch)) {
                 increase(tokinizer);
 
-                if (isNewLine(ch))
-                {
+                if (isNewLine(ch)) {
                     tokinizer->column = 0;
                     ++tokinizer->line;
                 }
@@ -311,24 +294,13 @@ void static_py_execute(t_context* context, char* data) {
 
             continue;
         } else if (ch == '/' && chNext == '/') {
-            while (!isEnd(tokinizer) && !isNewLine(ch))
-            {
+            while (!isEnd(tokinizer) && !isNewLine(ch)) {
                 increase(tokinizer);
                 ch = getChar(tokinizer);
             }
 
             tokinizer->column = 0;
             ++tokinizer->line;
-            continue;
-        } else if (ch == '_' && (chNext == '\0' || (isSymbol(ch) == false && ch >= '0' && ch <= '9'))) {
-            t_token* token = (t_token*)malloc(sizeof (t_token));
-            token->type    = TOKEN_OPERATOR;
-            token->current = tokinizer->column;
-            token->line    = tokinizer->line;
-            token->int_    = OPERATOR_UNDERLINE;
-
-            increase(tokinizer);
-            vector_add(&tokinizer->tokens, token);
             continue;
         } else if (isSymbol(ch)) {
             getSymbol(tokinizer);
@@ -352,7 +324,8 @@ void static_py_execute(t_context* context, char* data) {
 void static_py_destroy(t_context* context) {
     t_context* _context = (t_context*)context;
     int i;
-    for (i = 0; i < vector_count(&_context->tokinizer->tokens); i++) {
+    int totalToken = vector_count(&_context->tokinizer->tokens);
+    for (i = 0; i < totalToken; i++) {
         t_token* token = (t_token*)vector_get(&_context->tokinizer->tokens, i);
         if (token->type == TOKEN_TEXT ||
             token->type == TOKEN_SYMBOL)

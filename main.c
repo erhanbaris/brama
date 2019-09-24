@@ -12,7 +12,7 @@
 int main(int argc, const char* argv[])
 {
     t_context* context = static_py_init();
-    static_py_execute(context, "     1024   ");
+    static_py_execute(context, "+ - * / % ++ --");
     t_token* token = (t_token*)vector_get(&context->tokinizer->tokens, 0);
     static_py_destroy(context);
 
