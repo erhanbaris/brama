@@ -66,28 +66,27 @@ void getSymbol(t_tokinizer* tokinizer)
     }
 
     char* data = string_stream_get(stream);
-    tokinizer->keywords;
     int* keywordInfo = (int*)map_get(&tokinizer->keywords, data);
 
     if (keywordInfo){
-        printf("%s = %d\r\n", data, *keywordInfo);
+        //printf("%s = %d\r\n", data, *keywordInfo);
 
         t_token* token = (t_token*)malloc(sizeof (t_token));
         token->type    = TOKEN_KEYWORD;
         token->current = tokinizer->column;
         token->line    = tokinizer->line;
-        token->data    = (void*)*keywordInfo;
+        token->int_    = *keywordInfo;
 
         increase(tokinizer);
         vector_add(&tokinizer->tokens, token);
         free(data);
     } else {
 
-        t_token* token = (t_token*)malloc(sizeof (t_token));
-        token->type    = TOKEN_SYMBOL;
-        token->current = tokinizer->column;
-        token->line    = tokinizer->line;
-        token->data    = (void*)data;
+        t_token* token  = (t_token*)malloc(sizeof (t_token));
+        token->type     = TOKEN_SYMBOL;
+        token->current  = tokinizer->column;
+        token->line     = tokinizer->line;
+        token->char_ptr = data;
 
         increase(tokinizer);
         vector_add(&tokinizer->tokens, token);
@@ -130,11 +129,11 @@ int getText(t_tokinizer* tokinizer, char symbol)
     if (ch != symbol)
         return STATIC_PY_NOK;
 
-    t_token* token = (t_token*)malloc(sizeof (t_token));
-    token->type    = TOKEN_TEXT;
-    token->current = tokinizer->column;
-    token->line    = tokinizer->line;
-    token->data    = (void*)string_stream_get(stream);
+    t_token* token  = (t_token*)malloc(sizeof (t_token));
+    token->type     = TOKEN_TEXT;
+    token->current  = tokinizer->column;
+    token->line     = tokinizer->line;
+    token->char_ptr = string_stream_get(stream);
 
     increase(tokinizer);
     vector_add(&tokinizer->tokens, token);
@@ -198,24 +197,25 @@ void getNumber(t_tokinizer* tokinizer)
         chNext = getNextChar(tokinizer);
     }
 
-    int number    = (beforeTheComma + (afterTheComma * pow(10, -1 * dotPlace)));
-    int tokenType = TOKEN_DOUBLE;
-
-    if (!isDouble)
-        tokenType = TOKEN_INTEGER;
-
     t_token* token = (t_token*)malloc(sizeof (t_token));
-    token->type    = tokenType;
+
+    if (!isDouble){
+        token->type = TOKEN_INTEGER;
+        token->int_ = beforeTheComma;
+    } else {
+        token->type    = TOKEN_DOUBLE;
+        token->double_ = (beforeTheComma + (afterTheComma * pow(10, -1 * dotPlace)));
+    }
+
     token->current = start;
     token->line    = tokinizer->line;
-    token->data    = (void*)number;
 
     if (isMinus) {
         t_token* token = (t_token*)malloc(sizeof (t_token));
         token->type    = TOKEN_OPERATOR;
         token->current = tokinizer->column;
         token->line    = tokinizer->line;
-        token->data    = (void*)OPERATOR_MINUS;
+        token->int_    = OPERATOR_MINUS;
 
         vector_add(&tokinizer->tokens, token);
     }
@@ -286,25 +286,6 @@ t_context* static_py_init() {
     return context;
 }
 
-static size_t djb_hash(const char* cp)
-{
-    size_t hash = 5381;
-    while (*cp)
-        hash = 33 * hash ^ (unsigned char) *cp++;
-    return hash;
-}
-
-/* Fowler/Noll/Vo (FNV) hash function, variant 1a */
-static size_t fnv1a_hash(const char* cp)
-{
-    size_t hash = 0x811c9dc5;
-    while (*cp) {
-        hash ^= (unsigned char) *cp++;
-        hash *= 0x01000193;
-    }
-    return hash;
-}
-
 void static_py_execute(t_context* context, char* data) {
     t_tokinizer* tokinizer   = ((t_context*)context)->tokinizer;
     tokinizer->content       = data;
@@ -314,8 +295,7 @@ void static_py_execute(t_context* context, char* data) {
         char ch = getChar(tokinizer);
         char chNext = getNextChar(tokinizer);
 
-        if (isWhitespace(ch))
-        {
+        if (isWhitespace(ch)) {
             while (!isEnd(tokinizer) && isWhitespace(ch))
             {
                 increase(tokinizer);
@@ -345,7 +325,7 @@ void static_py_execute(t_context* context, char* data) {
             token->type    = TOKEN_OPERATOR;
             token->current = tokinizer->column;
             token->line    = tokinizer->line;
-            token->data    = (void*)OPERATOR_UNDERLINE;
+            token->int_    = OPERATOR_UNDERLINE;
 
             increase(tokinizer);
             vector_add(&tokinizer->tokens, token);
@@ -376,7 +356,7 @@ void static_py_destroy(t_context* context) {
         t_token* token = (t_token*)vector_get(&_context->tokinizer->tokens, i);
         if (token->type == TOKEN_TEXT ||
             token->type == TOKEN_SYMBOL)
-            free((char*)token->data);
+            free((char*)token->char_ptr);
     }
 
     map_deinit(&_context->tokinizer->keywords);

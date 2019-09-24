@@ -4,6 +4,11 @@
 #include "tests_core.h"
 #include "static_py.h"
 
+#define KEYWORD_EQUAL(INDEX, KEYWORD) munit_assert_int (((t_token*)vector_get(&context->tokinizer->tokens, INDEX ))->type, ==, TOKEN_KEYWORD); \
+                                      munit_assert_int ((((t_token*)vector_get(&context->tokinizer->tokens, INDEX ))->int_), ==, KEYWORD );
+
+
+/* STRING TESTS BEGIN --> */
 MunitResult string_token_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = static_py_init();
     static_py_execute(context, "\"hello world\"");
@@ -14,7 +19,7 @@ MunitResult string_token_1(const MunitParameter params[], void* user_data_or_fix
         return MUNIT_FAIL;
 
     munit_assert_int         (token->type, ==, TOKEN_TEXT);
-    munit_assert_string_equal((char*)token->data, "hello world");
+    munit_assert_string_equal((char*)token->char_ptr, "hello world");
 
     static_py_destroy(context);
     return MUNIT_OK;
@@ -30,7 +35,7 @@ MunitResult string_token_2(const MunitParameter params[], void* user_data_or_fix
         return MUNIT_FAIL;
 
     munit_assert_int         (token->type, ==, TOKEN_TEXT);
-    munit_assert_string_equal((char*)token->data, "hello world");
+    munit_assert_string_equal((char*)token->char_ptr, "hello world");
 
     static_py_destroy(context);
     return MUNIT_OK;
@@ -38,7 +43,7 @@ MunitResult string_token_2(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult string_token_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = static_py_init();
-    static_py_execute(context, "'hello world\''");
+    static_py_execute(context, "'hello world\\\''");
     munit_assert_int(context->tokinizer->tokens.count, ==, 1);
 
     t_token* token = (t_token*)vector_get(&context->tokinizer->tokens, 0);
@@ -46,17 +51,244 @@ MunitResult string_token_3(const MunitParameter params[], void* user_data_or_fix
         return MUNIT_FAIL;
 
     munit_assert_int         (token->type, ==, TOKEN_TEXT);
-    munit_assert_string_equal((char*)token->data, "hello world'");
+    munit_assert_string_equal((char*)token->char_ptr, "hello world'");
 
     static_py_destroy(context);
     return MUNIT_OK;
 }
 
+MunitResult string_token_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "\"hello world\\\"\"");
+    munit_assert_int(context->tokinizer->tokens.count, ==, 1);
+
+    t_token* token = (t_token*)vector_get(&context->tokinizer->tokens, 0);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type, ==, TOKEN_TEXT);
+    munit_assert_string_equal((char*)token->char_ptr, "hello world\"");
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+/* <-- STRING TESTS END */
+
+/* KEYWORD TESTS BEGIN --> */
+
+MunitResult keyword_token_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "do if in for let new try var case else enum eval null this true void with break catch class const false super throw while yield delete export import public return static switch typeof default extends finally package private continue debugger function arguments interface protected implements instanceof");
+    munit_assert_int (context->tokinizer->tokens.count, ==, 47);
+    KEYWORD_EQUAL    (0,  KEYWORD_DO);
+    KEYWORD_EQUAL    (1,  KEYWORD_IF);
+    KEYWORD_EQUAL    (2,  KEYWORD_IN);
+    KEYWORD_EQUAL    (3,  KEYWORD_FOR);
+    KEYWORD_EQUAL    (4,  KEYWORD_LET);
+    KEYWORD_EQUAL    (5,  KEYWORD_NEW);
+    KEYWORD_EQUAL    (6,  KEYWORD_TRY);
+    KEYWORD_EQUAL    (7,  KEYWORD_VAR);
+    KEYWORD_EQUAL    (8,  KEYWORD_CASE);
+    KEYWORD_EQUAL    (9,  KEYWORD_ELSE);
+    KEYWORD_EQUAL    (10, KEYWORD_ENUM);
+    KEYWORD_EQUAL    (11, KEYWORD_EVAL);
+    KEYWORD_EQUAL    (12, KEYWORD_NULL);
+    KEYWORD_EQUAL    (13, KEYWORD_THIS);
+    KEYWORD_EQUAL    (14, KEYWORD_TRUE);
+    KEYWORD_EQUAL    (15, KEYWORD_VOID);
+    KEYWORD_EQUAL    (16, KEYWORD_WITH);
+    KEYWORD_EQUAL    (17, KEYWORD_BREAK);
+    KEYWORD_EQUAL    (18, KEYWORD_CATCH);
+    KEYWORD_EQUAL    (19, KEYWORD_CLASS);
+    KEYWORD_EQUAL    (20, KEYWORD_CONST);
+    KEYWORD_EQUAL    (21, KEYWORD_FALSE);
+    KEYWORD_EQUAL    (22, KEYWORD_SUPER);
+    KEYWORD_EQUAL    (23, KEYWORD_THROW);
+    KEYWORD_EQUAL    (24, KEYWORD_WHILE);
+    KEYWORD_EQUAL    (25, KEYWORD_YIELD);
+    KEYWORD_EQUAL    (26, KEYWORD_DELETE);
+    KEYWORD_EQUAL    (27, KEYWORD_EXPORT);
+    KEYWORD_EQUAL    (28, KEYWORD_IMPORT);
+    KEYWORD_EQUAL    (29, KEYWORD_PUBLIC);
+    KEYWORD_EQUAL    (30, KEYWORD_RETURN);
+    KEYWORD_EQUAL    (31, KEYWORD_STATIC);
+    KEYWORD_EQUAL    (32, KEYWORD_SWITCH);
+    KEYWORD_EQUAL    (33, KEYWORD_TYPEOF);
+    KEYWORD_EQUAL    (34, KEYWORD_DEFAULT);
+    KEYWORD_EQUAL    (35, KEYWORD_EXTENDS);
+    KEYWORD_EQUAL    (36, KEYWORD_FINALLY);
+    KEYWORD_EQUAL    (37, KEYWORD_PACKAGE);
+    KEYWORD_EQUAL    (38, KEYWORD_PRIVATE);
+    KEYWORD_EQUAL    (39, KEYWORD_CONTINUE);
+    KEYWORD_EQUAL    (40, KEYWORD_DEBUGGER);
+    KEYWORD_EQUAL    (41, KEYWORD_FUNCTION);
+    KEYWORD_EQUAL    (42, KEYWORD_ARGUMENTS);
+    KEYWORD_EQUAL    (43, KEYWORD_INTERFACE);
+    KEYWORD_EQUAL    (44, KEYWORD_PROTECTED);
+    KEYWORD_EQUAL    (45, KEYWORD_IMPLEMENTS);
+    KEYWORD_EQUAL    (46, KEYWORD_INSTANCEOF);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+/* <-- KEYWORD TESTS END */
+
+/* NUMBER TESTS BEGIN --> */
+
+MunitResult number_token_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "1024");
+    munit_assert_int(context->tokinizer->tokens.count, ==, 1);
+
+    t_token* token = (t_token*)vector_get(&context->tokinizer->tokens, 0);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int(token->type, ==, TOKEN_INTEGER);
+    munit_assert_int(token->int_, ==, 1024);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult number_token_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "1024.11");
+    munit_assert_int(context->tokinizer->tokens.count, ==, 1);
+
+    t_token* token = (t_token*)vector_get(&context->tokinizer->tokens, 0);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int    (token->type, ==, TOKEN_DOUBLE);
+    munit_assert_double (token->double_, ==, 1024.11);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult number_token_3(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "        2048        ");
+    munit_assert_int(context->tokinizer->tokens.count, ==, 1);
+
+    t_token* token = (t_token*)vector_get(&context->tokinizer->tokens, 0);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int(token->type, ==, TOKEN_INTEGER);
+    munit_assert_int(token->int_, ==, 2048);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult number_token_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "      1024.1234567        ");
+    munit_assert_int(context->tokinizer->tokens.count, ==, 1);
+
+    t_token* token = (t_token*)vector_get(&context->tokinizer->tokens, 0);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int    (token->type, ==, TOKEN_DOUBLE);
+    munit_assert_double (token->double_, ==, 1024.1234567);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+/* <-- NUMBER TESTS END */
+
+
+/* SYMBOL TESTS BEGIN --> */
+
+MunitResult symbol_token_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "erhan baris");
+    munit_assert_int(context->tokinizer->tokens.count, ==, 2);
+
+    t_token* token = (t_token*)vector_get(&context->tokinizer->tokens, 0);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type, ==, TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "erhan");
+
+    token = (t_token*)vector_get(&context->tokinizer->tokens, 1);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type, ==, TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "baris");
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult symbol_token_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "erhan baris test 2048 2048.1");
+    munit_assert_int(context->tokinizer->tokens.count, ==, 5);
+
+    t_token* token = (t_token*)vector_get(&context->tokinizer->tokens, 0);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type, ==, TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "erhan");
+
+    token = (t_token*)vector_get(&context->tokinizer->tokens, 1);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type, ==, TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "baris");
+
+    token = (t_token*)vector_get(&context->tokinizer->tokens, 2);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type, ==, TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "test");
+
+    token = (t_token*)vector_get(&context->tokinizer->tokens, 3);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int(token->type, ==, TOKEN_INTEGER);
+    munit_assert_int(token->int_, ==, 2048);
+
+    token = (t_token*)vector_get(&context->tokinizer->tokens, 4);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int   (token->type,    ==, TOKEN_DOUBLE);
+    munit_assert_double(token->double_, ==, 2048.1);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+/* <-- SYMBOL TESTS END */
 
 MunitTest TOKEN_TESTS[] = {
     ADD_TEST(string_token_1),
     ADD_TEST(string_token_2),
     ADD_TEST(string_token_3),
+    ADD_TEST(string_token_4),
+
+    ADD_TEST(keyword_token_1),
+
+    ADD_TEST(number_token_1),
+    ADD_TEST(number_token_2),
+    ADD_TEST(number_token_3),
+    ADD_TEST(number_token_4),
+
+    ADD_TEST(symbol_token_1),
+    ADD_TEST(symbol_token_2),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 static const MunitSuite TOKEN_SUITE = {
@@ -67,5 +299,4 @@ static const MunitSuite TOKEN_SUITE = {
   MUNIT_SUITE_OPTION_NONE /* options */
 };
 
-/*do if in for let new try var case else enum eval null this true void with break catch class const false super throw while yield delete export import public return static switch typeof default extends finally package private continue debugger function arguments interface protected implements instanceof*/
 #endif // TESTS_TOKEN_H

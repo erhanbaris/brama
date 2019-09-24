@@ -7,7 +7,7 @@
 
 #define STRING_STREAM_OK            0
 #define STRING_STREAM_ERR_NO_MEMORY 1
-#define STRING_STREAM_ERR_NULL_OBJ  2
+#define STRING_STREAM_ERR_NULL_OBJ  1 << 1
 
 #define CHECK_STREAM_PTR(stream) if (stream == NULL) return STRING_STREAM_ERR_NULL_OBJ;
 

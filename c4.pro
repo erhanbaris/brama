@@ -2,6 +2,7 @@ TEMPLATE = app
 CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
+QMAKE_CFLAGS += -std=c11 -Wint-to-void-pointer-cast
 
 INCLUDEPATH += /usr/local/include
 

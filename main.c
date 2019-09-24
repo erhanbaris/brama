@@ -11,5 +11,10 @@
 
 int main(int argc, const char* argv[])
 {
-    return munit_suite_main(&TOKEN_SUITE, (void*) "µnit", argc, argv);
+    t_context* context = static_py_init();
+    static_py_execute(context, "     1024   ");
+    t_token* token = (t_token*)vector_get(&context->tokinizer->tokens, 0);
+    static_py_destroy(context);
+
+    return munit_suite_main(&TOKEN_SUITE, (void*) "µnit", NULL, NULL);
 }

@@ -1,1 +1,4 @@
 c4.pro.user
+.idea/
+CMakeLists.txt.user
+cmake-build-debug/

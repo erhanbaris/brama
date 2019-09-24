@@ -113,7 +113,13 @@ typedef struct {
     size_t line;
     size_t current;
     size_t type;
-    void*  data;
+    union {
+        void* data_ptr;
+        char* char_ptr;
+        char char_;
+        int   int_;
+        double double_;
+    };
 } t_token;
 
 typedef struct {
