@@ -223,33 +223,42 @@ void getOperator(t_tokinizer* tokinizer) {
     char chThird = getThirdChar(tokinizer);
     increase(tokinizer);
 
-    if (ch == '-' && (isInteger(getNextChar(tokinizer)) || getNextChar(tokinizer) == '.'))
+    if (ch == '-' && isInteger(getNextChar(tokinizer)))
         getNumber(tokinizer);
     else {
         t_token* token = (t_token*)malloc(sizeof (t_token));
         token->type    = TOKEN_OPERATOR;
         token->current = tokinizer->column;
         token->line    = tokinizer->line;
+        token->int_    = OPERATOR_NONE;
 
         switch (ch) {
-            OPERATOR_CASE_DOUBLE_START_WITH('+', '+', '=', OPERATOR_ADDITION,     OPERATOR_INCREMENT,          OPERATOR_ASSIGN_ADDITION);
-            OPERATOR_CASE_DOUBLE_START_WITH('-', '-', '=', OPERATOR_SUBTRACTION,  OPERATOR_DECCREMENT,         OPERATOR_ASSIGN_SUBTRACTION);
-            OPERATOR_CASE_DOUBLE_START_WITH('>', '=', '>', OPERATOR_GREATER_THAN, OPERATOR_GREATER_EQUAL_THAN, OPERATOR_BITWISE_RIGHT_SHIFT);
-            OPERATOR_CASE_DOUBLE_START_WITH('<', '=', '<', OPERATOR_LESS_THAN,    OPERATOR_LESS_EQUAL_THAN,    OPERATOR_BITWISE_LEFT_SHIFT);
-            OPERATOR_CASE_DOUBLE_START_WITH('&', '&', '=', OPERATOR_BITWISE_AND,  OPERATOR_AND,                OPERATOR_BITWISE_AND_ASSIGN);
-            OPERATOR_CASE_DOUBLE_START_WITH('|', '|', '=', OPERATOR_BITWISE_OR,   OPERATOR_OR,                 OPERATOR_BITWISE_OR_ASSIGN);
+            OPERATOR_CASE_DOUBLE_START_WITH_FOUR('/', '=', '*', '/', OPERATOR_DIVISION, OPERATOR_ASSIGN_DIVISION, OPERATOR_COMMENT_MULTILINE_START, OPERATOR_COMMENT_LINE);
+
+            OPERATOR_CASE_DOUBLE_START_WITH('+', '+', '=', OPERATOR_ADDITION,       OPERATOR_INCREMENT,             OPERATOR_ASSIGN_ADDITION);
+            OPERATOR_CASE_DOUBLE_START_WITH('-', '-', '=', OPERATOR_SUBTRACTION,    OPERATOR_DECCREMENT,            OPERATOR_ASSIGN_SUBTRACTION);
+            OPERATOR_CASE_DOUBLE_START_WITH('>', '=', '>', OPERATOR_GREATER_THAN,   OPERATOR_GREATER_EQUAL_THAN,    OPERATOR_BITWISE_RIGHT_SHIFT);
+            OPERATOR_CASE_DOUBLE_START_WITH('<', '=', '<', OPERATOR_LESS_THAN,      OPERATOR_LESS_EQUAL_THAN,       OPERATOR_BITWISE_LEFT_SHIFT);
+            OPERATOR_CASE_DOUBLE_START_WITH('&', '&', '=', OPERATOR_BITWISE_AND,    OPERATOR_AND,                   OPERATOR_BITWISE_AND_ASSIGN);
+            OPERATOR_CASE_DOUBLE_START_WITH('|', '|', '=', OPERATOR_BITWISE_OR,     OPERATOR_OR,                    OPERATOR_BITWISE_OR_ASSIGN);
+            OPERATOR_CASE_DOUBLE_START_WITH('*', '=', '/', OPERATOR_MULTIPLICATION, OPERATOR_ASSIGN_MULTIPLICATION, OPERATOR_COMMENT_MULTILINE_END);
 
             OPERATOR_CASE_TRIBLE('=', '=', '=', OPERATOR_ASSIGN, OPERATOR_EQUAL,     OPERATOR_EQUAL_VALUE);
             OPERATOR_CASE_TRIBLE('!', '=', '=', OPERATOR_NOT,    OPERATOR_NOT_EQUAL, OPERATOR_NOT_EQUAL_VALUE);
 
-            OPERATOR_CASE_DOUBLE('*', '=', OPERATOR_MULTIPLICATION, OPERATOR_ASSIGN_MULTIPLICATION);
-            OPERATOR_CASE_DOUBLE('/', '=', OPERATOR_DIVISION,       OPERATOR_ASSIGN_DIVISION);
             OPERATOR_CASE_DOUBLE('%', '=', OPERATOR_MODULES,        OPERATOR_ASSIGN_MODULUS);
             OPERATOR_CASE_DOUBLE('^', '=', OPERATOR_BITWISE_XOR,    OPERATOR_BITWISE_XOR_ASSIGN);
 
             OPERATOR_CASE_SINGLE('?', OPERATOR_QUESTION_MARK);
             OPERATOR_CASE_SINGLE(':', OPERATOR_COLON_MARK);
             OPERATOR_CASE_SINGLE('~', OPERATOR_BITWISE_NOT);
+            OPERATOR_CASE_SINGLE('(', OPERATOR_LEFT_PARENTHESES);
+            OPERATOR_CASE_SINGLE(')', OPERATOR_RIGHT_PARENTHESES);
+            OPERATOR_CASE_SINGLE('[', OPERATOR_SQUARE_BRACKET_START);
+            OPERATOR_CASE_SINGLE(']', OPERATOR_SQUARE_BRACKET_END);
+            OPERATOR_CASE_SINGLE(',', OPERATOR_COMMA);
+            OPERATOR_CASE_SINGLE(';', OPERATOR_SEMICOLON);
+            OPERATOR_CASE_SINGLE('.', OPERATOR_DOT);
         }
 
         vector_add(&tokinizer->tokens, token);
@@ -277,7 +286,7 @@ void static_py_execute(t_context* context, char* data) {
     tokinizer->contentLength = strlen(data);
 
     while (!isEnd(tokinizer)) {
-        char ch = getChar(tokinizer);
+        char ch     = getChar(tokinizer);
         char chNext = getNextChar(tokinizer);
 
         if (isWhitespace(ch)) {
@@ -293,15 +302,6 @@ void static_py_execute(t_context* context, char* data) {
             }
 
             continue;
-        } else if (ch == '/' && chNext == '/') {
-            while (!isEnd(tokinizer) && !isNewLine(ch)) {
-                increase(tokinizer);
-                ch = getChar(tokinizer);
-            }
-
-            tokinizer->column = 0;
-            ++tokinizer->line;
-            continue;
         } else if (isSymbol(ch)) {
             getSymbol(tokinizer);
             continue;
@@ -311,7 +311,7 @@ void static_py_execute(t_context* context, char* data) {
         } else if (ch == '\'') {
             getText(tokinizer, '\'');
             continue;
-        } else if ((ch >= '0' && ch <= '9') || ch == '.') {
+        } else if (ch >= '0' && ch <= '9') {
             getNumber(tokinizer);
             continue;
         } else {

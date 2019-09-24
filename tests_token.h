@@ -285,8 +285,8 @@ MunitResult symbol_token_2(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult keyword_operator(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = static_py_init();
-    static_py_execute(context, "+ - * / % ++ -- = += -= *= /= %= == === != !== ! && || & | ~ ^ << >> > < >= <= ? : &= |= ^=");
-    munit_assert_int (context->tokinizer->tokens.count, ==, 35);
+    static_py_execute(context, "+ - * / % ++ -- = += -= *= /= %= == === != !== ! && || & | ~ ^ << >> > < >= <= ? : &= |= ^= () [],;. // /* */");
+    munit_assert_int (context->tokinizer->tokens.count, ==, 45);
     OPERATOR_EQUAL_CHECK(0,  OPERATOR_ADDITION);
     OPERATOR_EQUAL_CHECK(1,  OPERATOR_SUBTRACTION);
     OPERATOR_EQUAL_CHECK(2,  OPERATOR_MULTIPLICATION);
@@ -322,7 +322,31 @@ MunitResult keyword_operator(const MunitParameter params[], void* user_data_or_f
     OPERATOR_EQUAL_CHECK(32, OPERATOR_BITWISE_AND_ASSIGN);
     OPERATOR_EQUAL_CHECK(33, OPERATOR_BITWISE_OR_ASSIGN);
     OPERATOR_EQUAL_CHECK(34, OPERATOR_BITWISE_XOR_ASSIGN);
+    OPERATOR_EQUAL_CHECK(35, OPERATOR_LEFT_PARENTHESES);
+    OPERATOR_EQUAL_CHECK(36, OPERATOR_RIGHT_PARENTHESES);
+    OPERATOR_EQUAL_CHECK(37, OPERATOR_SQUARE_BRACKET_START);
+    OPERATOR_EQUAL_CHECK(38, OPERATOR_SQUARE_BRACKET_END);
+    OPERATOR_EQUAL_CHECK(39, OPERATOR_COMMA);
+    OPERATOR_EQUAL_CHECK(40, OPERATOR_SEMICOLON);
+    OPERATOR_EQUAL_CHECK(41, OPERATOR_DOT);
+    OPERATOR_EQUAL_CHECK(42, OPERATOR_COMMENT_LINE);
+    OPERATOR_EQUAL_CHECK(43, OPERATOR_COMMENT_MULTILINE_START);
+    OPERATOR_EQUAL_CHECK(44, OPERATOR_COMMENT_MULTILINE_END);
 
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+/* <-- OPERATOR TESTS END */
+
+
+/* GENERAL TESTS BEGIN --> */
+
+MunitResult keyword_general_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "var rows = prompt('How many rows for your multiplication table?');");
+    munit_assert_int (context->tokinizer->tokens.count, ==, 8);
 
     static_py_destroy(context);
     return MUNIT_OK;
@@ -347,6 +371,8 @@ MunitTest TOKEN_TESTS[] = {
     ADD_TEST(symbol_token_2),
 
     ADD_TEST(keyword_operator),
+
+    ADD_TEST(keyword_general_1),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 static const MunitSuite TOKEN_SUITE = {

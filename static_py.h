@@ -74,42 +74,52 @@
 #define KEYWORD_INSTANCEOF 47
 
 /* OPERATOR TYPES */
-#define OPERATOR_NONE                  0
-#define OPERATOR_ADDITION              1
-#define OPERATOR_SUBTRACTION           2
-#define OPERATOR_MULTIPLICATION        3
-#define OPERATOR_DIVISION              4
-#define OPERATOR_MODULES               5
-#define OPERATOR_INCREMENT             6
-#define OPERATOR_DECCREMENT            7
-#define OPERATOR_ASSIGN                8
-#define OPERATOR_ASSIGN_ADDITION       9
-#define OPERATOR_ASSIGN_SUBTRACTION    10
-#define OPERATOR_ASSIGN_MULTIPLICATION 11
-#define OPERATOR_ASSIGN_DIVISION       12
-#define OPERATOR_ASSIGN_MODULUS        13
-#define OPERATOR_EQUAL                 14
-#define OPERATOR_EQUAL_VALUE           15
-#define OPERATOR_NOT_EQUAL             16
-#define OPERATOR_NOT_EQUAL_VALUE       17
-#define OPERATOR_NOT                   18
-#define OPERATOR_AND                   19
-#define OPERATOR_OR                    20
-#define OPERATOR_BITWISE_AND           21
-#define OPERATOR_BITWISE_OR            22
-#define OPERATOR_BITWISE_NOT           23
-#define OPERATOR_BITWISE_XOR           24
-#define OPERATOR_BITWISE_LEFT_SHIFT    25
-#define OPERATOR_BITWISE_RIGHT_SHIFT   26
-#define OPERATOR_GREATER_THAN          27
-#define OPERATOR_LESS_THAN             28
-#define OPERATOR_GREATER_EQUAL_THAN    29
-#define OPERATOR_LESS_EQUAL_THAN       30
-#define OPERATOR_QUESTION_MARK         31
-#define OPERATOR_COLON_MARK            32
-#define OPERATOR_BITWISE_AND_ASSIGN    33
-#define OPERATOR_BITWISE_OR_ASSIGN     34
-#define OPERATOR_BITWISE_XOR_ASSIGN    35
+#define OPERATOR_NONE                    0
+#define OPERATOR_ADDITION                1
+#define OPERATOR_SUBTRACTION             2
+#define OPERATOR_MULTIPLICATION          3
+#define OPERATOR_DIVISION                4
+#define OPERATOR_MODULES                 5
+#define OPERATOR_INCREMENT               6
+#define OPERATOR_DECCREMENT              7
+#define OPERATOR_ASSIGN                  8
+#define OPERATOR_ASSIGN_ADDITION         9
+#define OPERATOR_ASSIGN_SUBTRACTION      10
+#define OPERATOR_ASSIGN_MULTIPLICATION   11
+#define OPERATOR_ASSIGN_DIVISION         12
+#define OPERATOR_ASSIGN_MODULUS          13
+#define OPERATOR_EQUAL                   14
+#define OPERATOR_EQUAL_VALUE             15
+#define OPERATOR_NOT_EQUAL               16
+#define OPERATOR_NOT_EQUAL_VALUE         17
+#define OPERATOR_NOT                     18
+#define OPERATOR_AND                     19
+#define OPERATOR_OR                      20
+#define OPERATOR_BITWISE_AND             21
+#define OPERATOR_BITWISE_OR              22
+#define OPERATOR_BITWISE_NOT             23
+#define OPERATOR_BITWISE_XOR             24
+#define OPERATOR_BITWISE_LEFT_SHIFT      25
+#define OPERATOR_BITWISE_RIGHT_SHIFT     26
+#define OPERATOR_GREATER_THAN            27
+#define OPERATOR_LESS_THAN               28
+#define OPERATOR_GREATER_EQUAL_THAN      29
+#define OPERATOR_LESS_EQUAL_THAN         30
+#define OPERATOR_QUESTION_MARK           31
+#define OPERATOR_COLON_MARK              32
+#define OPERATOR_BITWISE_AND_ASSIGN      33
+#define OPERATOR_BITWISE_OR_ASSIGN       34
+#define OPERATOR_BITWISE_XOR_ASSIGN      35
+#define OPERATOR_LEFT_PARENTHESES        36
+#define OPERATOR_RIGHT_PARENTHESES       37
+#define OPERATOR_SQUARE_BRACKET_START    38
+#define OPERATOR_SQUARE_BRACKET_END      39
+#define OPERATOR_COMMA                   40
+#define OPERATOR_SEMICOLON               41
+#define OPERATOR_DOT                     42
+#define OPERATOR_COMMENT_LINE            43
+#define OPERATOR_COMMENT_MULTILINE_START 44
+#define OPERATOR_COMMENT_MULTILINE_END   45
 
 typedef struct {
   char* name;
@@ -150,6 +160,20 @@ typedef struct {
             increase(tokinizer);                   \
         } else if (chNext == OPERATOR_3_SYMBOL ) { \
             token->int_ = OPERATOR_3 ;             \
+            increase(tokinizer);                   \
+        } else token->int_ = OPERATOR_1 ;          \
+        break;
+
+#define OPERATOR_CASE_DOUBLE_START_WITH_FOUR(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_3_SYMBOL, OPERATOR_4_SYMBOL, OPERATOR_1, OPERATOR_2, OPERATOR_3, OPERATOR_4) \
+    case OPERATOR_1_SYMBOL :                       \
+        if (chNext == OPERATOR_2_SYMBOL ) {        \
+            token->int_ = OPERATOR_2 ;             \
+            increase(tokinizer);                   \
+        } else if (chNext == OPERATOR_3_SYMBOL ) { \
+            token->int_ = OPERATOR_3 ;             \
+            increase(tokinizer);                   \
+        } else if (chNext == OPERATOR_4_SYMBOL ) { \
+            token->int_ = OPERATOR_4 ;             \
             increase(tokinizer);                   \
         } else token->int_ = OPERATOR_1 ;          \
         break;
