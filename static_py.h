@@ -5,12 +5,14 @@
 #include <stdlib.h>
 
 #include "map.h"
-#include "vector.h"
+#include "tools.h"
 
 
 /* CODES */
-#define STATIC_PY_OK      0
-#define STATIC_PY_NOK     1
+#define STATIC_PY_OK                         0
+#define STATIC_PY_NOK                        1
+#define STATIC_PY_MISSING_TEXT_DELIMITER     2
+#define STATIC_PY_MULTIPLE_DOT_ON_DOUBLE     3
 
 
 /* TOKEN TYPES */
@@ -25,6 +27,7 @@
 #define TOKEN_END_OF_FILE 9
 
 /* KEYWORD TYPES */
+#define KEYWORD_NONE       0
 #define KEYWORD_DO         1
 #define KEYWORD_IF         2
 #define KEYWORD_IN         3
@@ -122,9 +125,114 @@
 #define OPERATOR_COMMENT_MULTILINE_END   45
 
 typedef struct {
-  char* name;
-  int   keyword;
+    char* name;
+    int   keyword;
 } KeywordPair;
+
+typedef struct {
+    char* name;
+    char* operator;
+} OperatorPair;
+
+static OperatorPair OPERATORS[] =  {
+    { "NONE",                    "-"   },
+    { "ADDITION",                "+"   },
+    { "SUBTRACTION",             "-"   },
+    { "MULTIPLICATION",          "*"   },
+    { "DIVISION",                "/"   },
+    { "MODULES",                 "%"   },
+    { "INCREMENT",               "++"  },
+    { "DECCREMENT",              "--"  },
+    { "ASSIGN",                  "=="  },
+    { "ASSIGN_ADDITION",         "+="  },
+    { "ASSIGN_SUBTRACTION",      "-="  },
+    { "ASSIGN_MULTIPLICATION",   "*="  },
+    { "ASSIGN_DIVISION",         "/="  },
+    { "ASSIGN_MODULUS",          "%="  },
+    { "EQUAL",                   "=="  },
+    { "EQUAL_VALUE",             "===" },
+    { "NOT_EQUAL",               "!="  },
+    { "NOT_EQUAL_VALUE",         "!==" },
+    { "NOT",                     "!"   },
+    { "AND",                     "&&"  },
+    { "OR",                      "||"  },
+    { "BITWISE_AND",             "&"   },
+    { "BITWISE_OR",              "|"   },
+    { "BITWISE_NOT",             "~"   },
+    { "BITWISE_XOR",             "^"   },
+    { "BITWISE_LEFT_SHIFT",      ">>"  },
+    { "BITWISE_RIGHT_SHIFT",     "<<"  },
+    { "GREATER_THAN",            ">"   },
+    { "LESS_THAN",               "<"   },
+    { "GREATER_EQUAL_THAN",      ">="  },
+    { "LESS_EQUAL_THAN",         "<="  },
+    { "QUESTION_MARK",           "?"   },
+    { "COLON_MARK",              ":"   },
+    { "BITWISE_AND_ASSIGN",      "&="  },
+    { "BITWISE_OR_ASSIGN",       "|="  },
+    { "BITWISE_XOR_ASSIGN",      "^="  },
+    { "LEFT_PARENTHESES",        "("   },
+    { "RIGHT_PARENTHESES",       ")"   },
+    { "SQUARE_BRACKET_START",    "["   },
+    { "SQUARE_BRACKET_END",      "]"   },
+    { "COMMA",                   ","   },
+    { "SEMICOLON",               ";"   },
+    { "DOT",                     "."   },
+    { "COMMENT_LINE",            "//"  },
+    { "COMMENT_MULTILINE_START", "/*"  },
+    { "COMMENT_MULTILINE_END",   "*/"  }
+};
+
+static char* KEYWORDS[] = {
+    "NONE",
+    "DO",
+    "IF",
+    "IN",
+    "FOR",
+    "LET",
+    "NEW",
+    "TRY",
+    "VAR",
+    "CASE",
+    "ELSE",
+    "ENUM",
+    "EVAL",
+    "NULL",
+    "THIS",
+    "TRUE",
+    "VOID",
+    "WITH",
+    "BREAK",
+    "CATCH",
+    "CLASS",
+    "CONST",
+    "FALSE",
+    "SUPER",
+    "THROW",
+    "WHILE",
+    "YIELD",
+    "DELETE",
+    "EXPORT",
+    "IMPORT",
+    "PUBLIC",
+    "RETURN",
+    "STATIC",
+    "SWITCH",
+    "TYPEOF",
+    "DEFAULT",
+    "EXTENDS",
+    "FINALLY",
+    "PACKAGE",
+    "PRIVATE",
+    "CONTINUE",
+    "DEBUGGER",
+    "FUNCTION",
+    "ARGUMENTS",
+    "INTERFACE",
+    "PROTECTED",
+    "IMPLEMENTS",
+    "INSTANCEOF"
+};
 
 typedef struct {
     size_t line;
@@ -140,13 +248,14 @@ typedef struct {
 } t_token;
 
 typedef struct {
-    size_t line;
-    size_t column;
-    size_t index;
-    size_t contentLength;
-    char* content;
-    vector tokens;
+    size_t    line;
+    size_t    column;
+    size_t    index;
+    size_t    contentLength;
+    char*     content;
+    t_vector* tokens;
     map_int_t keywords;
+    char*     error_message;
 } t_tokinizer;
 
 typedef struct {
@@ -197,9 +306,15 @@ case OPERATOR_1_SYMBOL :                     \
     } else token->int_ = OPERATOR_1 ;        \
     break;
 
-#define OPERATOR_CASE_SINGLE(OPERATOR_SYMBOL, OPERATOR)  case OPERATOR_SYMBOL :\
-                                                                token->int_ = OPERATOR ;\
-                                                            break;
+#define OPERATOR_CASE_SINGLE(OPERATOR_SYMBOL, OPERATOR)  \
+    case OPERATOR_SYMBOL :\
+        token->int_ = OPERATOR ;\
+    break;
+
+#define RESULT_CHECK(RESULT)\
+    if (RESULT != STATIC_PY_OK) {\
+        return RESULT;\
+    }
 
 static KeywordPair KEYWORDS_PAIR[] = {
    { "do",  KEYWORD_DO },
@@ -254,6 +369,8 @@ static KeywordPair KEYWORDS_PAIR[] = {
 
 t_context* static_py_init();
 void       static_py_execute(t_context* context, char* data);
+char*      static_py_last_error(t_context* context);
+void       static_py_dump(t_context* context);
 void       static_py_destroy(t_context*);
 
 

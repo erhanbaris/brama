@@ -10,15 +10,14 @@ SOURCES += \
     main.c \
     static_py.c \
     map.c \
-    vector.c \
-    munit.c
+    munit.c \
+    tools.c
 
 HEADERS += \
     static_py.h \
     map.h \
-    vector.h \
-    string_stream.h \
     munit.h \
     tests_core.h \
     tests_token.h \
-    tests.h
+    tests.h \
+    tools.h

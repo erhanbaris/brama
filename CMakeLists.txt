@@ -34,9 +34,9 @@ if ( ENABLE_CODECOVERAGE )
         add_custom_target( coverage ${CODECOV_LCOV} --base-directory .  --directory ${CMAKE_BINARY_DIR} --output-file ${CODECOV_OUTPUTFILE} --capture COMMAND genhtml -o ${CODECOV_HTMLOUTPUTDIR} ${CODECOV_OUTPUTFILE} )
     endif ( CMAKE_COMPILER_IS_GNUCXX )
 
-endif (ENABLE_CODECOVERAGE )
+endif (ENABLE_CODECOVERAGE)
 
-
+add_definitions( -DSTATIC_PY_VERBOSE_MODE )
 include_directories(.)
 
 add_executable(c4
@@ -47,9 +47,8 @@ add_executable(c4
         munit.h
         static_py.c
         static_py.h
-        string_stream.h
+        tools.h
+        tools.c
         tests.h
         tests_core.h
-        tests_token.h
-        vector.c
-        vector.h)
+        tests_token.h)

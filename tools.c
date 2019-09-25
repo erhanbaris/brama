@@ -1,29 +1,5 @@
-#ifndef STRING_STREAM_H
-#define STRING_STREAM_H
+#include "tools.h"
 
-#include <string.h>
-#include <stdlib.h>
-#include <stdbool.h>
-
-#define STRING_STREAM_OK            0
-#define STRING_STREAM_ERR_NO_MEMORY 1
-#define STRING_STREAM_ERR_NULL_OBJ  1 << 1
-
-#define CHECK_STREAM_PTR(stream) if (stream == NULL) return STRING_STREAM_ERR_NULL_OBJ;
-
-typedef struct {
-    size_t length;
-    size_t text_length;
-    size_t index;
-    char** data;
-} t_string_stream;
-
-t_string_stream* string_stream_init       ();
-int              string_stream_add        (t_string_stream* stream, char const* data);
-int              string_stream_add_char   (t_string_stream* stream, char data);
-int              string_stream_grow_buffer(t_string_stream* stream);
-char*            string_stream_get        (t_string_stream* stream);
-int              string_stream_destroy    (t_string_stream* stream);
 
 t_string_stream* string_stream_init() {
     t_string_stream* stream = (t_string_stream*)malloc(sizeof(t_string_stream));
@@ -41,8 +17,12 @@ t_string_stream* string_stream_init() {
 int string_stream_add(t_string_stream* stream, char const* data) {
     CHECK_STREAM_PTR(stream);
 
-    if (stream->index >= stream->index)
-        string_stream_grow_buffer(stream);
+    if (stream->index >= stream->length)
+    {
+        int status = string_stream_grow_buffer(stream);
+        if (status != STRING_STREAM_OK)
+            return status;
+    }
 
     stream->data[stream->index++] = strdup(data);
     stream->text_length          += strlen(data);
@@ -52,7 +32,7 @@ int string_stream_add(t_string_stream* stream, char const* data) {
 int string_stream_add_char(t_string_stream* stream, char data) {
     CHECK_STREAM_PTR(stream);
 
-    if (stream->index >= stream->index)
+    if (stream->index >= stream->length)
         string_stream_grow_buffer(stream);
 
     char* tmpData                 = (char*)malloc(sizeof(char) * 2);
@@ -67,11 +47,11 @@ int string_stream_grow_buffer(t_string_stream* stream) {
     CHECK_STREAM_PTR(stream);
 
     size_t tmpLength = stream->length * 2;
-    char** tmpData   = (char**)malloc(sizeof(char*) * stream->length);
+    char** tmpData   = (char**)malloc(sizeof(char*) * tmpLength);
     if (tmpData == NULL)
         return STRING_STREAM_ERR_NO_MEMORY;
 
-    memcpy(tmpData, stream->data, stream->length);
+    memcpy(tmpData, stream->data, stream->length * sizeof (char*));
     free(stream->data);
 
     stream->data   = tmpData;
@@ -83,7 +63,7 @@ int string_stream_grow_buffer(t_string_stream* stream) {
 char* string_stream_get(t_string_stream* stream) {
     CHECK_STREAM_PTR(stream);
 
-    char* tmpData   = (char*)malloc(sizeof(char) * stream->text_length);
+    char* tmpData   = (char*)malloc((sizeof(char) * stream->text_length) + 1);
     if (tmpData == NULL)
         return NULL;
 
@@ -92,6 +72,7 @@ char* string_stream_get(t_string_stream* stream) {
         strcpy(tmpData + index, stream->data[i]);
         index += strlen(stream->data[i]);
     }
+    tmpData[stream->text_length] = '\0';
     return tmpData;
 }
 
@@ -100,7 +81,55 @@ int string_stream_destroy(t_string_stream* stream) {
 
     for (size_t i = 0; i < stream->index; ++i)
         free(stream->data[i]);
+    free(stream->data);
     return STRING_STREAM_OK;
 }
 
-#endif // STRING_STREAM_H
+
+
+
+t_vector* vector_init() {
+    t_vector* vector = (t_vector*)malloc(sizeof(t_vector));
+    vector->length   = 32;
+    vector->count    = 0;
+    vector->data     = (void**)malloc(sizeof(void*) * vector->length);
+
+    if (vector->data == NULL)
+        return NULL;
+
+    return vector;
+}
+
+int vector_add(t_vector* vector, void* data) {
+    CHECK_VECTOR_PTR(vector);
+
+    if (vector->count >= vector->length)
+    {
+        size_t tmpLength = vector->length * 2;
+        void** tmpData   = (void**)malloc(sizeof(void*) * tmpLength);
+        if (tmpData == NULL)
+            return STRING_STREAM_ERR_NO_MEMORY;
+
+        memcpy(tmpData, vector->data, vector->length * sizeof (void*));
+        free(vector->data);
+
+        vector->data   = tmpData;
+        vector->length = tmpLength;
+    }
+
+    vector->data[vector->count++] = data;
+    return STRING_STREAM_OK;
+}
+
+void* vector_get(t_vector* vector, size_t index) {
+    CHECK_VECTOR_PTR(vector);
+    if (vector->count > index)
+        return vector->data[index];
+    return NULL;
+}
+
+int vector_destroy(t_vector* vector) {
+    CHECK_VECTOR_PTR(vector);
+    free(vector->data);
+    return STRING_STREAM_OK;
+}
