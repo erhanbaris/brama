@@ -33,7 +33,11 @@ int string_stream_add_char(t_string_stream* stream, char data) {
     CHECK_STREAM_PTR(stream);
 
     if (stream->index >= stream->length)
-        string_stream_grow_buffer(stream);
+    {
+        int status = string_stream_grow_buffer(stream);
+        if (status != STRING_STREAM_OK)
+            return status;
+    }
 
     char* tmpData                 = (char*)malloc(sizeof(char) * 2);
     tmpData[0]                    = data;
@@ -81,12 +85,17 @@ int string_stream_destroy(t_string_stream* stream) {
 
     for (size_t i = 0; i < stream->index; ++i)
         free(stream->data[i]);
+
     free(stream->data);
+    stream->text_length = 0;
+    stream->index       = 0;
+    stream->length      = 0;
+    stream->data        = NULL;
     return STRING_STREAM_OK;
 }
 
 
-
+/* VECTOR CODES */
 
 t_vector* vector_init() {
     t_vector* vector = (t_vector*)malloc(sizeof(t_vector));
@@ -131,5 +140,8 @@ void* vector_get(t_vector* vector, size_t index) {
 int vector_destroy(t_vector* vector) {
     CHECK_VECTOR_PTR(vector);
     free(vector->data);
+    vector->count  = 0;
+    vector->length = 0;
+    vector->data   = NULL;
     return STRING_STREAM_OK;
 }

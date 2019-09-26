@@ -20,4 +20,5 @@ HEADERS += \
     tests_core.h \
     tests_token.h \
     tests.h \
-    tools.h
+    tools.h \
+    tests_tools.h

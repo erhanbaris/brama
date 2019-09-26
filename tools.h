@@ -24,7 +24,6 @@ typedef struct {
 t_string_stream* string_stream_init       ();
 int              string_stream_add        (t_string_stream* stream, char const* data);
 int              string_stream_add_char   (t_string_stream* stream, char data);
-int              string_stream_grow_buffer(t_string_stream* stream);
 char*            string_stream_get        (t_string_stream* stream);
 int              string_stream_destroy    (t_string_stream* stream);
 

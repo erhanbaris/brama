@@ -3,7 +3,6 @@
 
 #include "tests_core.h"
 #include "static_py.h"
-# include <assert.h>
 
 #define KEYWORD_EQUAL(INDEX, KEYWORD) \
     if ((t_token*)vector_get(context->tokinizer->tokens, INDEX ) == NULL) return MUNIT_FAIL;\
@@ -454,13 +453,6 @@ MunitTest TOKEN_TESTS[] = {
     ADD_TEST(keyword_general_4),
     ADD_TEST(keyword_general_5),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
-};
-static const MunitSuite TOKEN_SUITE = {
-  "/token-tests", /* name */
-  TOKEN_TESTS, /* tests */
-  NULL, /* suites */
-  1, /* iterations */
-  MUNIT_SUITE_OPTION_NONE /* options */
 };
 
 #endif // TESTS_TOKEN_H

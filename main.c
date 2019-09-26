@@ -1,3 +1,5 @@
+# include <assert.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -7,14 +9,18 @@
 #include "tests.h"
 #include "munit.h"
 
+#define STATIC_PY_VERBOSE_MODE 1
+
 #include "static_py.h"
+
 
 int main(int argc, const char* argv[])
 {
-    t_context* context = static_py_init();
-    static_py_execute(context, "+ - * / % ++ --");
-    t_token* token = (t_token*)vector_get(&context->tokinizer->tokens, 0);
-    static_py_destroy(context);
+    t_vector* vector = vector_init();
+    assert(vector->length == 32);
+    assert(vector->count == 0);
+    assert(vector->data != NULL);
+    vector_destroy(vector);
 
-    return munit_suite_main(&TOKEN_SUITE, (void*) "µnit", NULL, NULL);
+    return munit_suite_main(&ALL_SUITE, (void*) "µnit", NULL, NULL);
 }
