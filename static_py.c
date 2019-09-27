@@ -1,8 +1,11 @@
 #include "static_py.h"
+#include "brama_internal.h"
 
 #include <string.h>
 #include <stdbool.h>
 #include <math.h>
+#include <stdio.h>
+#include <stdarg.h>
 
 
 /* TOKINIZER OPERATIONS START */
@@ -213,7 +216,7 @@ int getNumber(t_tokinizer* tokinizer) {
     return STATIC_PY_OK;
 }
 
-int getOperator(t_tokinizer* tokinizer) {
+STATIC_PY_STATUS getOperator(t_tokinizer* tokinizer) {
     char ch      = getChar(tokinizer);
     char chNext  = getNextChar(tokinizer);
     char chThird = getThirdChar(tokinizer);
@@ -270,7 +273,6 @@ int static_py_tokinize(t_context* context, char* data) {
 
     while (!isEnd(tokinizer)) {
         char ch     = getChar(tokinizer);
-        char chNext = getNextChar(tokinizer);
 
         if (isWhitespace(ch)) {
             while (!isEnd(tokinizer) && isWhitespace(ch)) {
@@ -314,15 +316,323 @@ int static_py_tokinize(t_context* context, char* data) {
 /* TOKINIZER OPERATIONS END */
 
 
+/* AST PARSER OPERATIONS START */
+
+IS_ITEM(keyword,  TOKEN_KEYWORD)
+IS_ITEM(integer,  TOKEN_INTEGER)
+IS_ITEM(double,   TOKEN_DOUBLE)
+IS_ITEM(text,     TOKEN_TEXT)
+IS_ITEM(symbol,   TOKEN_SYMBOL)
+IS_ITEM(operator, TOKEN_OPERATOR)
+
+GET_ITEM(keyword,  int_,     int)
+GET_ITEM(integer,  int_,     int)
+GET_ITEM(double,   double_,  double)
+GET_ITEM(text,     char_ptr, char*)
+GET_ITEM(symbol,   char_ptr, char*)
+GET_ITEM(operator, int_,     int)
+
+#define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE) \
+    t_ast* new_##NAME##_ast(INPUT variable) {  \
+        t_ast* ast    = malloc(sizeof (t_ast));  \
+        ast->type     = STR_TYPE;                \
+        ast-> TYPE     = variable;               \
+        return ast;                              \
+    }
+
+NEW_PRIMATIVE_DEF(int,    int,       PRIMATIVE_INTEGER, int_)
+NEW_PRIMATIVE_DEF(double, double,    PRIMATIVE_DOUBLE,  double_)
+NEW_PRIMATIVE_DEF(text,   char*,     PRIMATIVE_STRING,  char_ptr)
+NEW_PRIMATIVE_DEF(bool,   bool,      PRIMATIVE_BOOL,    bool_)
+NEW_PRIMATIVE_DEF(empty,  int,       PRIMATIVE_NULL,    int_)
+NEW_PRIMATIVE_DEF(array,  t_vector*, PRIMATIVE_ARRAY,   array)
+
+NEW_AST_DEF(symbol,    char*,        AST_SYMBOL,         char_ptr)
+NEW_AST_DEF(unary,     t_unary*,     AST_UNARY,          unary_ptr)
+NEW_AST_DEF(func_call, t_func_call*, AST_FUNCTION_CALL,  func_call_ptr)
+
+STATIC_PY_STATUS as_primative(t_token* token, t_ast** ast)
+{
+    switch (token->type)
+    {
+    case TOKEN_INTEGER:
+        *ast = new_primative_ast_int(get_integer_via_token(token));
+        break;
+
+    case TOKEN_DOUBLE:
+        *ast = new_primative_ast_double(get_double_via_token(token));
+        break;
+
+    case TOKEN_TEXT:
+        *ast = new_primative_ast_text(get_text_via_token(token));
+        break;
+
+    case TOKEN_KEYWORD:
+        if (get_keyword_type(token) == KEYWORD_TRUE)
+            *ast = new_primative_ast_bool(true);
+        else if (get_keyword_type(token) == KEYWORD_FALSE)
+            *ast = new_primative_ast_bool(false);
+        else if (get_keyword_type(token) == KEYWORD_NULL)
+            *ast = new_primative_ast_empty(0);
+        break;
+
+    default:
+        return STATIC_PY_PARSE_ERROR;
+    }
+
+    return STATIC_PY_OK;
+}
+
+
+bool is_primative(t_token* token)
+{
+    return token != NULL && (is_operator_via_token(token) ||
+                                is_text_via_token(token) ||
+                                is_double_via_token(token) ||
+                                (is_keyword_via_token(token) && get_keyword_type(token) == KEYWORD_TRUE)  ||
+                                (is_keyword_via_token(token) && get_keyword_type(token) == KEYWORD_FALSE) ||
+                                (is_keyword_via_token(token) && get_keyword_type(token) == KEYWORD_NULL));
+}
+
+STATIC_PY_STATUS ast_primary_expr(t_context* context, t_ast** ast)
+{
+    if (is_primative(ast_peek(context)))
+    {
+        ast_consume(context);
+        return as_primative(ast_previous(context), ast);
+    }
+
+    if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
+    {
+        *ast = ast_expression(context, ast);
+        ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES);
+        return STATIC_PY_OK;
+    }
+
+    if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START))
+    {
+        t_vector* args = vector_init();
+        if (!ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
+            do {
+                t_ast* item = NULL;
+                STATIC_PY_STATUS status = ast_primary_expr(context, &item);
+                if (status != STATIC_PY_OK)
+                    return status;
+
+                if (item->type != AST_PRIMATIVE)
+                    return STATIC_PY_PARSE_ARRAY_INIT_NOT_PRIMATIVE;
+
+                vector_add(args, item->primative_ptr);
+            } while (ast_match_operator(context, 1, OPERATOR_COMMA));
+        }
+
+        ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_END);
+
+        *ast = new_primative_ast_array(args);
+        return STATIC_PY_OK;
+    }
+
+    if (is_symbol_via_token(ast_peek(context)))
+    {
+        ast_consume(context);
+        *ast = new_symbol_ast(get_symbol_via_token(ast_previous(context)));
+        return STATIC_PY_OK;
+    }
+
+    return STATIC_PY_EXPRESSION_NOT_VALID;
+}
+
+STATIC_PY_STATUS ast_call(t_context* context, t_ast** ast)
+{
+    *ast = ast_primary_expr(context, ast);
+
+    while(true)
+    {
+        if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
+        {
+            char* function = (*ast)->char_ptr;
+            t_vector* args = vector_init();
+
+            if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
+                do {
+                    t_ast* arg = NULL;
+                    STATIC_PY_STATUS status = ast_expression(context, ast);
+                    if (status != STATIC_PY_OK)
+                        return status;
+
+                    vector_add(args, arg);
+                } while (ast_match_operator(context, 1, OPERATOR_COMMA));
+            }
+
+            if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL)
+                return STATIC_PY_EXPRESSION_NOT_VALID;
+
+            t_func_call* func_call = malloc(sizeof (t_func_call));
+            func_call->args     = args;
+            func_call->function = function;
+            *ast                = new_func_call_ast(func_call);
+        }
+        else
+            return STATIC_PY_EXPRESSION_NOT_VALID;
+    }
+
+    return STATIC_PY_OK;
+}
+
+
+STATIC_PY_STATUS ast_unary_expr(t_context* context, t_ast** ast) {
+    if (ast_match_operator(context, 1, OPERATOR_SUBTRACTION)){
+        int operator_type       = get_operator_type(ast_previous(context));
+        t_ast* right            = NULL;
+        STATIC_PY_STATUS status = ast_unary_expr(context, &right);
+        if (status != STATIC_PY_OK)
+            return status;
+
+        t_unary* unary  = malloc(sizeof (t_unary));
+        unary->operator = operator_type;
+        unary->right    = right;
+        *ast = new_unary_ast(unary);
+    }
+
+    return ast_call(context, ast);
+}
+
+STATIC_PY_STATUS ast_declaration_stmt(t_context* context, t_ast** ast) {
+    ++context->parser->index;
+    *ast = malloc(sizeof (t_ast));
+    return STATIC_PY_OK;
+}
+
+STATIC_PY_STATUS ast_expression(t_context* context, t_ast** ast) {
+    ++context->parser->index;
+    *ast = malloc(sizeof (t_ast));
+    return STATIC_PY_OK;
+}
+
+t_token* ast_consume(t_context* context) {
+    if (!ast_is_at_end(context))
+        ++context->parser->index;
+
+    return ast_previous(context);
+}
+
+bool ast_is_at_end(t_context* context) {
+    return ast_peek(context) == NULL;
+}
+
+t_token* ast_previous(t_context* context) {
+    return vector_get(context->tokinizer->tokens, context->parser->index - 1);
+}
+
+t_token* ast_peek(t_context* context) {
+    return vector_get(context->tokinizer->tokens, context->parser->index);
+}
+
+bool ast_check_token(t_context* context, int token_type) {
+    t_token* token = ast_peek(context);
+    return token != NULL && token->type == token_type;
+}
+
+bool ast_check_operator(t_context* context, int operator_type) {
+    t_token* token = ast_peek(context);
+    return token != NULL && token->type == TOKEN_OPERATOR && token->int_ == operator_type;
+}
+
+bool ast_check_keyword(t_context* context, int keyword_type) {
+    t_token* token = ast_peek(context);
+    return token != NULL && token->type == TOKEN_KEYWORD && token->int_ == keyword_type;
+}
+
+bool ast_match_token(t_context* context, int count, ...) {
+    va_list a_list;
+    va_start(a_list, count);
+
+    for (size_t i = 0; i < count; ++i) {
+        int arg = va_arg (a_list, int);
+        if (ast_check_token(context, arg)) {
+            ast_consume(context);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+bool ast_match_operator(t_context* context, int count, ...) {
+    va_list a_list;
+    va_start(a_list, count);
+
+    for (size_t i = 0; i < count; ++i) {
+        int arg = va_arg (a_list, int);
+        if (ast_check_operator(context, arg)) {
+            ast_consume(context);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+bool ast_match_keyword(t_context* context, int count, ...) {
+    va_list a_list;
+    va_start(a_list, count);
+
+    for (size_t i = 0; i < count; ++i) {
+        int arg = va_arg (a_list, int);
+        if (ast_check_keyword(context, arg)) {
+            ast_consume(context);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+t_token* ast_consume_operator(t_context* context, int operator_type) {
+    if (ast_check_operator(context, operator_type)) return ast_consume(context);
+    return NULL;
+}
+
+t_token* ast_consume_token(t_context* context, int token_type) {
+    if (ast_check_token(context, token_type)) return ast_consume(context);
+    return NULL;
+}
+
+t_token* ast_consume_keyword(t_context* context, int keyword_type) {
+    if (ast_check_keyword(context, keyword_type)) return ast_consume(context);
+    return NULL;
+}
+
+STATIC_PY_STATUS ast_parser(t_context* context) {
+    context->parser->index = 0;
+    while (!ast_is_at_end(context)) {
+        t_ast* ast              = NULL;
+        STATIC_PY_STATUS status = ast_declaration_stmt(context, &ast);
+        if (status == STATIC_PY_OK)
+            vector_add(context->parser->asts, ast);
+        else
+            return status;
+    }
+
+    return STATIC_PY_OK;
+}
+
+
+/* AST PARSER OPERATIONS END */
 
 t_context* static_py_init() {
     t_context* context                = (t_context*)malloc(sizeof(t_context));
+    context->error_message            = NULL;
+
+    /* tokinizer */
     context->tokinizer                = (t_tokinizer*)malloc(sizeof(t_tokinizer));
     context->tokinizer->column        = 0;
     context->tokinizer->index         = 0;
     context->tokinizer->line          = 1;
-    context->tokinizer->error_message = NULL;
     context->tokinizer->tokens        = vector_init();
+
+    /* parser */
+    context->parser                   = (t_parser*)malloc(sizeof (t_parser));
+    context->parser->asts             = vector_init();
+
+    /* keywords */
     map_init(&context->tokinizer->keywords);
 
     size_t keywordCount = sizeof (KEYWORDS_PAIR) / sizeof(KeywordPair);
@@ -347,12 +657,19 @@ char* static_py_set_error(t_context* context, int error) {
 }
 
 void static_py_execute(t_context* context, char* data) {
-    int tokinizer_status = static_py_tokinize(context, data);
+    STATIC_PY_STATUS tokinizer_status = static_py_tokinize(context, data);
     if (tokinizer_status != STATIC_PY_OK) {
-        if (context->tokinizer->error_message != NULL && strlen(context->tokinizer->error_message) > 0)
-            free(context->tokinizer->error_message);
+        if (context->error_message != NULL && strlen(context->error_message) > 0)
+            free(context->error_message);
 
-        context->tokinizer->error_message = static_py_set_error(context, tokinizer_status);
+        context->error_message = static_py_set_error(context, tokinizer_status);
+        return;
+    }
+
+    STATIC_PY_STATUS ast_status = ast_parser(context);
+    if (ast_status != STATIC_PY_OK) {
+        context->error_message = static_py_set_error(context, ast_status);
+        return;
     }
 }
 

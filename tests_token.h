@@ -412,7 +412,7 @@ MunitResult keyword_general_4(const MunitParameter params[], void* user_data_or_
     t_context* context = static_py_init();
     static_py_execute(context, "'test");
     munit_assert_int (context->tokinizer->tokens->count, ==, 0);
-    munit_assert_string_equal("Missing Delimiter at Line: 1, Column: 5", context->tokinizer->error_message);
+    munit_assert_string_equal("Missing Delimiter at Line: 1, Column: 5", context->error_message);
 
     static_py_destroy(context);
     return MUNIT_OK;
@@ -421,7 +421,7 @@ MunitResult keyword_general_4(const MunitParameter params[], void* user_data_or_
 MunitResult keyword_general_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = static_py_init();
     static_py_execute(context, "10..1");
-    munit_assert_string_equal("Multiple dot used for double: 1, Column: 3", context->tokinizer->error_message);
+    munit_assert_string_equal("Multiple dot used for double: 1, Column: 3", context->error_message);
 
     static_py_destroy(context);
     return MUNIT_OK;

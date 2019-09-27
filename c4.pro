@@ -3,6 +3,8 @@ CONFIG += console
 CONFIG -= app_bundle
 CONFIG -= qt
 QMAKE_CFLAGS += -std=c11 -Wint-to-void-pointer-cast
+QMAKE_CFLAGS += --coverage
+QMAKE_LFLAGS += --coverage
 
 INCLUDEPATH += /usr/local/include
 
@@ -21,4 +23,6 @@ HEADERS += \
     tests_token.h \
     tests.h \
     tools.h \
-    tests_tools.h
+    tests_tools.h \
+    brama_internal.h \
+    tests_ast.h

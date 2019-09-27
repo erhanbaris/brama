@@ -3,17 +3,34 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #include "map.h"
 #include "tools.h"
 
+//#if (__STDC_VERSION__ >= 201112L)
+//#endif
+
 
 /* CODES */
-#define STATIC_PY_OK                         0
-#define STATIC_PY_NOK                        1
-#define STATIC_PY_MISSING_TEXT_DELIMITER     2
-#define STATIC_PY_MULTIPLE_DOT_ON_DOUBLE     3
+#define STATIC_PY_STATUS                         int
+#define STATIC_PY_OK                             0
+#define STATIC_PY_NOK                            1
+#define STATIC_PY_MISSING_TEXT_DELIMITER         2
+#define STATIC_PY_MULTIPLE_DOT_ON_DOUBLE         3
+#define STATIC_PY_PARSE_ERROR                    4
+#define STATIC_PY_PARSE_ARRAY_INIT_NOT_PRIMATIVE 5
+#define STATIC_PY_EXPRESSION_NOT_VALID           6
 
+/* PRIMATIVE TYPES */
+#define PRIMATIVE_NONE       0
+#define PRIMATIVE_INTEGER    1
+#define PRIMATIVE_DOUBLE     2
+#define PRIMATIVE_STRING     3
+#define PRIMATIVE_BOOL       4
+#define PRIMATIVE_ARRAY      5
+#define PRIMATIVE_DICTIONARY 6
+#define PRIMATIVE_NULL       7
 
 /* TOKEN TYPES */
 #define TOKEN_NONE        1
@@ -22,9 +39,8 @@
 #define TOKEN_SYMBOL      4
 #define TOKEN_OPERATOR    5
 #define TOKEN_TEXT        6
-#define TOKEN_VARIABLE    7
-#define TOKEN_KEYWORD     8
-#define TOKEN_END_OF_FILE 9
+#define TOKEN_KEYWORD     7
+#define TOKEN_END_OF_FILE 8
 
 /* KEYWORD TYPES */
 #define KEYWORD_NONE       0
@@ -124,6 +140,30 @@
 #define OPERATOR_COMMENT_MULTILINE_START 44
 #define OPERATOR_COMMENT_MULTILINE_END   45
 
+/* AST TYPES */
+#define AST_NONE                 0
+#define AST_IF_STATEMENT         1
+#define AST_ASSIGNMENT           2
+#define AST_SYMBOL               3
+#define AST_PRIMATIVE            4
+#define AST_BINARY_OPERATION     5
+#define AST_STRUCT_OPERATION     6
+#define AST_CONTROL_OPERATION    7
+#define AST_FUNCTION_CALL        8
+#define AST_BLOCK                9
+#define AST_PARENTHESES_BLOCK    10
+#define AST_FOR                  11
+#define AST_WHILE                12
+#define AST_FUNCTION_DECLARATION 13
+#define AST_RETURN               14
+#define AST_UNARY                15
+#define AST_EXPR_STATEMENT       16
+
+typedef struct {
+    int   status;
+    char* description;
+} StatusPair;
+
 typedef struct {
     char* name;
     int   keyword;
@@ -133,6 +173,16 @@ typedef struct {
     char* name;
     char* operator;
 } OperatorPair;
+
+static StatusPair STATUS_DESCRIPTIONS[] = {
+    { STATIC_PY_OK                             , "Ok" },
+    { STATIC_PY_NOK                            , "Not Ok" },
+    { STATIC_PY_MISSING_TEXT_DELIMITER         , "Text delimiter missing" },
+    { STATIC_PY_MULTIPLE_DOT_ON_DOUBLE         , "Multiple dot used on double" },
+    { STATIC_PY_PARSE_ERROR                    , "Parse error" },
+    { STATIC_PY_PARSE_ARRAY_INIT_NOT_PRIMATIVE , "Array init not primative" },
+    { STATIC_PY_EXPRESSION_NOT_VALID           , "Expression not valid" }
+};
 
 static OperatorPair OPERATORS[] =  {
     { "NONE",                    "-"   },
@@ -234,15 +284,16 @@ static char* KEYWORDS[] = {
     "INSTANCEOF"
 };
 
+/* STRUCTS */
 typedef struct {
     size_t line;
     size_t current;
-    size_t type;
+    int    type;
     union {
-        void* data_ptr;
-        char* char_ptr;
-        char char_;
-        int   int_;
+        void*  data_ptr;
+        char*  char_ptr;
+        char   char_;
+        int    int_;
         double double_;
     };
 } t_token;
@@ -255,13 +306,55 @@ typedef struct {
     char*     content;
     t_vector* tokens;
     map_int_t keywords;
-    char*     error_message;
 } t_tokinizer;
 
 typedef struct {
+    size_t    index;
+    t_vector* asts;
+} t_parser;
+
+typedef struct t_primative {
+    int type;
+    union {
+        int       int_;
+        double    double_;
+        bool      bool_;
+        char*     char_ptr;
+        t_vector* array;
+        //std::unordered_map<string_type, PrimativeValue*>* Dictionary;
+    };
+} t_primative;
+
+typedef struct t_unary {
+    int            operator;
+    struct _t_ast* right;
+} t_unary;
+
+typedef struct t_func_call {
+    char*     function;
+    t_vector* args;
+} t_func_call;
+
+typedef struct _t_ast {
+    int type;
+    union {
+        t_func_call*   func_call_ptr;
+        t_unary*       unary_ptr;
+        t_primative*   primative_ptr;
+        struct _t_ast* ast_ptr;
+        char*          char_ptr;
+        int            int_;
+    };
+} t_ast;
+
+typedef struct {
     t_tokinizer* tokinizer;
+    t_parser*    parser;
+
+    char*        error_message;
 } t_context;
 
+/* MACROS */
 #define OPERATOR_CASE_DOUBLE_START_WITH(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_3_SYMBOL, OPERATOR_1, OPERATOR_2, OPERATOR_3) \
     case OPERATOR_1_SYMBOL :                       \
         if (chNext == OPERATOR_2_SYMBOL ) {        \
@@ -316,6 +409,40 @@ case OPERATOR_1_SYMBOL :                     \
         return RESULT;\
     }
 
+#define get_operator_type(token) token->int_
+#define get_keyword_type(token) token->int_
+
+#define IS_ITEM(NAME, TYPE) \
+    bool is_##NAME##_via_token (t_token* token)\
+    {\
+        return token != NULL && token->type == TYPE ;\
+    }\
+    bool is_##NAME (t_context* context)\
+    {\
+        return ast_peek(context) != NULL && ast_peek(context)->type == TYPE ;\
+    }
+
+#define GET_ITEM(NAME, TYPE, OUT) \
+    OUT get_##NAME##_via_token (t_token* token)\
+    {\
+        return token-> TYPE ;\
+    }\
+    OUT get_##NAME (t_context* context)\
+    {\
+        return ast_peek(context)-> TYPE ;\
+    }
+
+#define NEW_PRIMATIVE_DEF(EXT, TYPE, PRI_TYPE, STR_TYPE)            \
+    t_ast* new_primative_ast_##EXT (TYPE value) {           \
+        t_ast* ast             = malloc(sizeof (t_ast));       \
+        t_primative* primative = malloc(sizeof (t_primative)); \
+        ast->primative_ptr     = primative;                    \
+        ast->type              = AST_PRIMATIVE ;               \
+        primative-> STR_TYPE   = value;                        \
+        primative->type        = PRI_TYPE ;                    \
+        return ast;                                            \
+    }
+
 static KeywordPair KEYWORDS_PAIR[] = {
    { "do",  KEYWORD_DO },
    { "if",  KEYWORD_IF },
@@ -367,11 +494,11 @@ static KeywordPair KEYWORDS_PAIR[] = {
  };
 
 
-t_context* static_py_init();
-void       static_py_execute(t_context* context, char* data);
-char*      static_py_last_error(t_context* context);
-void       static_py_dump(t_context* context);
-void       static_py_destroy(t_context*);
+t_context* static_py_init       ();
+void       static_py_execute    (t_context* context, char* data);
+char*      static_py_last_error (t_context* context);
+void       static_py_dump       (t_context* context);
+void       static_py_destroy    (t_context*);
 
 
 #endif // STATIC_PY_H
