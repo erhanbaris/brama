@@ -1,5 +1,5 @@
-#ifndef STATIC_PY_H
-#define STATIC_PY_H
+#ifndef BRAMA_H
+#define BRAMA_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,14 +13,14 @@
 
 
 /* CODES */
-#define STATIC_PY_STATUS                         int
-#define STATIC_PY_OK                             0
-#define STATIC_PY_NOK                            1
-#define STATIC_PY_MISSING_TEXT_DELIMITER         2
-#define STATIC_PY_MULTIPLE_DOT_ON_DOUBLE         3
-#define STATIC_PY_PARSE_ERROR                    4
-#define STATIC_PY_PARSE_ARRAY_INIT_NOT_PRIMATIVE 5
-#define STATIC_PY_EXPRESSION_NOT_VALID           6
+#define BRAMA_STATUS                         int
+#define BRAMA_OK                             0
+#define BRAMA_NOK                            1
+#define BRAMA_MISSING_TEXT_DELIMITER         2
+#define BRAMA_MULTIPLE_DOT_ON_DOUBLE         3
+#define BRAMA_PARSE_ERROR                    4
+#define BRAMA_PARSE_ARRAY_INIT_NOT_PRIMATIVE 5
+#define BRAMA_EXPRESSION_NOT_VALID           6
 
 /* PRIMATIVE TYPES */
 #define PRIMATIVE_NONE       0
@@ -177,13 +177,13 @@ typedef struct {
 } OperatorPair;
 
 static StatusPair STATUS_DESCRIPTIONS[] = {
-    { STATIC_PY_OK                             , "Ok" },
-    { STATIC_PY_NOK                            , "Not Ok" },
-    { STATIC_PY_MISSING_TEXT_DELIMITER         , "Text delimiter missing" },
-    { STATIC_PY_MULTIPLE_DOT_ON_DOUBLE         , "Multiple dot used on double" },
-    { STATIC_PY_PARSE_ERROR                    , "Parse error" },
-    { STATIC_PY_PARSE_ARRAY_INIT_NOT_PRIMATIVE , "Array init not primative" },
-    { STATIC_PY_EXPRESSION_NOT_VALID           , "Expression not valid" }
+    { BRAMA_OK                             , "Ok" },
+    { BRAMA_NOK                            , "Not Ok" },
+    { BRAMA_MISSING_TEXT_DELIMITER         , "Text delimiter missing" },
+    { BRAMA_MULTIPLE_DOT_ON_DOUBLE         , "Multiple dot used on double" },
+    { BRAMA_PARSE_ERROR                    , "Parse error" },
+    { BRAMA_PARSE_ARRAY_INIT_NOT_PRIMATIVE , "Array init not primative" },
+    { BRAMA_EXPRESSION_NOT_VALID           , "Expression not valid" }
 };
 
 static OperatorPair OPERATORS[] =  {
@@ -289,18 +289,17 @@ static char* KEYWORDS[] = {
 };
 
 /* STRUCTS */
-struct _t_ast;
 struct _t_token;
 struct _t_tokinizer;
 struct _t_parser;
 struct _t_primative;
 struct _t_unary;
 struct _t_func_call;
-struct _t_ast;
+struct _t_expr_ast;
 struct _t_context;
 struct _t_binary;
 
-typedef map_t(struct _t_ast *) map_ast_t;
+typedef map_t(struct _t_expr_ast *) map_ast_t;
 
 typedef struct _t_token {
     size_t line;
@@ -343,27 +342,27 @@ typedef struct _t_primative {
 } t_primative;
 
 typedef struct _t_unary {
-    int            operator;
-    struct _t_ast* right;
+    int                 operator;
+    struct _t_expr_ast* right;
 } t_unary;
 
 typedef struct _t_binary {
-    int            operator;
-    struct _t_ast* right;
-    struct _t_ast* left;
+    int                 operator;
+    struct _t_expr_ast* right;
+    struct _t_expr_ast* left;
 } t_binary;
 
 typedef struct _t_assign {
-    int            operator;
-    int            def_type; /* let, var, const */
-    struct _t_ast* assignment;
-    char*          symbol;
+    int                 operator;
+    int                 def_type; /* let, var, const */
+    struct _t_expr_ast* assignment;
+    char*               symbol;
 } t_assign;
 
 typedef struct _t_control {
-    int            operator;
-    struct _t_ast* right;
-    struct _t_ast* left;
+    int                 operator;
+    struct _t_expr_ast* right;
+    struct _t_expr_ast* left;
 } t_control;
 
 typedef struct _t_func_call {
@@ -371,27 +370,27 @@ typedef struct _t_func_call {
     t_vector* args;
 } t_func_call;
 
-typedef struct _t_ast {
+typedef struct _t_expr_ast {
     int type;
     union {
-        t_func_call*   func_call_ptr;
-        t_unary*       unary_ptr;
-        t_binary*      binary_ptr;
-        t_control*     control_ptr;
-        t_primative*   primative_ptr;
-        t_assign*      assign_ptr;
-        struct _t_ast* ast_ptr;
-        char*          char_ptr;
-        int            int_;
+        t_func_call*        func_call_ptr;
+        t_unary*            unary_ptr;
+        t_binary*           binary_ptr;
+        t_control*          control_ptr;
+        t_primative*        primative_ptr;
+        t_assign*           assign_ptr;
+        struct _t_expr_ast* ast_ptr;
+        char*               char_ptr;
+        int                 int_;
     };
-} t_ast;
+} t_expr_ast;
 
 typedef struct _t_context {
     t_tokinizer*     tokinizer;
     t_parser*        parser;
 
     char*            error_message;
-    STATIC_PY_STATUS status;
+    BRAMA_STATUS status;
 } t_context;
 
 
@@ -447,7 +446,7 @@ case OPERATOR_1_SYMBOL :                     \
     break;
 
 #define RESULT_CHECK(RESULT)\
-    if (RESULT != STATIC_PY_OK) {\
+    if (RESULT != BRAMA_OK) {\
         return RESULT;\
     }
 
@@ -474,9 +473,9 @@ case OPERATOR_1_SYMBOL :                     \
         return ast_peek(context)-> TYPE ;\
     }
 
-#define NEW_PRIMATIVE_DEF(EXT, TYPE, PRI_TYPE, STR_TYPE)            \
-    t_ast* new_primative_ast_##EXT (TYPE value) {           \
-        t_ast* ast             = malloc(sizeof (t_ast));       \
+#define NEW_PRIMATIVE_DEF(EXT, TYPE, PRI_TYPE, STR_TYPE)       \
+    t_expr_ast* new_primative_ast_##EXT (TYPE value) {         \
+        t_expr_ast* ast        = malloc(sizeof (t_expr_ast));  \
         t_primative* primative = malloc(sizeof (t_primative)); \
         ast->primative_ptr     = primative;                    \
         ast->type              = AST_PRIMATIVE ;               \
@@ -544,8 +543,8 @@ typedef t_binary*        t_binary_ptr;
 typedef t_assign*        t_assign_ptr;
 typedef t_control*       t_control_ptr;
 typedef t_func_call*     t_func_call_ptr;
-typedef t_ast*           t_ast_ptr;
-typedef t_ast**          t_ast_ptr_ptr;
+typedef t_expr_ast*      t_expr_ast_ptr;
+typedef t_expr_ast**     t_expr_ast_ptr_ptr;
 typedef t_context*       t_context_ptr;
 typedef t_string_stream* t_string_stream_ptr;
 typedef t_vector*        t_vector_ptr;
@@ -554,11 +553,11 @@ typedef void*            void_ptr;
 typedef int*             int_ptr;
 typedef map_ast_t*       map_ast_t_ptr;
 
-t_context_ptr static_py_init       ();
-void          static_py_execute    (t_context_ptr context, char_ptr data);
-void_ptr      static_py_last_error (t_context_ptr context);
-void          static_py_dump       (t_context_ptr context);
-void          static_py_destroy    (t_context_ptr context);
+t_context_ptr brama_init       ();
+void          brama_execute    (t_context_ptr context, char_ptr data);
+void_ptr      brama_last_error (t_context_ptr context);
+void          brama_dump       (t_context_ptr context);
+void          brama_destroy    (t_context_ptr context);
 
 
-#endif // STATIC_PY_H
+#endif // BRAMA_H

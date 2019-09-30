@@ -1,26 +1,20 @@
-# include <assert.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
-#include <unistd.h>
 #include <fcntl.h>
 
 #include "tests.h"
 #include "munit.h"
 
-#define STATIC_PY_VERBOSE_MODE 1
-
-#include "static_py.h"
-
+#include "brama.h"
 
 int main(int argc, const char* argv[])
 {
-    t_vector* vector = vector_init();
-    assert(vector->length == 32);
-    assert(vector->count == 0);
-    assert(vector->data != NULL);
-    vector_destroy(vector);
-
+#ifdef _WIN32
+    int test_status = munit_suite_main(&ALL_SUITE, (void*) "µnit", NULL, NULL);
+    getchar();
+    return test_status;
+#else
     return munit_suite_main(&ALL_SUITE, (void*) "µnit", NULL, NULL);
+#endif
 }

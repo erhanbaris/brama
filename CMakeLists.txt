@@ -39,17 +39,18 @@ endif (ENABLE_CODECOVERAGE)
 add_definitions( -DSTATIC_PY_VERBOSE_MODE )
 include_directories(.)
 
-add_executable(c4
+add_executable(brama
         main.c
         map.c
         map.h
         munit.c
         munit.h
-        static_py.c
-        static_py.h
+        brama.c
+        brama.h
         tools.h
         tools.c
         tests.h
         tests_core.h
         tests_token.h
         tests_ast.h)
+

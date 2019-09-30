@@ -1,4 +1,4 @@
-#include "static_py.h"
+#include "brama.h"
 #include "brama_internal.h"
 
 #include <string.h>
@@ -97,7 +97,7 @@ int getSymbol(t_tokinizer_ptr tokinizer) {
     }
 
     string_stream_destroy(stream);
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
 int getText(t_tokinizer_ptr tokinizer, char symbol) {
@@ -126,7 +126,7 @@ int getText(t_tokinizer_ptr tokinizer, char symbol) {
     }
 
     if (ch != symbol)
-        return STATIC_PY_MISSING_TEXT_DELIMITER;
+        return BRAMA_MISSING_TEXT_DELIMITER;
 
     t_token_ptr token  = (t_token_ptr)malloc(sizeof (t_token));
     token->type        = TOKEN_TEXT;
@@ -139,7 +139,7 @@ int getText(t_tokinizer_ptr tokinizer, char symbol) {
         increase(tokinizer);
 
     string_stream_destroy(stream);
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
 int getNumber(t_tokinizer_ptr tokinizer) {
@@ -164,7 +164,7 @@ int getNumber(t_tokinizer_ptr tokinizer) {
                 break;*/
 
             if (isDouble) {
-                return STATIC_PY_MULTIPLE_DOT_ON_DOUBLE;
+                return BRAMA_MULTIPLE_DOT_ON_DOUBLE;
             }
 
             isDouble = true;
@@ -213,10 +213,10 @@ int getNumber(t_tokinizer_ptr tokinizer) {
     }
 
     vector_add(tokinizer->tokens, token);
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
-STATIC_PY_STATUS getOperator(t_tokinizer_ptr tokinizer) {
+BRAMA_STATUS getOperator(t_tokinizer_ptr tokinizer) {
     char ch      = getChar(tokinizer);
     char chNext  = getNextChar(tokinizer);
     char chThird = getThirdChar(tokinizer);
@@ -262,13 +262,13 @@ STATIC_PY_STATUS getOperator(t_tokinizer_ptr tokinizer) {
         OPERATOR_CASE_SINGLE('.', OPERATOR_DOT);
     }
     if (token->int_ == OPERATOR_NONE)
-        return STATIC_PY_NOK;
+        return BRAMA_NOK;
 
     vector_add(tokinizer->tokens, token);
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
-int static_py_tokinize(t_context_ptr context, char_ptr data) {
+int brama_tokinize(t_context_ptr context, char_ptr data) {
     t_tokinizer_ptr tokinizer = ((t_context_ptr)context)->tokinizer;
     tokinizer->content        = data;
     tokinizer->contentLength  = strlen(data);
@@ -312,7 +312,7 @@ int static_py_tokinize(t_context_ptr context, char_ptr data) {
         }
     }
 
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
 /* TOKINIZER OPERATIONS END */
@@ -334,12 +334,12 @@ GET_ITEM(text,     char_ptr, char_ptr)
 GET_ITEM(symbol,   char_ptr, char_ptr)
 GET_ITEM(operator, int_,     int)
 
-#define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE)  \
-    t_ast_ptr new_##NAME##_ast(INPUT variable) {  \
-        t_ast_ptr ast = malloc(sizeof (t_ast));   \
-        ast->type     = STR_TYPE;                 \
-        ast-> TYPE    = variable;                 \
-        return ast;                               \
+#define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE)            \
+    t_expr_ast_ptr new_##NAME##_ast(INPUT variable) {       \
+        t_expr_ast_ptr ast = malloc(sizeof (t_expr_ast));   \
+        ast->type     = STR_TYPE;                           \
+        ast-> TYPE    = variable;                           \
+        return ast;                                         \
     }
 
 NEW_PRIMATIVE_DEF(int,    int,           PRIMATIVE_INTEGER,    int_)
@@ -357,7 +357,7 @@ NEW_AST_DEF(control,   t_control_ptr,   AST_CONTROL_OPERATION,control_ptr)
 NEW_AST_DEF(assign,    t_assign_ptr,    AST_ASSIGNMENT,       assign_ptr)
 NEW_AST_DEF(func_call, t_func_call_ptr, AST_FUNCTION_CALL,    func_call_ptr)
 
-STATIC_PY_STATUS as_primative(t_token_ptr token, t_ast_ptr_ptr ast)
+BRAMA_STATUS as_primative(t_token_ptr token, t_expr_ast_ptr_ptr ast)
 {
     switch (token->type)
     {
@@ -383,10 +383,10 @@ STATIC_PY_STATUS as_primative(t_token_ptr token, t_ast_ptr_ptr ast)
         break;
 
     default:
-        return STATIC_PY_PARSE_ERROR;
+        return BRAMA_PARSE_ERROR;
     }
 
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
 
@@ -400,7 +400,7 @@ bool is_primative(t_token_ptr token)
                              (is_keyword_via_token(token) && get_keyword_type(token) == KEYWORD_NULL));
 }
 
-STATIC_PY_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast)
+BRAMA_STATUS ast_primary_expr(t_context_ptr context, t_expr_ast_ptr_ptr ast)
 {
     if (is_primative(ast_peek(context)))
     {
@@ -410,14 +410,14 @@ STATIC_PY_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast)
 
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
     {
-        STATIC_PY_STATUS status = ast_expression(context, ast);
-        if (status != STATIC_PY_OK)
+        BRAMA_STATUS status = ast_expression(context, ast);
+        if (status != BRAMA_OK)
             return status;
 
         if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL)
-            return STATIC_PY_EXPRESSION_NOT_VALID;
+            return BRAMA_EXPRESSION_NOT_VALID;
 
-        return STATIC_PY_OK;
+        return BRAMA_OK;
     }
 
     if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_START)) // Parse dictionary
@@ -428,7 +428,7 @@ STATIC_PY_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast)
 
         if (!ast_check_operator(context, OPERATOR_CURVE_BRACKET_END)) {
             do {
-                t_ast_ptr item = NULL;
+                t_expr_ast_ptr item = NULL;
                 char_ptr key   = NULL;
 
                 if (ast_check_token(context, TOKEN_TEXT)) // Should be 'key' or "key"
@@ -436,13 +436,13 @@ STATIC_PY_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast)
                 else if (ast_check_token(context, TOKEN_SYMBOL)) // should be key
                     key = get_symbol_via_token(ast_consume(context));
                 else
-                    return STATIC_PY_EXPRESSION_NOT_VALID; // todo: It could accept expression (exp: 1+2)
+                    return BRAMA_EXPRESSION_NOT_VALID; // todo: It could accept expression (exp: 1+2)
 
                 if (ast_consume_operator(context, OPERATOR_COLON_MARK) == NULL) // Require ':' operator
-                    return STATIC_PY_EXPRESSION_NOT_VALID;
+                    return BRAMA_EXPRESSION_NOT_VALID;
 
-                STATIC_PY_STATUS status = ast_primary_expr(context, &item); // todo: should be also function decleration
-                if (status != STATIC_PY_OK)
+                BRAMA_STATUS status = ast_primary_expr(context, &item); // todo: should be also function decleration
+                if (status != BRAMA_OK)
                     return status;
 
                 map_set(dictionary, key, item);
@@ -450,9 +450,9 @@ STATIC_PY_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast)
         }
 
         if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_END) == false)
-            return STATIC_PY_EXPRESSION_NOT_VALID;
+            return BRAMA_EXPRESSION_NOT_VALID;
 
-        return STATIC_PY_OK;
+        return BRAMA_OK;
     }
 
     if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START))
@@ -460,9 +460,9 @@ STATIC_PY_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast)
         t_vector_ptr args = vector_init();
         if (!ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
             do {
-                t_ast_ptr item = NULL;
-                STATIC_PY_STATUS status = ast_primary_expr(context, &item);
-                if (status != STATIC_PY_OK)
+                t_expr_ast_ptr item = NULL;
+                BRAMA_STATUS status = ast_primary_expr(context, &item);
+                if (status != BRAMA_OK)
                     return status;
 
                 vector_add(args, item->primative_ptr);
@@ -472,29 +472,29 @@ STATIC_PY_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast)
         ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_END);
 
         *ast = new_primative_ast_array(args);
-        return STATIC_PY_OK;
+        return BRAMA_OK;
     }
 
-    return STATIC_PY_EXPRESSION_NOT_VALID;
+    return BRAMA_EXPRESSION_NOT_VALID;
 }
 
-STATIC_PY_STATUS ast_symbol_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
+BRAMA_STATUS ast_symbol_expr(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
     if (is_symbol_via_token(ast_peek(context)))
     {
         *ast = new_symbol_ast(get_symbol_via_token(ast_consume(context)));
-        return STATIC_PY_OK;
+        return BRAMA_OK;
     }
 
-    return STATIC_PY_EXPRESSION_NOT_VALID;
+    return BRAMA_EXPRESSION_NOT_VALID;
 }
 
-STATIC_PY_STATUS ast_call(t_context_ptr context, t_ast_ptr_ptr ast) {
-    STATIC_PY_STATUS status = ast_primary_expr(context, ast);
-    if (status == STATIC_PY_OK)
+BRAMA_STATUS ast_call(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
+    BRAMA_STATUS status = ast_primary_expr(context, ast);
+    if (status == BRAMA_OK)
         return status;
 
     status = ast_symbol_expr(context, ast);
-    if (status != STATIC_PY_OK)
+    if (status != BRAMA_OK)
         return status;
 
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
@@ -504,9 +504,9 @@ STATIC_PY_STATUS ast_call(t_context_ptr context, t_ast_ptr_ptr ast) {
 
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
             do {
-                t_ast_ptr arg = NULL;
-                STATIC_PY_STATUS status = ast_primary_expr(context, &arg);
-                if (status != STATIC_PY_OK)
+                t_expr_ast_ptr arg = NULL;
+                BRAMA_STATUS status = ast_primary_expr(context, &arg);
+                if (status != BRAMA_OK)
                     return status;
 
                 vector_add(args, arg);
@@ -514,7 +514,7 @@ STATIC_PY_STATUS ast_call(t_context_ptr context, t_ast_ptr_ptr ast) {
         }
 
         if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL)
-            return STATIC_PY_EXPRESSION_NOT_VALID;
+            return BRAMA_EXPRESSION_NOT_VALID;
 
         t_func_call* func_call = malloc(sizeof (t_func_call));
         func_call->args     = args;
@@ -522,16 +522,16 @@ STATIC_PY_STATUS ast_call(t_context_ptr context, t_ast_ptr_ptr ast) {
         *ast                = new_func_call_ast(func_call);
     }
 
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
 
-STATIC_PY_STATUS ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
+BRAMA_STATUS ast_unary_expr(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
     if (ast_match_operator(context, 1, OPERATOR_SUBTRACTION)){
         int operator_type       = get_operator_type(ast_previous(context));
-        t_ast_ptr right         = NULL;
-        STATIC_PY_STATUS status = ast_unary_expr(context, &right);
-        if (status != STATIC_PY_OK)
+        t_expr_ast_ptr right         = NULL;
+        BRAMA_STATUS status = ast_unary_expr(context, &right);
+        if (status != BRAMA_OK)
             return status;
 
         t_unary_ptr unary  = malloc(sizeof (t_unary));
@@ -543,22 +543,22 @@ STATIC_PY_STATUS ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
     return ast_call(context, ast);
 }
 
-STATIC_PY_STATUS ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast) {
+BRAMA_STATUS ast_declaration_stmt(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
     ++context->parser->index;
-    *ast = malloc(sizeof (t_ast));
-    return STATIC_PY_OK;
+    *ast = malloc(sizeof (t_expr_ast));
+    return BRAMA_OK;
 }
 
-STATIC_PY_STATUS ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
-    STATIC_PY_STATUS left_status = ast_addition_expr(context, ast);
-    if (left_status != STATIC_PY_OK)
+BRAMA_STATUS ast_control_expr(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
+    BRAMA_STATUS left_status = ast_addition_expr(context, ast);
+    if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 4, OPERATOR_GREATER_THAN, OPERATOR_GREATER_EQUAL_THAN, OPERATOR_LESS_THAN, OPERATOR_LESS_EQUAL_THAN)) {
         int opt                       = get_operator_via_token(ast_previous(context));
-        t_ast_ptr right               = NULL;
-        STATIC_PY_STATUS right_status = ast_addition_expr(context, &right);
-        if (right_status != STATIC_PY_OK)
+        t_expr_ast_ptr right               = NULL;
+        BRAMA_STATUS right_status = ast_addition_expr(context, &right);
+        if (right_status != BRAMA_OK)
             return right_status;
 
         t_control_ptr binary = malloc(sizeof(t_control));
@@ -568,19 +568,19 @@ STATIC_PY_STATUS ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
         *ast = new_control_ast(binary);
     }
 
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
-STATIC_PY_STATUS ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
-    STATIC_PY_STATUS left_status = ast_control_expr(context, ast);
-    if (left_status != STATIC_PY_OK)
+BRAMA_STATUS ast_equality_expr(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
+    BRAMA_STATUS left_status = ast_control_expr(context, ast);
+    if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 4, OPERATOR_EQUAL, OPERATOR_EQUAL_VALUE, OPERATOR_NOT_EQUAL, OPERATOR_NOT_EQUAL_VALUE)) {
         int opt                       = get_operator_via_token(ast_previous(context));
-        t_ast_ptr right               = NULL;
-        STATIC_PY_STATUS right_status = ast_control_expr(context, &right);
-        if (right_status != STATIC_PY_OK)
+        t_expr_ast_ptr right               = NULL;
+        BRAMA_STATUS right_status = ast_control_expr(context, &right);
+        if (right_status != BRAMA_OK)
             return right_status;
 
         t_control_ptr binary = malloc(sizeof(t_control));
@@ -590,19 +590,19 @@ STATIC_PY_STATUS ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
         *ast = new_control_ast(binary);
     }
 
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
-STATIC_PY_STATUS ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
-    STATIC_PY_STATUS left_status = ast_equality_expr(context, ast);
-    if (left_status != STATIC_PY_OK)
+BRAMA_STATUS ast_and_expr(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
+    BRAMA_STATUS left_status = ast_equality_expr(context, ast);
+    if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 1, OPERATOR_AND)) {
         int opt                       = get_operator_via_token(ast_previous(context));
-        t_ast_ptr right               = NULL;
-        STATIC_PY_STATUS right_status = ast_equality_expr(context, &right);
-        if (right_status != STATIC_PY_OK)
+        t_expr_ast_ptr right               = NULL;
+        BRAMA_STATUS right_status = ast_equality_expr(context, &right);
+        if (right_status != BRAMA_OK)
             return right_status;
 
         t_control_ptr binary = malloc(sizeof(t_control));
@@ -612,19 +612,19 @@ STATIC_PY_STATUS ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
         *ast = new_control_ast(binary);
     }
 
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
-STATIC_PY_STATUS ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
-    STATIC_PY_STATUS left_status = ast_and_expr(context, ast);
-    if (left_status != STATIC_PY_OK)
+BRAMA_STATUS ast_or_expr(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
+    BRAMA_STATUS left_status = ast_and_expr(context, ast);
+    if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 1, OPERATOR_OR)) {
         int opt                       = get_operator_via_token(ast_previous(context));
-        t_ast_ptr right               = NULL;
-        STATIC_PY_STATUS right_status = ast_and_expr(context, &right);
-        if (right_status != STATIC_PY_OK)
+        t_expr_ast_ptr right               = NULL;
+        BRAMA_STATUS right_status = ast_and_expr(context, &right);
+        if (right_status != BRAMA_OK)
             return right_status;
 
         t_control_ptr binary = malloc(sizeof(t_control));
@@ -635,19 +635,19 @@ STATIC_PY_STATUS ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
     }
 
     ast_match_operator(context, 1, OPERATOR_SEMICOLON); // Remove ';'
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
-STATIC_PY_STATUS ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
-    STATIC_PY_STATUS left_status = ast_multiplication_expr(context, ast);
-    if (left_status != STATIC_PY_OK)
+BRAMA_STATUS ast_addition_expr(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
+    BRAMA_STATUS left_status = ast_multiplication_expr(context, ast);
+    if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 2, OPERATOR_ADDITION, OPERATOR_SUBTRACTION)) {
         int opt                       = get_operator_via_token(ast_previous(context));
-        t_ast_ptr right               = NULL;
-        STATIC_PY_STATUS right_status = ast_multiplication_expr(context, &right);
-        if (right_status != STATIC_PY_OK)
+        t_expr_ast_ptr right               = NULL;
+        BRAMA_STATUS right_status = ast_multiplication_expr(context, &right);
+        if (right_status != BRAMA_OK)
             return right_status;
 
         t_binary_ptr binary = malloc(sizeof(t_binary));
@@ -657,19 +657,19 @@ STATIC_PY_STATUS ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
         *ast = new_binary_ast(binary);
     }
 
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
-STATIC_PY_STATUS ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
-    STATIC_PY_STATUS left_status = ast_unary_expr(context, ast);
-    if (left_status != STATIC_PY_OK)
+BRAMA_STATUS ast_multiplication_expr(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
+    BRAMA_STATUS left_status = ast_unary_expr(context, ast);
+    if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 2, OPERATOR_DIVISION, OPERATOR_MULTIPLICATION)) {
         int opt                       = get_operator_via_token(ast_previous(context));
-        t_ast_ptr right               = NULL;
-        STATIC_PY_STATUS right_status = ast_unary_expr(context, &right);
-        if (right_status != STATIC_PY_OK)
+        t_expr_ast_ptr right               = NULL;
+        BRAMA_STATUS right_status = ast_unary_expr(context, &right);
+        if (right_status != BRAMA_OK)
             return right_status;
 
         t_binary_ptr binary = malloc(sizeof(t_binary));
@@ -679,26 +679,26 @@ STATIC_PY_STATUS ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr as
         *ast = new_binary_ast(binary);
     }
 
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
-STATIC_PY_STATUS ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
+BRAMA_STATUS ast_assignment_expr(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
     int type = KEYWORD_VAR;
     if (ast_match_keyword(context, 3, KEYWORD_VAR, KEYWORD_LET, KEYWORD_CONST))
         type = get_keyword_via_token(ast_previous(context));
 
-    STATIC_PY_STATUS left_status = ast_or_expr(context, ast);
-    if (left_status != STATIC_PY_OK)
+    BRAMA_STATUS left_status = ast_or_expr(context, ast);
+    if (left_status != BRAMA_OK)
         return left_status;
 
     if ((*ast)->type != AST_SYMBOL)
-        return STATIC_PY_EXPRESSION_NOT_VALID;
+        return BRAMA_EXPRESSION_NOT_VALID;
 
     if (ast_match_operator(context, 6, OPERATOR_ASSIGN, OPERATOR_ASSIGN_ADDITION, OPERATOR_ASSIGN_DIVISION, OPERATOR_ASSIGN_MODULUS, OPERATOR_ASSIGN_MULTIPLICATION, OPERATOR_ASSIGN_SUBTRACTION)) {
         int opt                       = get_operator_via_token(ast_previous(context));
-        t_ast_ptr right               = NULL;
-        STATIC_PY_STATUS right_status = ast_or_expr(context, &right);
-        if (right_status != STATIC_PY_OK)
+        t_expr_ast_ptr right               = NULL;
+        BRAMA_STATUS right_status = ast_or_expr(context, &right);
+        if (right_status != BRAMA_OK)
             return right_status;
 
         t_assign_ptr assign = malloc(sizeof(t_assign));
@@ -710,10 +710,10 @@ STATIC_PY_STATUS ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
     }
 
     ast_match_operator(context, 1, OPERATOR_SEMICOLON); // Remove ';'
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
-STATIC_PY_STATUS ast_expression(t_context_ptr context, t_ast_ptr_ptr ast) {
+BRAMA_STATUS ast_expression(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
     return ast_or_expr(context, ast);
 }
 
@@ -753,7 +753,7 @@ bool ast_check_keyword(t_context_ptr context, int keyword_type) {
     return token != NULL && token->type == TOKEN_KEYWORD && token->int_ == keyword_type;
 }
 
-bool ast_match_token(t_context_ptr context, int count, ...) {
+bool ast_match_token(t_context_ptr context, size_t count, ...) {
     va_list a_list;
     va_start(a_list, count);
 
@@ -767,7 +767,7 @@ bool ast_match_token(t_context_ptr context, int count, ...) {
     return 0;
 }
 
-bool ast_match_operator(t_context_ptr context, int count, ...) {
+bool ast_match_operator(t_context_ptr context, size_t count, ...) {
     va_list a_list;
     va_start(a_list, count);
 
@@ -781,7 +781,7 @@ bool ast_match_operator(t_context_ptr context, int count, ...) {
     return 0;
 }
 
-bool ast_match_keyword(t_context_ptr context, int count, ...) {
+bool ast_match_keyword(t_context_ptr context, size_t count, ...) {
     va_list a_list;
     va_start(a_list, count);
 
@@ -810,24 +810,24 @@ t_token_ptr ast_consume_keyword(t_context_ptr context, int keyword_type) {
     return NULL;
 }
 
-STATIC_PY_STATUS ast_parser(t_context_ptr context) {
+BRAMA_STATUS ast_parser(t_context_ptr context) {
     context->parser->index = 0;
     while (!ast_is_at_end(context)) {
-        t_ast_ptr ast              = NULL;
-        STATIC_PY_STATUS status = ast_declaration_stmt(context, &ast);
-        if (status == STATIC_PY_OK)
+        t_expr_ast_ptr ast              = NULL;
+        BRAMA_STATUS status = ast_declaration_stmt(context, &ast);
+        if (status == BRAMA_OK)
             vector_add(context->parser->asts, ast);
         else
             return status;
     }
 
-    return STATIC_PY_OK;
+    return BRAMA_OK;
 }
 
 
 /* AST PARSER OPERATIONS END */
 
-t_context_ptr static_py_init() {
+t_context_ptr brama_init() {
     t_context_ptr context             = (t_context_ptr)malloc(sizeof(t_context));
     context->error_message            = NULL;
 
@@ -852,12 +852,12 @@ t_context_ptr static_py_init() {
     return context;
 }
 
-char_ptr static_py_set_error(t_context_ptr context, int error) {
-    if (error == STATIC_PY_MISSING_TEXT_DELIMITER) {
+char_ptr brama_set_error(t_context_ptr context, int error) {
+    if (error == BRAMA_MISSING_TEXT_DELIMITER) {
         char_ptr buffer = malloc(sizeof(char) * 128);
         sprintf(buffer, "Missing Delimiter at Line: %d, Column: %d", context->tokinizer->line, context->tokinizer->column);
         return buffer;
-    } else if (error == STATIC_PY_MULTIPLE_DOT_ON_DOUBLE) {
+    } else if (error == BRAMA_MULTIPLE_DOT_ON_DOUBLE) {
         char_ptr buffer = malloc(sizeof(char) * 128);
         sprintf(buffer, "Multiple dot used for double: %d, Column: %d", context->tokinizer->line, context->tokinizer->column);
         return buffer;
@@ -866,27 +866,27 @@ char_ptr static_py_set_error(t_context_ptr context, int error) {
     return NULL;
 }
 
-void static_py_execute(t_context_ptr context, char_ptr data) {
-    STATIC_PY_STATUS tokinizer_status = static_py_tokinize(context, data);
-    if (tokinizer_status != STATIC_PY_OK) {
+void brama_execute(t_context_ptr context, char_ptr data) {
+    BRAMA_STATUS tokinizer_status = brama_tokinize(context, data);
+    if (tokinizer_status != BRAMA_OK) {
         context->status = tokinizer_status;
         if (context->error_message != NULL && strlen(context->error_message) > 0)
             free(context->error_message);
 
-        context->error_message = static_py_set_error(context, tokinizer_status);
+        context->error_message = brama_set_error(context, tokinizer_status);
         return;
     }
 
-    STATIC_PY_STATUS ast_status = ast_parser(context);
-    if (ast_status != STATIC_PY_OK) {
+    BRAMA_STATUS ast_status = ast_parser(context);
+    if (ast_status != BRAMA_OK) {
         context->status        = ast_status;
-        context->error_message = static_py_set_error(context, ast_status);
+        context->error_message = brama_set_error(context, ast_status);
         return;
     }
-    context->status = STATIC_PY_OK;
+    context->status = BRAMA_OK;
 }
 
-void static_py_dump(t_context_ptr context) {
+void brama_dump(t_context_ptr context) {
     t_context_ptr _context = (t_context_ptr)context;
     int i;
     int totalToken = _context->tokinizer->tokens->count;
@@ -907,7 +907,7 @@ void static_py_dump(t_context_ptr context) {
     }
 }
 
-void static_py_destroy(t_context_ptr context) {
+void brama_destroy(t_context_ptr context) {
     t_context_ptr _context = (t_context_ptr)context;
     size_t i;
     size_t totalToken = _context->tokinizer->tokens->count;

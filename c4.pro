@@ -10,13 +10,13 @@ INCLUDEPATH += /usr/local/include
 
 SOURCES += \
     main.c \
-    static_py.c \
+    brama.c \
     map.c \
     munit.c \
     tools.c
 
 HEADERS += \
-    static_py.h \
+    brama.h \
     map.h \
     munit.h \
     tests_core.h \
