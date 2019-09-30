@@ -354,6 +354,7 @@ NEW_AST_DEF(symbol,    char_ptr,        AST_SYMBOL,           char_ptr)
 NEW_AST_DEF(unary,     t_unary_ptr,     AST_UNARY,            unary_ptr)
 NEW_AST_DEF(binary,    t_binary_ptr,    AST_BINARY_OPERATION, binary_ptr)
 NEW_AST_DEF(control,   t_control_ptr,   AST_CONTROL_OPERATION,control_ptr)
+NEW_AST_DEF(assign,    t_assign_ptr,    AST_ASSIGNMENT,       assign_ptr)
 NEW_AST_DEF(func_call, t_func_call_ptr, AST_FUNCTION_CALL,    func_call_ptr)
 
 STATIC_PY_STATUS as_primative(t_token_ptr token, t_ast_ptr_ptr ast)
@@ -553,7 +554,7 @@ STATIC_PY_STATUS ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
     if (left_status != STATIC_PY_OK)
         return left_status;
 
-    while (ast_match_operator(context, 8, OPERATOR_EQUAL, OPERATOR_EQUAL_VALUE, OPERATOR_GREATER_THAN, OPERATOR_GREATER_EQUAL_THAN, OPERATOR_LESS_THAN, OPERATOR_LESS_EQUAL_THAN, OPERATOR_NOT_EQUAL, OPERATOR_NOT_EQUAL_VALUE)) {
+    while (ast_match_operator(context, 4, OPERATOR_GREATER_THAN, OPERATOR_GREATER_EQUAL_THAN, OPERATOR_LESS_THAN, OPERATOR_LESS_EQUAL_THAN)) {
         int opt                       = get_operator_via_token(ast_previous(context));
         t_ast_ptr right               = NULL;
         STATIC_PY_STATUS right_status = ast_addition_expr(context, &right);
@@ -567,6 +568,73 @@ STATIC_PY_STATUS ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
         *ast = new_control_ast(binary);
     }
 
+    return STATIC_PY_OK;
+}
+
+STATIC_PY_STATUS ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
+    STATIC_PY_STATUS left_status = ast_control_expr(context, ast);
+    if (left_status != STATIC_PY_OK)
+        return left_status;
+
+    while (ast_match_operator(context, 4, OPERATOR_EQUAL, OPERATOR_EQUAL_VALUE, OPERATOR_NOT_EQUAL, OPERATOR_NOT_EQUAL_VALUE)) {
+        int opt                       = get_operator_via_token(ast_previous(context));
+        t_ast_ptr right               = NULL;
+        STATIC_PY_STATUS right_status = ast_control_expr(context, &right);
+        if (right_status != STATIC_PY_OK)
+            return right_status;
+
+        t_control_ptr binary = malloc(sizeof(t_control));
+        binary->left        = *ast;
+        binary->operator    = opt;
+        binary->right       = right;
+        *ast = new_control_ast(binary);
+    }
+
+    return STATIC_PY_OK;
+}
+
+STATIC_PY_STATUS ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
+    STATIC_PY_STATUS left_status = ast_equality_expr(context, ast);
+    if (left_status != STATIC_PY_OK)
+        return left_status;
+
+    while (ast_match_operator(context, 1, OPERATOR_AND)) {
+        int opt                       = get_operator_via_token(ast_previous(context));
+        t_ast_ptr right               = NULL;
+        STATIC_PY_STATUS right_status = ast_equality_expr(context, &right);
+        if (right_status != STATIC_PY_OK)
+            return right_status;
+
+        t_control_ptr binary = malloc(sizeof(t_control));
+        binary->left        = *ast;
+        binary->operator    = opt;
+        binary->right       = right;
+        *ast = new_control_ast(binary);
+    }
+
+    return STATIC_PY_OK;
+}
+
+STATIC_PY_STATUS ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
+    STATIC_PY_STATUS left_status = ast_and_expr(context, ast);
+    if (left_status != STATIC_PY_OK)
+        return left_status;
+
+    while (ast_match_operator(context, 1, OPERATOR_OR)) {
+        int opt                       = get_operator_via_token(ast_previous(context));
+        t_ast_ptr right               = NULL;
+        STATIC_PY_STATUS right_status = ast_and_expr(context, &right);
+        if (right_status != STATIC_PY_OK)
+            return right_status;
+
+        t_control_ptr binary = malloc(sizeof(t_control));
+        binary->left        = *ast;
+        binary->operator    = opt;
+        binary->right       = right;
+        *ast = new_control_ast(binary);
+    }
+
+    ast_match_operator(context, 1, OPERATOR_SEMICOLON); // Remove ';'
     return STATIC_PY_OK;
 }
 
@@ -614,8 +682,39 @@ STATIC_PY_STATUS ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr as
     return STATIC_PY_OK;
 }
 
+STATIC_PY_STATUS ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
+    int type = KEYWORD_VAR;
+    if (ast_match_keyword(context, 3, KEYWORD_VAR, KEYWORD_LET, KEYWORD_CONST))
+        type = get_keyword_via_token(ast_previous(context));
+
+    STATIC_PY_STATUS left_status = ast_or_expr(context, ast);
+    if (left_status != STATIC_PY_OK)
+        return left_status;
+
+    if ((*ast)->type != AST_SYMBOL)
+        return STATIC_PY_EXPRESSION_NOT_VALID;
+
+    if (ast_match_operator(context, 6, OPERATOR_ASSIGN, OPERATOR_ASSIGN_ADDITION, OPERATOR_ASSIGN_DIVISION, OPERATOR_ASSIGN_MODULUS, OPERATOR_ASSIGN_MULTIPLICATION, OPERATOR_ASSIGN_SUBTRACTION)) {
+        int opt                       = get_operator_via_token(ast_previous(context));
+        t_ast_ptr right               = NULL;
+        STATIC_PY_STATUS right_status = ast_or_expr(context, &right);
+        if (right_status != STATIC_PY_OK)
+            return right_status;
+
+        t_assign_ptr assign = malloc(sizeof(t_assign));
+        assign->symbol      = (*ast)->char_ptr;
+        assign->def_type    = type;
+        assign->operator    = opt;
+        assign->assignment  = right;
+        *ast = new_assign_ast(assign);
+    }
+
+    ast_match_operator(context, 1, OPERATOR_SEMICOLON); // Remove ';'
+    return STATIC_PY_OK;
+}
+
 STATIC_PY_STATUS ast_expression(t_context_ptr context, t_ast_ptr_ptr ast) {
-    return ast_addition_expr(context, ast);
+    return ast_or_expr(context, ast);
 }
 
 t_token_ptr ast_consume(t_context_ptr context) {

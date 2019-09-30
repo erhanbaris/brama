@@ -353,6 +353,13 @@ typedef struct _t_binary {
     struct _t_ast* left;
 } t_binary;
 
+typedef struct _t_assign {
+    int            operator;
+    int            def_type; /* let, var, const */
+    struct _t_ast* assignment;
+    char*          symbol;
+} t_assign;
+
 typedef struct _t_control {
     int            operator;
     struct _t_ast* right;
@@ -372,6 +379,7 @@ typedef struct _t_ast {
         t_binary*      binary_ptr;
         t_control*     control_ptr;
         t_primative*   primative_ptr;
+        t_assign*      assign_ptr;
         struct _t_ast* ast_ptr;
         char*          char_ptr;
         int            int_;
@@ -533,6 +541,7 @@ typedef t_parser*        t_parser_ptr;
 typedef t_primative*     t_primative_ptr;
 typedef t_unary*         t_unary_ptr;
 typedef t_binary*        t_binary_ptr;
+typedef t_assign*        t_assign_ptr;
 typedef t_control*       t_control_ptr;
 typedef t_func_call*     t_func_call_ptr;
 typedef t_ast*           t_ast_ptr;

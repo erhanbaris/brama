@@ -33,6 +33,11 @@ STATIC_PY_STATUS ast_primary_expr       (t_context_ptr context, t_ast_ptr_ptr as
 STATIC_PY_STATUS ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast);
 STATIC_PY_STATUS ast_addition_expr      (t_context_ptr context, t_ast_ptr_ptr ast);
 STATIC_PY_STATUS ast_control_expr       (t_context_ptr context, t_ast_ptr_ptr ast);
+STATIC_PY_STATUS ast_equality_expr      (t_context_ptr context, t_ast_ptr_ptr ast);
+STATIC_PY_STATUS ast_and_expr           (t_context_ptr context, t_ast_ptr_ptr ast);
+STATIC_PY_STATUS ast_or_expr            (t_context_ptr context, t_ast_ptr_ptr ast);
+STATIC_PY_STATUS ast_assignment_expr    (t_context_ptr context, t_ast_ptr_ptr ast);
+
 
 
 
