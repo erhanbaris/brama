@@ -29,6 +29,11 @@
     munit_assert_int (((t_token*)vector_get(context->tokinizer->tokens, INDEX ))->type, ==, TOKEN_INTEGER); \
     munit_assert_int ((((t_token*)vector_get(context->tokinizer->tokens, INDEX ))->int_), ==, NUMBER );
 
+#define DOUBLE_CHECK(INDEX, NUMBER) \
+    if ((t_token*)vector_get(context->tokinizer->tokens, INDEX ) == NULL) return MUNIT_FAIL;\
+    munit_assert_int (((t_token*)vector_get(context->tokinizer->tokens, INDEX ))->type, ==, TOKEN_DOUBLE); \
+    munit_assert_int ((((t_token*)vector_get(context->tokinizer->tokens, INDEX ))->double_), ==, NUMBER );
+
 
 /* STRING TESTS BEGIN --> */
 MunitResult string_token_1(const MunitParameter params[], void* user_data_or_fixture) {
@@ -222,6 +227,32 @@ MunitResult number_token_4(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+MunitResult number_token_5(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "      -1024.1234567     -1024   ");
+    munit_assert_int(context->tokinizer->tokens->count, ==, 4);
+
+    t_token* token_1 = (t_token*)vector_get(context->tokinizer->tokens, 0);
+    t_token* token_2 = (t_token*)vector_get(context->tokinizer->tokens, 1);
+    t_token* token_3 = (t_token*)vector_get(context->tokinizer->tokens, 2);
+    t_token* token_4 = (t_token*)vector_get(context->tokinizer->tokens, 3);
+
+    munit_assert_int    (token_1->type, ==, TOKEN_OPERATOR);
+    munit_assert_double (token_1->int_, ==, OPERATOR_SUBTRACTION);
+
+    munit_assert_int    (token_2->type,    ==, TOKEN_DOUBLE);
+    munit_assert_double (token_2->double_, ==, 1024.1234567);
+
+    munit_assert_int    (token_3->type, ==, TOKEN_OPERATOR);
+    munit_assert_double (token_3->int_, ==, OPERATOR_SUBTRACTION);
+
+    munit_assert_int    (token_4->type, ==, TOKEN_INTEGER);
+    munit_assert_double (token_4->int_, ==, 1024);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
 /* <-- NUMBER TESTS END */
 
 
@@ -252,8 +283,8 @@ MunitResult symbol_token_1(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult symbol_token_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = static_py_init();
-    static_py_execute(context, "erhan baris test 2048 2048.1");
-    munit_assert_int(context->tokinizer->tokens->count, ==, 5);
+    static_py_execute(context, "erhan baris test _test 2048 2048.1");
+    munit_assert_int(context->tokinizer->tokens->count, ==, 6);
 
     t_token* token = (t_token*)vector_get(context->tokinizer->tokens, 0);
     if (token == NULL)
@@ -280,10 +311,17 @@ MunitResult symbol_token_2(const MunitParameter params[], void* user_data_or_fix
     if (token == NULL)
         return MUNIT_FAIL;
 
+    munit_assert_int         (token->type, == , TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "_test");
+
+    token = (t_token*)vector_get(context->tokinizer->tokens, 4);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
     munit_assert_int(token->type, ==, TOKEN_INTEGER);
     munit_assert_int(token->int_, ==, 2048);
 
-    token = (t_token*)vector_get(context->tokinizer->tokens, 4);
+    token = (t_token*)vector_get(context->tokinizer->tokens, 5);
     if (token == NULL)
         return MUNIT_FAIL;
 
@@ -427,6 +465,24 @@ MunitResult keyword_general_5(const MunitParameter params[], void* user_data_or_
     return MUNIT_OK;
 }
 
+MunitResult keyword_general_6(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "'hello world' \"hi all\" 1024 true false null 3.14 {} _test");
+    munit_assert_int (context->tokinizer->tokens->count, ==, 10);
+    TEXT_EQUAL    (0, "hello world");
+    TEXT_EQUAL    (1, "hi all");
+    INTEGER_CHECK (2, 1024);
+    KEYWORD_EQUAL (3, KEYWORD_TRUE);
+    KEYWORD_EQUAL (4, KEYWORD_FALSE);
+    KEYWORD_EQUAL (5, KEYWORD_NULL);
+    DOUBLE_CHECK  (6, 3.14);
+    OPERATOR_CHECK(7, OPERATOR_CURVE_BRACKET_START);
+    OPERATOR_CHECK(8, OPERATOR_CURVE_BRACKET_END);
+    SYMBOL_EQUAL  (9, "_test");
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
 /* <-- OPERATOR TESTS END */
 
 MunitTest TOKEN_TESTS[] = {
@@ -441,6 +497,7 @@ MunitTest TOKEN_TESTS[] = {
     ADD_TEST(number_token_2),
     ADD_TEST(number_token_3),
     ADD_TEST(number_token_4),
+    ADD_TEST(number_token_5),
 
     ADD_TEST(symbol_token_1),
     ADD_TEST(symbol_token_2),
@@ -452,6 +509,7 @@ MunitTest TOKEN_TESTS[] = {
     ADD_TEST(keyword_general_3),
     ADD_TEST(keyword_general_4),
     ADD_TEST(keyword_general_5),
+    ADD_TEST(keyword_general_6),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 

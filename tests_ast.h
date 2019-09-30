@@ -41,6 +41,8 @@ MunitResult ast_consume_test(const MunitParameter params[], void* user_data_or_f
     munit_assert_ptr_null(ast_consume(context));
 
     static_py_execute(context, "var rows = prompt('How many rows for your multiplication table?');");
+    munit_assert_int(context->tokinizer->tokens->count, ==, 8);
+
     context->parser->index = 0;
     t_token* token1        = ast_consume(context);
     t_token* token2        = ast_consume(context);
@@ -58,6 +60,12 @@ MunitResult ast_consume_test(const MunitParameter params[], void* user_data_or_f
 
     munit_assert_int(token3->int_, ==, OPERATOR_ASSIGN);
     munit_assert_int(token3->type, ==, TOKEN_OPERATOR);
+    ast_consume(context);
+    ast_consume(context);
+    ast_consume(context);
+    ast_consume(context);
+    ast_consume(context);
+    munit_assert_ptr_null(ast_consume(context)); // All tokens consumed so return value should be NULL
 
     static_py_destroy(context);
     return MUNIT_OK;
@@ -223,6 +231,628 @@ MunitResult ast_check_test_1(const MunitParameter params[], void* user_data_or_f
     return MUNIT_OK;
 }
 
+MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    munit_assert_ptr_null(ast_consume(context));
+    static_py_execute(context, "'hello world' \"hi all\" 1024 true null 3.14 =");
+    context->parser->index = 0;
+    t_ast* ast = NULL;
+    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, STATIC_PY_OK);
+    munit_assert_ptr_not_null(ast);
+    munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
+    munit_assert_ptr_not_null(ast->primative_ptr);
+    munit_assert_int         (ast->primative_ptr->type, ==, PRIMATIVE_STRING);
+    munit_assert_string_equal(ast->primative_ptr->char_ptr, "hello world");
+
+    ast = NULL;
+    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, STATIC_PY_OK);
+    munit_assert_ptr_not_null(ast);
+    munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
+    munit_assert_ptr_not_null(ast->primative_ptr);
+    munit_assert_int         (ast->primative_ptr->type, ==, PRIMATIVE_STRING);
+    munit_assert_string_equal(ast->primative_ptr->char_ptr, "hi all");
+
+    ast = NULL;
+    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, STATIC_PY_OK);
+    munit_assert_ptr_not_null(ast);
+    munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
+    munit_assert_ptr_not_null(ast->primative_ptr);
+    munit_assert_int         (ast->primative_ptr->type, ==, PRIMATIVE_INTEGER);
+    munit_assert_int         (ast->primative_ptr->int_, ==, 1024);
+
+    ast = NULL;
+    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, STATIC_PY_OK);
+    munit_assert_ptr_not_null(ast);
+    munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
+    munit_assert_ptr_not_null(ast->primative_ptr);
+    munit_assert_int         (ast->primative_ptr->type,  ==, PRIMATIVE_BOOL);
+    munit_assert_int         (ast->primative_ptr->bool_, ==, true);
+
+    ast = NULL;
+    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, STATIC_PY_OK);
+    munit_assert_ptr_not_null(ast);
+    munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
+    munit_assert_ptr_not_null(ast->primative_ptr);
+    munit_assert_int         (ast->primative_ptr->type, ==, PRIMATIVE_NULL);
+
+    ast = NULL;
+    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, STATIC_PY_OK);
+    munit_assert_ptr_not_null(ast);
+    munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
+    munit_assert_ptr_not_null(ast->primative_ptr);
+    munit_assert_int         (ast->primative_ptr->type,    ==, PRIMATIVE_DOUBLE);
+    munit_assert_double      (ast->primative_ptr->double_, ==, 3.14);
+
+    ast = NULL;
+    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, STATIC_PY_PARSE_ERROR);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_is_primative_test_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    munit_assert_ptr_null(ast_consume(context));
+    static_py_execute(context, "'hello world' \"hi all\" 1024 true null 3.14 {}");
+    context->parser->index = 0;
+    t_token_ptr item_1 = ast_consume(context);
+    t_token_ptr item_2 = ast_consume(context);
+    t_token_ptr item_3 = ast_consume(context);
+    t_token_ptr item_4 = ast_consume(context);
+    t_token_ptr item_5 = ast_consume(context);
+    t_token_ptr item_6 = ast_consume(context);
+    t_token_ptr item_7 = ast_consume(context);
+    t_token_ptr item_8 = ast_consume(context);
+
+    munit_assert_int(is_primative(item_1), ==, true);
+    munit_assert_int(is_primative(item_2), ==, true);
+    munit_assert_int(is_primative(item_3), ==, true);
+    munit_assert_int(is_primative(item_4), ==, true);
+    munit_assert_int(is_primative(item_5), ==, true);
+    munit_assert_int(is_primative(item_6), ==, true);
+    munit_assert_int(is_primative(item_7), ==, false);
+    munit_assert_int(is_primative(item_8), ==, false);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_primary_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "10 10.1 true false null 'hello' \"world\" var");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast), ==, STATIC_PY_OK);
+    munit_assert_int(ast->primative_ptr->int_, ==, 10);
+    munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_INTEGER);
+
+    ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast), ==, STATIC_PY_OK);
+    munit_assert_int(ast->primative_ptr->double_, ==, 10.1);
+    munit_assert_int(ast->primative_ptr->type,    ==, PRIMATIVE_DOUBLE);
+
+    ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast), ==, STATIC_PY_OK);
+    munit_assert_int(ast->primative_ptr->bool_, ==, true);
+    munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_BOOL);
+
+    ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast), ==, STATIC_PY_OK);
+    munit_assert_int(ast->primative_ptr->bool_, ==, false);
+    munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_BOOL);
+
+    ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast), ==, STATIC_PY_OK);
+    munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_NULL);
+
+    ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast), ==, STATIC_PY_OK);
+    munit_assert_string_equal(ast->primative_ptr->char_ptr, "hello");
+    munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_STRING);
+
+    ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast), ==, STATIC_PY_OK);
+    munit_assert_string_equal(ast->primative_ptr->char_ptr, "world");
+    munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_STRING);
+
+    ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast), ==, STATIC_PY_EXPRESSION_NOT_VALID);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_primary_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "[1, true, null, 1.1, [], 'hello', \"world\"]");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast),  ==, STATIC_PY_OK);
+    munit_assert_int(ast->primative_ptr->array->count, ==, 7);
+    munit_assert_int(ast->primative_ptr->type,         ==, PRIMATIVE_ARRAY);
+
+    t_vector_ptr vector = ast->primative_ptr->array;
+    munit_assert_int(((t_primative_ptr)vector_get(vector, 0))->type, ==, PRIMATIVE_INTEGER);
+    munit_assert_int(((t_primative_ptr)vector_get(vector, 0))->int_, ==, 1);
+
+    munit_assert_int(((t_primative_ptr)vector_get(vector, 1))->type,  ==, PRIMATIVE_BOOL);
+    munit_assert_int(((t_primative_ptr)vector_get(vector, 1))->bool_, ==, true);
+
+    munit_assert_int(((t_primative_ptr)vector_get(vector, 2))->type, ==, PRIMATIVE_NULL);
+
+    munit_assert_int(((t_primative_ptr)vector_get(vector, 3))->type,    ==, PRIMATIVE_DOUBLE);
+    munit_assert_int(((t_primative_ptr)vector_get(vector, 3))->double_, ==, 1.1);
+
+    munit_assert_int(((t_primative_ptr)vector_get(vector, 4))->type,         ==, PRIMATIVE_ARRAY);
+    munit_assert_int(((t_primative_ptr)vector_get(vector, 4))->array->count, ==, 0);
+
+    munit_assert_int         (((t_primative_ptr)vector_get(vector, 5))->type, ==, PRIMATIVE_STRING);
+    munit_assert_string_equal(((t_primative_ptr)vector_get(vector, 5))->char_ptr, "hello");
+
+    munit_assert_int         (((t_primative_ptr)vector_get(vector, 6))->type, ==, PRIMATIVE_STRING);
+    munit_assert_string_equal(((t_primative_ptr)vector_get(vector, 6))->char_ptr, "world");
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_primary_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "{}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast),  ==, STATIC_PY_OK);
+    munit_assert_int(ast->primative_ptr->type,         ==, PRIMATIVE_DICTIONARY);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_primary_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "{'hello': 'world'}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast),  ==, STATIC_PY_OK);
+    munit_assert_int(ast->primative_ptr->type,         ==, PRIMATIVE_DICTIONARY);
+
+    map_ast_t_ptr dictionary = ast->primative_ptr->dict;
+    munit_assert_ptr_not_null(map_get(dictionary, "hello"));
+    munit_assert_int         (((t_ast_ptr)*map_get(dictionary, "hello"))->type,                ==, AST_PRIMATIVE);
+    munit_assert_int         (((t_ast_ptr)*map_get(dictionary, "hello"))->primative_ptr->type, ==, PRIMATIVE_STRING);
+    munit_assert_string_equal(((t_ast_ptr)*map_get(dictionary, "hello"))->primative_ptr->char_ptr, "world");
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_primary_expr_test_5(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "{'hi': 'all', test: true, 'dict': {'empty': false}, 'array': [1,2,3]}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast),  ==, STATIC_PY_OK);
+    munit_assert_int(ast->primative_ptr->type,         ==, PRIMATIVE_DICTIONARY);
+
+    map_ast_t_ptr main_dict = ast->primative_ptr->dict;
+    munit_assert_ptr_not_null(map_get(main_dict, "hi"));
+    munit_assert_ptr_not_null(map_get(main_dict, "test"));
+    munit_assert_ptr_not_null(map_get(main_dict, "dict"));
+    munit_assert_ptr_not_null(map_get(main_dict, "array"));
+
+    munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "hi"))->type,                ==, AST_PRIMATIVE);
+    munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "hi"))->primative_ptr->type, ==, PRIMATIVE_STRING);
+    munit_assert_string_equal(((t_ast_ptr)*map_get(main_dict, "hi"))->primative_ptr->char_ptr, "all");
+
+    munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "test"))->type,                 ==, AST_PRIMATIVE);
+    munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "test"))->primative_ptr->type,  ==, PRIMATIVE_BOOL);
+    munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "test"))->primative_ptr->bool_, ==, true);
+
+    /* Sub dict */
+    munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "dict"))->type,                 ==, AST_PRIMATIVE);
+    munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "dict"))->primative_ptr->type,  ==, PRIMATIVE_DICTIONARY);
+    map_ast_t_ptr sub_dict = ((t_ast_ptr)*map_get(main_dict, "dict"))->primative_ptr->dict;
+    munit_assert_ptr_not_null(map_get(sub_dict, "empty"));
+
+    munit_assert_int         (((t_ast_ptr)*map_get(sub_dict, "empty"))->type,                 ==, AST_PRIMATIVE);
+    munit_assert_int         (((t_ast_ptr)*map_get(sub_dict, "empty"))->primative_ptr->type,  ==, PRIMATIVE_BOOL);
+    munit_assert_int         (((t_ast_ptr)*map_get(sub_dict, "empty"))->primative_ptr->bool_, ==, false);
+
+    /* Array */
+    munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "array"))->type,                 ==, AST_PRIMATIVE);
+    munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "array"))->primative_ptr->type,  ==, PRIMATIVE_ARRAY);
+    t_vector_ptr array = ((t_ast_ptr)*map_get(main_dict, "array"))->primative_ptr->array;
+    munit_assert_int         (((t_primative_ptr)vector_get(array, 0))->type, ==, PRIMATIVE_INTEGER);
+    munit_assert_int         (((t_primative_ptr)vector_get(array, 0))->int_, ==, 1);
+    munit_assert_int         (((t_primative_ptr)vector_get(array, 1))->type, ==, PRIMATIVE_INTEGER);
+    munit_assert_int         (((t_primative_ptr)vector_get(array, 1))->int_, ==, 2);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_primary_expr_test_6(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "{'hi' 'all'}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast),  ==, STATIC_PY_EXPRESSION_NOT_VALID);
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_primary_expr_test_7(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "{1+1: 'all'}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast),  ==, STATIC_PY_EXPRESSION_NOT_VALID);
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_primary_expr_test_8(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "{'hi': 1+1}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast),  ==, STATIC_PY_EXPRESSION_NOT_VALID);
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_primary_expr_test_9(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "{'hi': *}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast),  ==, STATIC_PY_EXPRESSION_NOT_VALID);
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_primary_expr_test_10(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "{'hi': var}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast),  ==, STATIC_PY_EXPRESSION_NOT_VALID);
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_primary_expr_test_11(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "[var]");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_primary_expr(context, &ast),  ==, STATIC_PY_EXPRESSION_NOT_VALID);
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_symbol_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "hello_world");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_symbol_expr(context, &ast), ==, STATIC_PY_OK);
+    munit_assert_int         (ast->type,                      ==, AST_SYMBOL);
+    munit_assert_string_equal(ast->char_ptr,                  "hello_world");
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_symbol_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "10");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_symbol_expr(context, &ast), ==, STATIC_PY_EXPRESSION_NOT_VALID);
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_call_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "test(true)");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_call(context, &ast), ==, STATIC_PY_OK);
+    munit_assert_int         (ast->type, ==, AST_FUNCTION_CALL);
+    munit_assert_ptr_not_null(ast->func_call_ptr);
+    munit_assert_string_equal(ast->func_call_ptr->function, "test");
+    munit_assert_int        (ast->func_call_ptr->args->count, ==, 1);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_call_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "test_2({data:1})");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_call(context, &ast), ==, STATIC_PY_OK);
+    munit_assert_int         (ast->type,               ==, AST_FUNCTION_CALL);
+    munit_assert_ptr_not_null(ast->func_call_ptr);
+    munit_assert_string_equal(ast->func_call_ptr->function, "test_2");
+    munit_assert_int         (ast->func_call_ptr->args->count, ==, 1);
+    munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->type,                ==, AST_PRIMATIVE);
+    munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->primative_ptr);
+    munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->primative_ptr->type, == , PRIMATIVE_DICTIONARY);
+    
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_multiplication_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "10 * 20");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_multiplication_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->operator, == , OPERATOR_MULTIPLICATION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left);
+    munit_assert_ptr_not_null(ast->binary_ptr->right);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_multiplication_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "10 / 20");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_multiplication_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->operator, == , OPERATOR_DIVISION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left);
+    munit_assert_ptr_not_null(ast->binary_ptr->right);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_multiplication_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "_ten / _twelve");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_multiplication_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->operator, == , OPERATOR_DIVISION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left);
+    munit_assert_ptr_not_null(ast->binary_ptr->right);
+    munit_assert_int         (ast->binary_ptr->left->type, == , AST_SYMBOL);
+    munit_assert_int         (ast->binary_ptr->right->type, == , AST_SYMBOL);
+    munit_assert_string_equal(ast->binary_ptr->left->char_ptr, "_ten");
+    munit_assert_string_equal(ast->binary_ptr->right->char_ptr, "_twelve");
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_multiplication_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "_ten / 124");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_multiplication_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->operator, == , OPERATOR_DIVISION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left);
+    munit_assert_ptr_not_null(ast->binary_ptr->right);
+    munit_assert_int         (ast->binary_ptr->left->type,  == , AST_SYMBOL);
+    munit_assert_int         (ast->binary_ptr->right->type, == , AST_PRIMATIVE);
+    munit_assert_string_equal(ast->binary_ptr->left->char_ptr, "_ten");
+    munit_assert_int         (ast->binary_ptr->right->primative_ptr->int_, == , 124);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+
+MunitResult ast_addition_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "10 - 20");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int          (ast_addition_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int          (ast->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->operator, == , OPERATOR_SUBTRACTION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left);
+    munit_assert_ptr_not_null(ast->binary_ptr->right);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_addition_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "10 + 20");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_addition_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->operator, == , OPERATOR_ADDITION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left);
+    munit_assert_ptr_not_null(ast->binary_ptr->right);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_addition_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "_ten - _twelve");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_addition_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->operator, == , OPERATOR_SUBTRACTION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left);
+    munit_assert_ptr_not_null(ast->binary_ptr->right);
+    munit_assert_int         (ast->binary_ptr->left->type, == , AST_SYMBOL);
+    munit_assert_int         (ast->binary_ptr->right->type, == , AST_SYMBOL);
+    munit_assert_string_equal(ast->binary_ptr->left->char_ptr, "_ten");
+    munit_assert_string_equal(ast->binary_ptr->right->char_ptr, "_twelve");
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_addition_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "_ten + 124");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_addition_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->operator, == , OPERATOR_ADDITION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left);
+    munit_assert_ptr_not_null(ast->binary_ptr->right);
+    munit_assert_int         (ast->binary_ptr->left->type,  == , AST_SYMBOL);
+    munit_assert_int         (ast->binary_ptr->right->type, == , AST_PRIMATIVE);
+    munit_assert_string_equal(ast->binary_ptr->left->char_ptr, "_ten");
+    munit_assert_int         (ast->binary_ptr->right->primative_ptr->int_, == , 124);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_addition_expr_test_5(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "1024 - 1000 * 2");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_addition_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->operator, == , OPERATOR_SUBTRACTION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left);
+    munit_assert_ptr_not_null(ast->binary_ptr->right);
+    munit_assert_int         (ast->binary_ptr->left->type,  == , AST_PRIMATIVE);
+    munit_assert_int         (ast->binary_ptr->right->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left->primative_ptr);
+    munit_assert_int         (ast->binary_ptr->left->primative_ptr->int_, == , 1024);
+    munit_assert_ptr_not_null(ast->binary_ptr->right->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->right->binary_ptr->operator, ==, OPERATOR_MULTIPLICATION);
+    munit_assert_int         (ast->binary_ptr->right->binary_ptr->left->primative_ptr->int_,  ==, 1000);
+    munit_assert_int         (ast->binary_ptr->right->binary_ptr->right->primative_ptr->int_, ==, 2);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_addition_expr_test_6(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "(2 * 1000) - (1024 + 2)");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_addition_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->operator, == , OPERATOR_SUBTRACTION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left);
+    munit_assert_ptr_not_null(ast->binary_ptr->right);
+    munit_assert_int         (ast->binary_ptr->left->type,  == , AST_BINARY_OPERATION);
+    munit_assert_int         (ast->binary_ptr->right->type, == , AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->binary_ptr->left->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->left->binary_ptr->operator, ==, OPERATOR_MULTIPLICATION);
+    munit_assert_int         (ast->binary_ptr->left->binary_ptr->left->primative_ptr->int_,  ==, 2);
+    munit_assert_int         (ast->binary_ptr->left->binary_ptr->right->primative_ptr->int_, ==, 1000);
+    munit_assert_ptr_not_null(ast->binary_ptr->right->binary_ptr);
+    munit_assert_int         (ast->binary_ptr->right->binary_ptr->operator, ==, OPERATOR_ADDITION);
+    munit_assert_int         (ast->binary_ptr->right->binary_ptr->left->primative_ptr->int_,  ==, 1024);
+    munit_assert_int         (ast->binary_ptr->right->binary_ptr->right->primative_ptr->int_, ==, 2);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_control_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "true == false");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_control_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int         (ast->type, == , AST_CONTROL_OPERATION);
+    munit_assert_ptr_not_null(ast->control_ptr);
+    munit_assert_int         (ast->control_ptr->operator, == , OPERATOR_EQUAL);
+    munit_assert_ptr_not_null(ast->control_ptr->left);
+    munit_assert_ptr_not_null(ast->control_ptr->right);
+    munit_assert_int         (ast->control_ptr->left->type,  == , AST_PRIMATIVE);
+    munit_assert_int         (ast->control_ptr->right->type, == , AST_PRIMATIVE);
+    munit_assert_ptr_not_null(ast->control_ptr->left->primative_ptr);
+    munit_assert_int         (ast->control_ptr->left->primative_ptr->bool_, ==, true);
+    munit_assert_ptr_not_null(ast->control_ptr->right->primative_ptr);
+    munit_assert_int         (ast->control_ptr->right->primative_ptr->bool_, ==, false);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_control_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = static_py_init();
+    static_py_execute(context, "512 * 2 >== 256 * 4");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_control_expr(context, &ast), == , STATIC_PY_OK);
+    munit_assert_int         (ast->type, == , AST_CONTROL_OPERATION);
+    munit_assert_ptr_not_null(ast->control_ptr);
+    munit_assert_int         (ast->control_ptr->operator, == , OPERATOR_EQUAL);
+    munit_assert_ptr_not_null(ast->control_ptr->left);
+    munit_assert_ptr_not_null(ast->control_ptr->right);
+    munit_assert_int         (ast->control_ptr->left->type,  == , AST_PRIMATIVE);
+    munit_assert_int         (ast->control_ptr->right->type, == , AST_PRIMATIVE);
+    munit_assert_ptr_not_null(ast->control_ptr->left->primative_ptr);
+    munit_assert_int         (ast->control_ptr->left->primative_ptr->bool_, ==, true);
+    munit_assert_ptr_not_null(ast->control_ptr->right->primative_ptr);
+    munit_assert_int         (ast->control_ptr->right->primative_ptr->bool_, ==, false);
+
+    static_py_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitTest AST_TESTS[] = {
     ADD_TEST(ast_peek_test),
     ADD_TEST(ast_previous_test),
@@ -233,6 +863,34 @@ MunitTest AST_TESTS[] = {
     ADD_TEST(ast_match_test_1),
     ADD_TEST(ast_match_test_2),
     ADD_TEST(ast_check_test_1),
+    ADD_TEST(ast_primative_test_1),
+    ADD_TEST(ast_is_primative_test_1),
+    ADD_TEST(ast_primary_expr_test_1),
+    ADD_TEST(ast_primary_expr_test_2),
+    ADD_TEST(ast_primary_expr_test_4),
+    ADD_TEST(ast_primary_expr_test_5),
+    ADD_TEST(ast_primary_expr_test_6),
+    ADD_TEST(ast_primary_expr_test_7),
+    ADD_TEST(ast_primary_expr_test_8),
+    ADD_TEST(ast_primary_expr_test_9),
+    ADD_TEST(ast_primary_expr_test_10),
+    ADD_TEST(ast_primary_expr_test_11),
+    ADD_TEST(ast_symbol_expr_test_1),
+    ADD_TEST(ast_symbol_expr_test_2),
+    ADD_TEST(ast_call_expr_test_1),
+    ADD_TEST(ast_call_expr_test_2),
+    ADD_TEST(ast_multiplication_expr_test_1),
+    ADD_TEST(ast_multiplication_expr_test_2),
+    ADD_TEST(ast_multiplication_expr_test_3),
+    ADD_TEST(ast_multiplication_expr_test_4),
+    ADD_TEST(ast_addition_expr_test_1),
+    ADD_TEST(ast_addition_expr_test_2),
+    ADD_TEST(ast_addition_expr_test_3),
+    ADD_TEST(ast_addition_expr_test_4),
+    ADD_TEST(ast_addition_expr_test_5),
+    ADD_TEST(ast_addition_expr_test_6),
+    ADD_TEST(ast_control_expr_test_1),
+    ADD_TEST(ast_control_expr_test_2),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 

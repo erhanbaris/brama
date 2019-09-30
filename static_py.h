@@ -139,6 +139,8 @@
 #define OPERATOR_COMMENT_LINE            43
 #define OPERATOR_COMMENT_MULTILINE_START 44
 #define OPERATOR_COMMENT_MULTILINE_END   45
+#define OPERATOR_CURVE_BRACKET_START     46
+#define OPERATOR_CURVE_BRACKET_END       47
 
 /* AST TYPES */
 #define AST_NONE                 0
@@ -230,7 +232,9 @@ static OperatorPair OPERATORS[] =  {
     { "DOT",                     "."   },
     { "COMMENT_LINE",            "//"  },
     { "COMMENT_MULTILINE_START", "/*"  },
-    { "COMMENT_MULTILINE_END",   "*/"  }
+    { "COMMENT_MULTILINE_END",   "*/"  },
+    { "CURVE_BRACKET_START",     "{"   },
+    { "CURVE_BRACKET_END",       "}"   }
 };
 
 static char* KEYWORDS[] = {
@@ -285,7 +289,20 @@ static char* KEYWORDS[] = {
 };
 
 /* STRUCTS */
-typedef struct {
+struct _t_ast;
+struct _t_token;
+struct _t_tokinizer;
+struct _t_parser;
+struct _t_primative;
+struct _t_unary;
+struct _t_func_call;
+struct _t_ast;
+struct _t_context;
+struct _t_binary;
+
+typedef map_t(struct _t_ast *) map_ast_t;
+
+typedef struct _t_token {
     size_t line;
     size_t current;
     int    type;
@@ -298,7 +315,7 @@ typedef struct {
     };
 } t_token;
 
-typedef struct {
+typedef struct _t_tokinizer {
     size_t    line;
     size_t    column;
     size_t    index;
@@ -308,29 +325,41 @@ typedef struct {
     map_int_t keywords;
 } t_tokinizer;
 
-typedef struct {
+typedef struct _t_parser {
     size_t    index;
     t_vector* asts;
 } t_parser;
 
-typedef struct t_primative {
+typedef struct _t_primative {
     int type;
     union {
-        int       int_;
-        double    double_;
-        bool      bool_;
-        char*     char_ptr;
-        t_vector* array;
-        //std::unordered_map<string_type, PrimativeValue*>* Dictionary;
+        int        int_;
+        double     double_;
+        bool       bool_;
+        char*      char_ptr;
+        t_vector*  array;
+        map_ast_t* dict;
     };
 } t_primative;
 
-typedef struct t_unary {
+typedef struct _t_unary {
     int            operator;
     struct _t_ast* right;
 } t_unary;
 
-typedef struct t_func_call {
+typedef struct _t_binary {
+    int            operator;
+    struct _t_ast* right;
+    struct _t_ast* left;
+} t_binary;
+
+typedef struct _t_control {
+    int            operator;
+    struct _t_ast* right;
+    struct _t_ast* left;
+} t_control;
+
+typedef struct _t_func_call {
     char*     function;
     t_vector* args;
 } t_func_call;
@@ -340,6 +369,8 @@ typedef struct _t_ast {
     union {
         t_func_call*   func_call_ptr;
         t_unary*       unary_ptr;
+        t_binary*      binary_ptr;
+        t_control*     control_ptr;
         t_primative*   primative_ptr;
         struct _t_ast* ast_ptr;
         char*          char_ptr;
@@ -347,12 +378,15 @@ typedef struct _t_ast {
     };
 } t_ast;
 
-typedef struct {
-    t_tokinizer* tokinizer;
-    t_parser*    parser;
+typedef struct _t_context {
+    t_tokinizer*     tokinizer;
+    t_parser*        parser;
 
-    char*        error_message;
+    char*            error_message;
+    STATIC_PY_STATUS status;
 } t_context;
+
+
 
 /* MACROS */
 #define OPERATOR_CASE_DOUBLE_START_WITH(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_3_SYMBOL, OPERATOR_1, OPERATOR_2, OPERATOR_3) \
@@ -493,12 +527,29 @@ static KeywordPair KEYWORDS_PAIR[] = {
    { "instanceof",  KEYWORD_INSTANCEOF }
  };
 
+typedef t_tokinizer*     t_tokinizer_ptr;
+typedef t_token*         t_token_ptr;
+typedef t_parser*        t_parser_ptr;
+typedef t_primative*     t_primative_ptr;
+typedef t_unary*         t_unary_ptr;
+typedef t_binary*        t_binary_ptr;
+typedef t_control*       t_control_ptr;
+typedef t_func_call*     t_func_call_ptr;
+typedef t_ast*           t_ast_ptr;
+typedef t_ast**          t_ast_ptr_ptr;
+typedef t_context*       t_context_ptr;
+typedef t_string_stream* t_string_stream_ptr;
+typedef t_vector*        t_vector_ptr;
+typedef char*            char_ptr;
+typedef void*            void_ptr;
+typedef int*             int_ptr;
+typedef map_ast_t*       map_ast_t_ptr;
 
-t_context* static_py_init       ();
-void       static_py_execute    (t_context* context, char* data);
-char*      static_py_last_error (t_context* context);
-void       static_py_dump       (t_context* context);
-void       static_py_destroy    (t_context*);
+t_context_ptr static_py_init       ();
+void          static_py_execute    (t_context_ptr context, char_ptr data);
+void_ptr      static_py_last_error (t_context_ptr context);
+void          static_py_dump       (t_context_ptr context);
+void          static_py_destroy    (t_context_ptr context);
 
 
 #endif // STATIC_PY_H

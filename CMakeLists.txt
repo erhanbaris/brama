@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(c4)
+project(c4) 
 
 # Enforce C11
 if ((NOT CMAKE_C_STANDARD) OR (CMAKE_C_STANDARD LESS 11))
@@ -51,4 +51,5 @@ add_executable(c4
         tools.c
         tests.h
         tests_core.h
-        tests_token.h)
+        tests_token.h
+        tests_ast.h)
