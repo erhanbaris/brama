@@ -527,12 +527,15 @@ BRAMA_STATUS ast_call(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
 
 
 BRAMA_STATUS ast_unary_expr(t_context_ptr context, t_expr_ast_ptr_ptr ast) {
-    if (ast_match_operator(context, 1, OPERATOR_SUBTRACTION)){
-        int operator_type       = get_operator_type(ast_previous(context));
-        t_expr_ast_ptr right         = NULL;
-        BRAMA_STATUS status = ast_unary_expr(context, &right);
+    if (ast_match_operator(context, 4, OPERATOR_SUBTRACTION, OPERATOR_INCREMENT, OPERATOR_DECCREMENT, OPERATOR_NOT)){
+        int operator_type    = get_operator_type(ast_previous(context));
+        t_expr_ast_ptr right = NULL;
+        BRAMA_STATUS status  = ast_unary_expr(context, &right);
         if (status != BRAMA_OK)
             return status;
+
+        if ((operator_type == OPERATOR_INCREMENT || operator_type == OPERATOR_DECCREMENT) && right->type != AST_SYMBOL)
+            return BRAMA_EXPRESSION_NOT_VALID;
 
         t_unary_ptr unary  = malloc(sizeof (t_unary));
         unary->operator    = operator_type;
@@ -813,7 +816,7 @@ t_token_ptr ast_consume_keyword(t_context_ptr context, int keyword_type) {
 BRAMA_STATUS ast_parser(t_context_ptr context) {
     context->parser->index = 0;
     while (!ast_is_at_end(context)) {
-        t_expr_ast_ptr ast              = NULL;
+        t_expr_ast_ptr ast  = NULL;
         BRAMA_STATUS status = ast_declaration_stmt(context, &ast);
         if (status == BRAMA_OK)
             vector_add(context->parser->asts, ast);
