@@ -295,11 +295,12 @@ struct _t_parser;
 struct _t_primative;
 struct _t_unary;
 struct _t_func_call;
-struct _t_expr_ast;
+struct _t_ast;
 struct _t_context;
 struct _t_binary;
+struct _t_func_decl;
 
-typedef map_t(struct _t_expr_ast *) map_ast_t;
+typedef map_t(struct _t_ast *) map_ast_t;
 
 typedef struct _t_token {
     size_t line;
@@ -342,48 +343,55 @@ typedef struct _t_primative {
 } t_primative;
 
 typedef struct _t_unary {
-    int                 operator;
-    struct _t_expr_ast* right;
+    int            operator;
+    struct _t_ast* right;
 } t_unary;
 
 typedef struct _t_binary {
-    int                 operator;
-    struct _t_expr_ast* right;
-    struct _t_expr_ast* left;
+    int            operator;
+    struct _t_ast* right;
+    struct _t_ast* left;
 } t_binary;
 
 typedef struct _t_assign {
-    int                 operator;
-    int                 def_type; /* let, var, const */
-    struct _t_expr_ast* assignment;
-    char*               symbol;
+    int            operator;
+    int            def_type; /* let, var, const */
+    struct _t_ast* assignment;
+    char*          symbol;
 } t_assign;
 
 typedef struct _t_control {
-    int                 operator;
-    struct _t_expr_ast* right;
-    struct _t_expr_ast* left;
+    int            operator;
+    struct _t_ast* right;
+    struct _t_ast* left;
 } t_control;
 
 typedef struct _t_func_call {
-    char*     function;
+    t_vector* function;
     t_vector* args;
 } t_func_call;
 
-typedef struct _t_expr_ast {
+typedef struct _t_func_decl {
+    char*          name;
+    t_vector*      args;
+    struct _t_ast* body;
+} t_func_decl;
+
+typedef struct _t_ast {
     int type;
     union {
-        t_func_call*        func_call_ptr;
-        t_unary*            unary_ptr;
-        t_binary*           binary_ptr;
-        t_control*          control_ptr;
-        t_primative*        primative_ptr;
-        t_assign*           assign_ptr;
-        struct _t_expr_ast* ast_ptr;
-        char*               char_ptr;
-        int                 int_;
+        t_func_call*     func_call_ptr;
+        t_func_decl*     func_decl_ptr;
+        t_unary*         unary_ptr;
+        t_binary*        binary_ptr;
+        t_control*       control_ptr;
+        t_primative*     primative_ptr;
+        t_assign*        assign_ptr;
+        struct _t_ast*   ast_ptr;
+        char*            char_ptr;
+        int              int_;
     };
-} t_expr_ast;
+} t_ast;
 
 typedef struct _t_context {
     t_tokinizer*     tokinizer;
@@ -454,28 +462,20 @@ case OPERATOR_1_SYMBOL :                     \
 #define get_keyword_type(token) token->int_
 
 #define IS_ITEM(NAME, TYPE) \
-    bool is_##NAME##_via_token (t_token* token)\
+    bool is_##NAME## (t_token* token)\
     {\
         return token != NULL && token->type == TYPE ;\
-    }\
-    bool is_##NAME (t_context* context)\
-    {\
-        return ast_peek(context) != NULL && ast_peek(context)->type == TYPE ;\
     }
 
 #define GET_ITEM(NAME, TYPE, OUT) \
-    OUT get_##NAME##_via_token (t_token* token)\
+    OUT get_##NAME## (t_token* token)\
     {\
         return token-> TYPE ;\
-    }\
-    OUT get_##NAME (t_context* context)\
-    {\
-        return ast_peek(context)-> TYPE ;\
     }
 
 #define NEW_PRIMATIVE_DEF(EXT, TYPE, PRI_TYPE, STR_TYPE)       \
-    t_expr_ast* new_primative_ast_##EXT (TYPE value) {         \
-        t_expr_ast* ast        = malloc(sizeof (t_expr_ast));  \
+    t_ast* new_primative_ast_##EXT (TYPE value) {         \
+        t_ast* ast        = malloc(sizeof (t_ast));  \
         t_primative* primative = malloc(sizeof (t_primative)); \
         ast->primative_ptr     = primative;                    \
         ast->type              = AST_PRIMATIVE ;               \
@@ -543,8 +543,9 @@ typedef t_binary*        t_binary_ptr;
 typedef t_assign*        t_assign_ptr;
 typedef t_control*       t_control_ptr;
 typedef t_func_call*     t_func_call_ptr;
-typedef t_expr_ast*      t_expr_ast_ptr;
-typedef t_expr_ast**     t_expr_ast_ptr_ptr;
+typedef t_func_decl*     t_func_decl_ptr;
+typedef t_ast*           t_ast_ptr;
+typedef t_ast**          t_ast_ptr_ptr;
 typedef t_context*       t_context_ptr;
 typedef t_string_stream* t_string_stream_ptr;
 typedef t_vector*        t_vector_ptr;

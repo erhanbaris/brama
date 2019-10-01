@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(c4) 
+project(brama) 
 
 # Enforce C11
 if ((NOT CMAKE_C_STANDARD) OR (CMAKE_C_STANDARD LESS 11))
@@ -37,20 +37,21 @@ if ( ENABLE_CODECOVERAGE )
 endif (ENABLE_CODECOVERAGE)
 
 add_definitions( -DSTATIC_PY_VERBOSE_MODE )
-include_directories(.)
+include_directories(include/)
+include_directories(tests/)
 
 add_executable(brama
-        main.c
-        map.c
-        map.h
-        munit.c
-        munit.h
-        brama.c
-        brama.h
-        tools.h
-        tools.c
-        tests.h
-        tests_core.h
-        tests_token.h
-        tests_ast.h)
+        src/main.c
+        src/map.c
+        include/map.h
+        src/munit.c
+        include/munit.h
+        src/brama.c
+        include/brama.h
+        include/tools.h
+        src/tools.c
+        tests/tests.h
+        tests/tests_core.h
+        tests/tests_token.h
+        tests/tests_ast.h)
 
