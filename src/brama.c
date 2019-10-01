@@ -623,17 +623,12 @@ BRAMA_STATUS ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
 }
 
 BRAMA_STATUS ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast) {
-    BRAMA_STATUS status = BRAMA_NOK;
     if (ast_function_decleration(context, ast) == BRAMA_OK)
         return BRAMA_OK;
     else if (ast_block_stmt(context, ast) == BRAMA_OK)
         return BRAMA_OK;
     else 
         return ast_expression(context, ast);
-
-    ++context->parser->index;
-    *ast = malloc(sizeof (t_ast));
-    return BRAMA_OK;
 }
 
 BRAMA_STATUS ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast) {

@@ -7,22 +7,24 @@ QMAKE_CFLAGS += -std=c11 -Wint-to-void-pointer-cast
 #QMAKE_LFLAGS += --coverage
 
 INCLUDEPATH += /usr/local/include
+INCLUDEPATH += include/
+INCLUDEPATH += tests/
 
 SOURCES += \
-    main.c \
-    brama.c \
-    map.c \
-    munit.c \
-    tools.c
+    src/main.c \
+    src/brama.c \
+    src/map.c \
+    tests/munit.c \
+    src/tools.c
 
 HEADERS += \
-    brama.h \
-    map.h \
-    munit.h \
-    tests_core.h \
-    tests_token.h \
-    tests.h \
-    tools.h \
-    tests_tools.h \
-    brama_internal.h \
-    tests_ast.h
+    include/brama.h \
+    include/map.h \
+    tests/munit.h \
+    tests/tests_core.h \
+    tests/tests_token.h \
+    tests/tests.h \
+    include/tools.h \
+    tests/tests_tools.h \
+    include/brama_internal.h \
+    tests/tests_ast.h

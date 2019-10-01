@@ -44,8 +44,8 @@ add_executable(brama
         src/main.c
         src/map.c
         include/map.h
-        src/munit.c
-        include/munit.h
+        tests/munit.c
+        tests/munit.h
         src/brama.c
         include/brama.h
         include/tools.h

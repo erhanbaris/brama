@@ -462,13 +462,13 @@ case OPERATOR_1_SYMBOL :                     \
 #define get_keyword_type(token) token->int_
 
 #define IS_ITEM(NAME, TYPE) \
-    bool is_##NAME## (t_token* token)\
+    bool is_##NAME (t_token* token)\
     {\
         return token != NULL && token->type == TYPE ;\
     }
 
 #define GET_ITEM(NAME, TYPE, OUT) \
-    OUT get_##NAME## (t_token* token)\
+    OUT get_##NAME (t_token* token)\
     {\
         return token-> TYPE ;\
     }
