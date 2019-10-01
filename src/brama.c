@@ -357,6 +357,7 @@ NEW_AST_DEF(control,   t_control_ptr,   AST_CONTROL_OPERATION,    control_ptr)
 NEW_AST_DEF(assign,    t_assign_ptr,    AST_ASSIGNMENT,           assign_ptr)
 NEW_AST_DEF(func_call, t_func_call_ptr, AST_FUNCTION_CALL,        func_call_ptr)
 NEW_AST_DEF(func_decl, t_func_decl_ptr, AST_FUNCTION_DECLARATION, func_decl_ptr)
+NEW_AST_DEF(general,   t_ast_ptr,       AST_BLOCK,                ast_ptr)
 
 BRAMA_STATUS as_primative(t_token_ptr token, t_ast_ptr_ptr ast)
 {
@@ -535,63 +536,65 @@ BRAMA_STATUS ast_call(t_context_ptr context, t_ast_ptr_ptr ast) {
 
 BRAMA_STATUS ast_block_stmt(t_context_ptr context, t_ast_ptr_ptr ast) {
     if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_START)) {
-        if (!ast_check_token(context, TOKEN_SYMBOL))
-            return BRAMA_EXPRESSION_NOT_VALID;
-
-        t_ast_ptr function_name_ast = NULL;
-        BRAMA_STATUS status = ast_symbol_expr(context, &function_name_ast);
-        if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
-            return BRAMA_EXPRESSION_NOT_VALID;
-
-        t_vector_ptr args = vector_init();
-        if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
-            do {
-                t_ast_ptr arg = NULL;
-                BRAMA_STATUS status = ast_symbol_expr(context, &arg);
-                if (status != BRAMA_OK)
-                    return status;
-
-                vector_add(args, arg);
-            } while (ast_match_operator(context, 1, OPERATOR_COMMA));
+        t_ast_ptr body = NULL;
+        if (!ast_check_operator(context, OPERATOR_CURVE_BRACKET_END)) {
+            BRAMA_STATUS status = ast_declaration_stmt(context, &body);
+            if (status != BRAMA_OK) {
+                ast_revert_consume(context);
+                return status;
+            }
         }
-
-        t_func_decl_ptr func_decl = malloc(sizeof(t_func_decl));
-        func_decl->args = args;
-        func_decl->body = NULL;
-        func_decl->name = function_name_ast->char_ptr;
-        *ast = new_func_decl_ast(func_decl);
+        *ast = new_func_decl_ast(body);
+        return BRAMA_OK;
     }
 
-    return BRAMA_NOK;
+    return BRAMA_EXPRESSION_NOT_VALID;
 }
 
 BRAMA_STATUS ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast) {
     if (ast_match_keyword(context, 1, KEYWORD_FUNCTION)) {
-        if (!ast_check_token(context, TOKEN_SYMBOL))
+        if (!ast_check_token(context, TOKEN_SYMBOL)) {
+            ast_revert_consume(context);
             return BRAMA_EXPRESSION_NOT_VALID;
+        }
 
         t_ast_ptr function_name_ast = NULL;
         BRAMA_STATUS status = ast_symbol_expr(context, &function_name_ast);
-        if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
+        if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) {
+            ast_revert_consume(context);
             return BRAMA_EXPRESSION_NOT_VALID;
+        }
 
         t_vector_ptr args = vector_init();
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
             do {
                 t_ast_ptr arg = NULL;
                 BRAMA_STATUS status = ast_symbol_expr(context, &arg);
-                if (status != BRAMA_OK)
+                if (status != BRAMA_OK){
+                    ast_revert_consume(context);
                     return status;
+                }
 
                 vector_add(args, arg);
             } while (ast_match_operator(context, 1, OPERATOR_COMMA));
         }
 
+        if (ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES) == false)
+            return BRAMA_NOK;
+
+        ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES);
+
+        t_ast_ptr body = NULL;
+        BRAMA_STATUS body_status = ast_block_stmt(context, &body);
+        if (body_status != BRAMA_OK)
+            return body_status;
+
         t_func_decl_ptr func_decl = malloc(sizeof(t_func_decl));
         func_decl->args = args;
-        func_decl->body = NULL;
+        func_decl->body = body;
         func_decl->name = function_name_ast->char_ptr;
         *ast = new_func_decl_ast(func_decl);
+        return BRAMA_OK;
     }
 
     return BRAMA_NOK;
@@ -620,7 +623,6 @@ BRAMA_STATUS ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast) {
 }
 
 BRAMA_STATUS ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast) {
-
     BRAMA_STATUS status = BRAMA_NOK;
     if (ast_function_decleration(context, ast) == BRAMA_OK)
         return BRAMA_OK;
