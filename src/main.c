@@ -10,7 +10,6 @@
 
 int main(int argc, const char* argv[])
 {
-
 #ifdef _WIN32
     int test_status = munit_suite_main(&ALL_SUITE, (void*) "µnit", NULL, NULL);
     getchar();

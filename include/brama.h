@@ -21,6 +21,11 @@
 #define BRAMA_PARSE_ERROR                    4
 #define BRAMA_PARSE_ARRAY_INIT_NOT_PRIMATIVE 5
 #define BRAMA_EXPRESSION_NOT_VALID           6
+#define BRAMA_DOES_NOT_MATCH_AST             7
+#define BRAMA_OPEN_OPERATOR_NOT_FOUND        8
+#define BRAMA_CLOSE_OPERATOR_NOT_FOUND       9
+#define BRAMA_DICTIONARY_NOT_VALID           10
+#define BRAMA_FUNCTION_NAME_REQUIRED         11
 
 /* PRIMATIVE TYPES */
 #define PRIMATIVE_NONE       0
@@ -387,6 +392,7 @@ typedef struct _t_ast {
         t_control*       control_ptr;
         t_primative*     primative_ptr;
         t_assign*        assign_ptr;
+        t_vector*        vector_ptr;
         struct _t_ast*   ast_ptr;
         char*            char_ptr;
         int              int_;
@@ -483,6 +489,12 @@ case OPERATOR_1_SYMBOL :                     \
         primative->type        = PRI_TYPE ;                    \
         return ast;                                            \
     }
+
+
+#define BACKUP_PARSER_INDEX()                        size_t parser_index = context->parser->index;
+#define RESTORE_PARSER_INDEX()                       context->parser->index = parser_index;
+#define RESTORE_PARSER_INDEX_AND_RETURN(RETURN_CODE) { RESTORE_PARSER_INDEX(); return RETURN_CODE ; }
+
 
 static KeywordPair KEYWORDS_PAIR[] = {
    { "do",  KEYWORD_DO },

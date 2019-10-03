@@ -332,6 +332,57 @@ MunitResult symbol_token_2(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+MunitResult symbol_token_3(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context, "_1_ _ $ test$ $test test$test");
+    munit_assert_int(context->tokinizer->tokens->count, ==, 6);
+
+    t_token* token = (t_token*)vector_get(context->tokinizer->tokens, 0);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type, ==, TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "_1_");
+
+    token = (t_token*)vector_get(context->tokinizer->tokens, 1);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type, ==, TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "_");
+
+    token = (t_token*)vector_get(context->tokinizer->tokens, 2);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type, ==, TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "$");
+
+    token = (t_token*)vector_get(context->tokinizer->tokens, 3);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type, == , TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "test$");
+
+    token = (t_token*)vector_get(context->tokinizer->tokens, 4);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type,   ==, TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "$test");
+
+    token = (t_token*)vector_get(context->tokinizer->tokens, 5);
+    if (token == NULL)
+        return MUNIT_FAIL;
+
+    munit_assert_int         (token->type,   ==, TOKEN_SYMBOL);
+    munit_assert_string_equal(token->char_ptr, "test$test");
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 /* <-- SYMBOL TESTS END */
 
 /* OPERATOR TESTS BEGIN --> */
@@ -501,6 +552,7 @@ MunitTest TOKEN_TESTS[] = {
 
     ADD_TEST(symbol_token_1),
     ADD_TEST(symbol_token_2),
+    ADD_TEST(symbol_token_3),
 
     ADD_TEST(keyword_operator),
 

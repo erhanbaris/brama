@@ -963,7 +963,7 @@ MunitResult ast_assignment_expr_test_1(const MunitParameter params[], void* user
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_expression(context, &ast), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_int         (ast->assign_ptr->operator, == , OPERATOR_ASSIGN);
@@ -985,7 +985,7 @@ MunitResult ast_assignment_expr_test_2(const MunitParameter params[], void* user
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_expression(context, &ast), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_int         (ast->assign_ptr->operator, == , OPERATOR_ASSIGN);
@@ -996,6 +996,20 @@ MunitResult ast_assignment_expr_test_2(const MunitParameter params[], void* user
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->primative_ptr);
     munit_assert_int         (ast->assign_ptr->assignment->primative_ptr->type,     ==, PRIMATIVE_STRING);
     munit_assert_string_equal(ast->assign_ptr->assignment->primative_ptr->char_ptr, "hello world");
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_assignment_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context, "var test = {}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_declaration_stmt(context, &ast), ==, BRAMA_OK);
+    munit_assert_int(ast->type,                           ==, AST_ASSIGNMENT);
+    munit_assert_int(ast->assign_ptr->assignment->type,   ==, AST_PRIMATIVE);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -1063,7 +1077,7 @@ MunitResult ast_unary_expr_test_4(const MunitParameter params[], void* user_data
 
 MunitResult ast_func_decl_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "function test(data) {}");
+    brama_execute(context, "function test(data) { var hello = 'world'; var test = 123 }");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1072,6 +1086,129 @@ MunitResult ast_func_decl_test_1(const MunitParameter params[], void* user_data_
     munit_assert_ptr_not_null(ast->func_decl_ptr);
     munit_assert_string_equal(ast->func_decl_ptr->name, "test");
     munit_assert_int         (ast->func_decl_ptr->args->count, == , 1);
+    munit_assert_ptr_not_null(ast->func_decl_ptr->body);
+    munit_assert_int         (ast->func_decl_ptr->body->type, ==, AST_BLOCK);
+    munit_assert_ptr_not_null(ast->func_decl_ptr->body->vector_ptr);
+    munit_assert_int         (ast->func_decl_ptr->body->vector_ptr->count, ==, 2);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_func_decl_test_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context, "function test(true) {}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_declaration_stmt(context, &ast), == , BRAMA_EXPRESSION_NOT_VALID);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_func_decl_test_3(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "function() {}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_declaration_stmt(context, &ast), == , BRAMA_FUNCTION_NAME_REQUIRED);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_func_decl_test_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "function test() {}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_declaration_stmt(context, &ast), == , BRAMA_OK);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_func_decl_test_5(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "(function test() {})");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_declaration_stmt(context, &ast), == , BRAMA_OK);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_func_decl_test_6(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "(function () {})");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_declaration_stmt(context, &ast), == , BRAMA_OK);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_func_decl_test_7(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "var test = (function () {})");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_declaration_stmt(context, &ast), == , BRAMA_OK);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_block_stmt_test_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context, "{{}}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_declaration_stmt(context, &ast), == , BRAMA_OK);
+    munit_assert_int         (ast->type, ==, AST_BLOCK);
+    munit_assert_ptr_not_null(ast->vector_ptr);
+    munit_assert_int         (ast->vector_ptr->count, ==, 1);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_block_stmt_test_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "{\n"
+                            "var test1 = 1;\n"
+                            "var test2 = true;\n"
+                            "var test3 = {};\n"
+                            "var test4 = [];\n"
+                            "function test_func () { console.log('Hello World'); }"
+                            "}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_declaration_stmt(context, &ast), == , BRAMA_OK);
+    munit_assert_int         (ast->type, ==, AST_BLOCK);
+    munit_assert_ptr_not_null(ast->vector_ptr);
+    munit_assert_int         (ast->vector_ptr->count, ==, 5);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_block_stmt_test_3(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "{\nvar test1 = 1;\n");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_declaration_stmt(context, &ast), == , BRAMA_EXPRESSION_NOT_VALID);
+
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -1120,11 +1257,21 @@ MunitTest AST_TESTS[] = {
     ADD_TEST(ast_or_expr_test),
     ADD_TEST(ast_assignment_expr_test_1),
     ADD_TEST(ast_assignment_expr_test_2),
+    ADD_TEST(ast_assignment_expr_test_3),
     ADD_TEST(ast_unary_expr_test_1),
     ADD_TEST(ast_unary_expr_test_2),
     ADD_TEST(ast_unary_expr_test_3),
     ADD_TEST(ast_unary_expr_test_4),
     ADD_TEST(ast_func_decl_test_1),
+    ADD_TEST(ast_func_decl_test_2),
+    ADD_TEST(ast_func_decl_test_3),
+    ADD_TEST(ast_func_decl_test_4),
+    ADD_TEST(ast_func_decl_test_5),
+    ADD_TEST(ast_func_decl_test_6),
+    ADD_TEST(ast_func_decl_test_7),
+    ADD_TEST(ast_block_stmt_test_1),
+    ADD_TEST(ast_block_stmt_test_2),
+    ADD_TEST(ast_block_stmt_test_3),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 
