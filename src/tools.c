@@ -1,5 +1,7 @@
 #include "tools.h"
+#include "macros.h"
 
+int string_stream_grow_buffer(t_string_stream* stream);
 
 t_string_stream* string_stream_init() {
     t_string_stream* stream = (t_string_stream*)malloc(sizeof(t_string_stream));
