@@ -219,7 +219,7 @@ int getNumber(t_tokinizer_ptr tokinizer) {
     return BRAMA_OK;
 }
 
-BRAMA_STATUS getOperator(t_tokinizer_ptr tokinizer) {
+brama_status getOperator(t_tokinizer_ptr tokinizer) {
     char ch      = getChar(tokinizer);
     char chNext  = getNextChar(tokinizer);
     char chThird = getThirdChar(tokinizer);
@@ -363,7 +363,7 @@ NEW_AST_DEF(func_call, t_func_call_ptr, AST_FUNCTION_CALL,        func_call_ptr)
 NEW_AST_DEF(func_decl, t_func_decl_ptr, AST_FUNCTION_DECLARATION, func_decl_ptr)
 NEW_AST_DEF(block,     t_vector_ptr,    AST_BLOCK,                vector_ptr)
 
-BRAMA_STATUS as_primative(t_token_ptr token, t_ast_ptr_ptr ast) {
+brama_status as_primative(t_token_ptr token, t_ast_ptr_ptr ast) {
     switch (token->type) {
     case TOKEN_INTEGER:
         *ast = new_primative_ast_int(get_integer(token));
@@ -403,7 +403,7 @@ bool is_primative(t_token_ptr token) {
                              (is_keyword(token) && get_keyword_type(token) == KEYWORD_NULL));
 }
 
-BRAMA_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
     if (is_primative(ast_peek(context))) {
         ast_consume(context);
         return as_primative(ast_previous(context), ast);
@@ -411,7 +411,7 @@ BRAMA_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
 
     BACKUP_PARSER_INDEX();
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) {
-        BRAMA_STATUS status = ast_expression(context, ast, NULL);
+        brama_status status = ast_expression(context, ast, NULL);
         if (status != BRAMA_OK)
             RESTORE_PARSER_INDEX_AND_RETURN(status);
 
@@ -441,7 +441,7 @@ BRAMA_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
                 if (ast_consume_operator(context, OPERATOR_COLON_MARK) == NULL) // Require ':' operator
                     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DICTIONARY_NOT_VALID);
 
-                BRAMA_STATUS status = ast_primary_expr(context, &item, NULL); // todo: should be also function decleration
+                brama_status status = ast_primary_expr(context, &item, NULL); // todo: should be also function decleration
                 if (status != BRAMA_OK)
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
 
@@ -460,7 +460,7 @@ BRAMA_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
         if (!ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
             do {
                 t_ast_ptr item = NULL;
-                BRAMA_STATUS status = ast_primary_expr(context, &item, NULL);
+                brama_status status = ast_primary_expr(context, &item, NULL);
                 if (status != BRAMA_OK)
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
 
@@ -478,7 +478,7 @@ BRAMA_STATUS ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
-BRAMA_STATUS ast_symbol_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+brama_status ast_symbol_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
     if (is_symbol(ast_peek(context))) {
         *ast = new_symbol_ast(get_symbol(ast_consume(context)));
         return BRAMA_OK;
@@ -487,8 +487,8 @@ BRAMA_STATUS ast_symbol_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr 
     return BRAMA_EXPRESSION_NOT_VALID;
 }
 
-BRAMA_STATUS ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    BRAMA_STATUS status = ast_primary_expr(context, ast, NULL);
+brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    brama_status status = ast_primary_expr(context, ast, NULL);
     if (status == BRAMA_OK)
         return status;
 
@@ -512,7 +512,7 @@ BRAMA_STATUS ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_d
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
             do {
                 t_ast_ptr arg = NULL;
-                BRAMA_STATUS status = ast_primary_expr(context, &arg, NULL);
+                brama_status status = ast_primary_expr(context, &arg, NULL);
                 if (status != BRAMA_OK)
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
 
@@ -532,7 +532,7 @@ BRAMA_STATUS ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_d
     return BRAMA_OK;
 }
 
-BRAMA_STATUS ast_block_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+brama_status ast_block_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
     BACKUP_PARSER_INDEX();
 
     if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_START)) {
@@ -540,7 +540,7 @@ BRAMA_STATUS ast_block_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
         if (!ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_END)) {
             do {
                 t_ast_ptr block = NULL;
-                BRAMA_STATUS status = ast_declaration_stmt(context, &block, NULL);
+                brama_status status = ast_declaration_stmt(context, &block, NULL);
                 if (status != BRAMA_OK) 
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
 
@@ -559,7 +559,7 @@ BRAMA_STATUS ast_block_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 }
 
-BRAMA_STATUS ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
     BACKUP_PARSER_INDEX();
 
     bool anony_func = false;
@@ -568,7 +568,7 @@ BRAMA_STATUS ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
 
     if (ast_match_keyword(context, 1, KEYWORD_FUNCTION)) {
         t_ast_ptr function_name_ast = NULL;
-        BRAMA_STATUS status = ast_symbol_expr(context, &function_name_ast, NULL);
+        brama_status status = ast_symbol_expr(context, &function_name_ast, NULL);
         if (!anony_func && status != BRAMA_OK)
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_FUNCTION_NAME_REQUIRED);
 
@@ -579,7 +579,7 @@ BRAMA_STATUS ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
             do {
                 t_ast_ptr arg = NULL;
-                BRAMA_STATUS status = ast_symbol_expr(context, &arg, NULL);
+                brama_status status = ast_symbol_expr(context, &arg, NULL);
                 if (status != BRAMA_OK)
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
 
@@ -591,11 +591,11 @@ BRAMA_STATUS ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
 
         t_ast_ptr body = NULL;
-        BRAMA_STATUS body_status = ast_block_stmt(context, &body, NULL);
+        brama_status body_status = ast_block_stmt(context, &body, NULL);
         if (body_status != BRAMA_OK)
             RESTORE_PARSER_INDEX_AND_RETURN(body_status);
 
-        if (anony_func && ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES) == NULL)
+        if (anony_func && ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES) == false)
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
 
         t_func_decl_ptr func_decl = malloc(sizeof(t_func_decl));
@@ -615,11 +615,11 @@ BRAMA_STATUS ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
 }
 
 
-BRAMA_STATUS ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
     if (ast_match_operator(context, 4, OPERATOR_SUBTRACTION, OPERATOR_INCREMENT, OPERATOR_DECCREMENT, OPERATOR_NOT)){
         int operator_type = get_operator_type(ast_previous(context));
         t_ast_ptr right = NULL;
-        BRAMA_STATUS status = ast_unary_expr(context, &right, NULL);
+        brama_status status = ast_unary_expr(context, &right, NULL);
         if (status != BRAMA_OK)
             return status;
 
@@ -636,8 +636,8 @@ BRAMA_STATUS ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
     return ast_call(context, ast, NULL);
 }
 
-BRAMA_STATUS ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    BRAMA_STATUS status = BRAMA_NOK;
+brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    brama_status status = BRAMA_NOK;
     
     status = ast_function_decleration(context, ast, NULL);
     if (status == BRAMA_OK)
@@ -666,15 +666,15 @@ BRAMA_STATUS ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
-BRAMA_STATUS ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    BRAMA_STATUS left_status = ast_addition_expr(context, ast, NULL);
+brama_status ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    brama_status left_status = ast_addition_expr(context, ast, NULL);
     if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 4, OPERATOR_GREATER_THAN, OPERATOR_GREATER_EQUAL_THAN, OPERATOR_LESS_THAN, OPERATOR_LESS_EQUAL_THAN)) {
         int opt         = get_operator(ast_previous(context));
         t_ast_ptr right = NULL;
-        BRAMA_STATUS right_status = ast_addition_expr(context, &right, NULL);
+        brama_status right_status = ast_addition_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status;
 
@@ -688,15 +688,15 @@ BRAMA_STATUS ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
     return BRAMA_OK;
 }
 
-BRAMA_STATUS ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    BRAMA_STATUS left_status = ast_control_expr(context, ast, NULL);
+brama_status ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    brama_status left_status = ast_control_expr(context, ast, NULL);
     if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 4, OPERATOR_EQUAL, OPERATOR_EQUAL_VALUE, OPERATOR_NOT_EQUAL, OPERATOR_NOT_EQUAL_VALUE)) {
         int opt         = get_operator(ast_previous(context));
         t_ast_ptr right = NULL;
-        BRAMA_STATUS right_status = ast_control_expr(context, &right, NULL);
+        brama_status right_status = ast_control_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status;
 
@@ -710,15 +710,15 @@ BRAMA_STATUS ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_pt
     return BRAMA_OK;
 }
 
-BRAMA_STATUS ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    BRAMA_STATUS left_status = ast_equality_expr(context, ast, NULL);
+brama_status ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    brama_status left_status = ast_equality_expr(context, ast, NULL);
     if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 1, OPERATOR_AND)) {
         int opt         = get_operator(ast_previous(context));
         t_ast_ptr right = NULL;
-        BRAMA_STATUS right_status = ast_equality_expr(context, &right, NULL);
+        brama_status right_status = ast_equality_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status;
 
@@ -732,15 +732,15 @@ BRAMA_STATUS ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr ext
     return BRAMA_OK;
 }
 
-BRAMA_STATUS ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    BRAMA_STATUS left_status = ast_and_expr(context, ast, NULL);
+brama_status ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    brama_status left_status = ast_and_expr(context, ast, NULL);
     if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 1, OPERATOR_OR)) {
         int opt         = get_operator(ast_previous(context));
         t_ast_ptr right = NULL;
-        BRAMA_STATUS right_status = ast_and_expr(context, &right, NULL);
+        brama_status right_status = ast_and_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status;
 
@@ -754,15 +754,15 @@ BRAMA_STATUS ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extr
     return BRAMA_OK;
 }
 
-BRAMA_STATUS ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    BRAMA_STATUS left_status = ast_multiplication_expr(context, ast, NULL);
+brama_status ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    brama_status left_status = ast_multiplication_expr(context, ast, NULL);
     if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 2, OPERATOR_ADDITION, OPERATOR_SUBTRACTION)) {
         int opt         = get_operator(ast_previous(context));
         t_ast_ptr right = NULL;
-        BRAMA_STATUS right_status = ast_multiplication_expr(context, &right, NULL);
+        brama_status right_status = ast_multiplication_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status;
 
@@ -776,15 +776,15 @@ BRAMA_STATUS ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_pt
     return BRAMA_OK;
 }
 
-BRAMA_STATUS ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    BRAMA_STATUS left_status = ast_unary_expr(context, ast, NULL);
+brama_status ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    brama_status left_status = ast_unary_expr(context, ast, NULL);
     if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 2, OPERATOR_DIVISION, OPERATOR_MULTIPLICATION)) {
         int opt         = get_operator(ast_previous(context));
         t_ast_ptr right = NULL;
-        BRAMA_STATUS right_status = ast_unary_expr(context, &right, NULL);
+        brama_status right_status = ast_unary_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status;
 
@@ -798,7 +798,7 @@ BRAMA_STATUS ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, v
     return BRAMA_OK;
 }
 
-BRAMA_STATUS ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
     BACKUP_PARSER_INDEX()
 
     int type = KEYWORD_VAR;
@@ -813,7 +813,7 @@ BRAMA_STATUS ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_
     if (ast_match_operator(context, 6, OPERATOR_ASSIGN, OPERATOR_ASSIGN_ADDITION, OPERATOR_ASSIGN_DIVISION, OPERATOR_ASSIGN_MODULUS, OPERATOR_ASSIGN_MULTIPLICATION, OPERATOR_ASSIGN_SUBTRACTION)) {
         int opt         = get_operator(ast_previous(context));
         t_ast_ptr right = NULL;
-        BRAMA_STATUS right_status = ast_assignable(context, &right, NULL);
+        brama_status right_status = ast_assignable(context, &right, NULL);
         if (right_status != BRAMA_OK)
             RESTORE_PARSER_INDEX_AND_RETURN(right_status);
 
@@ -830,8 +830,8 @@ BRAMA_STATUS ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_
     return BRAMA_OK;
 }
 
-BRAMA_STATUS ast_assignable(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    BRAMA_STATUS status = BRAMA_NOK;
+brama_status ast_assignable(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    brama_status status = BRAMA_NOK;
     
     status = ast_function_decleration(context, ast, NULL);
     if (status == BRAMA_OK)
@@ -848,10 +848,10 @@ BRAMA_STATUS ast_assignable(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
-BRAMA_STATUS ast_expression(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+brama_status ast_expression(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
     BACKUP_PARSER_INDEX();
 
-    BRAMA_STATUS status = ast_or_expr(context, ast, NULL);
+    brama_status status = ast_or_expr(context, ast, NULL);
     if (status != BRAMA_OK)
         RESTORE_PARSER_INDEX_AND_RETURN(status);
 
@@ -878,17 +878,17 @@ t_token_ptr ast_peek(t_context_ptr context) {
     return vector_get(context->tokinizer->tokens, context->parser->index);
 }
 
-bool ast_check_token(t_context_ptr context, int token_type) {
+bool ast_check_token(t_context_ptr context, brama_token_type token_type) {
     t_token_ptr token = ast_peek(context);
     return token != NULL && token->type == token_type;
 }
 
-bool ast_check_operator(t_context_ptr context, int operator_type) {
+bool ast_check_operator(t_context_ptr context, brama_operator_type operator_type) {
     t_token_ptr token = ast_peek(context);
     return token != NULL && token->type == TOKEN_OPERATOR && token->int_ == operator_type;
 }
 
-bool ast_check_keyword(t_context_ptr context, int keyword_type) {
+bool ast_check_keyword(t_context_ptr context, brama_keyword_type keyword_type) {
     t_token_ptr token = ast_peek(context);
     return token != NULL && token->type == TOKEN_KEYWORD && token->int_ == keyword_type;
 }
@@ -935,26 +935,26 @@ bool ast_match_keyword(t_context_ptr context, size_t count, ...) {
     return 0;
 }
 
-t_token_ptr ast_consume_operator(t_context_ptr context, int operator_type) {
+t_token_ptr ast_consume_operator(t_context_ptr context, brama_operator_type operator_type) {
     if (ast_check_operator(context, operator_type)) return ast_consume(context);
     return NULL;
 }
 
-t_token_ptr ast_consume_token(t_context_ptr context, int token_type) {
+t_token_ptr ast_consume_token(t_context_ptr context, brama_token_type token_type) {
     if (ast_check_token(context, token_type)) return ast_consume(context);
     return NULL;
 }
 
-t_token_ptr ast_consume_keyword(t_context_ptr context, int keyword_type) {
+t_token_ptr ast_consume_keyword(t_context_ptr context, brama_keyword_type keyword_type) {
     if (ast_check_keyword(context, keyword_type)) return ast_consume(context);
     return NULL;
 }
 
-BRAMA_STATUS ast_parser(t_context_ptr context) {
+brama_status ast_parser(t_context_ptr context) {
     context->parser->index = 0;
     while (!ast_is_at_end(context)) {
         t_ast_ptr ast  = NULL;
-        BRAMA_STATUS status = ast_declaration_stmt(context, &ast, NULL);
+        brama_status status = ast_declaration_stmt(context, &ast, NULL);
         if (status == BRAMA_OK)
             vector_add(context->parser->asts, ast);
         else
@@ -1011,7 +1011,7 @@ char_ptr brama_set_error(t_context_ptr context, int error) {
 }
 
 void brama_execute(t_context_ptr context, char_ptr data) {
-    BRAMA_STATUS tokinizer_status = brama_tokinize(context, data);
+    brama_status tokinizer_status = brama_tokinize(context, data);
     if (tokinizer_status != BRAMA_OK) {
         context->status = tokinizer_status;
         if (context->error_message != NULL && strlen(context->error_message) > 0)
@@ -1021,7 +1021,7 @@ void brama_execute(t_context_ptr context, char_ptr data) {
         return;
     }
 
-    BRAMA_STATUS ast_status = ast_parser(context);
+    brama_status ast_status = ast_parser(context);
     if (ast_status != BRAMA_OK) {
         context->status        = ast_status;
         context->error_message = brama_set_error(context, ast_status);

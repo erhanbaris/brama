@@ -32,7 +32,7 @@
 #define DOUBLE_CHECK(INDEX, NUMBER) \
     if ((t_token*)vector_get(context->tokinizer->tokens, INDEX ) == NULL) return MUNIT_FAIL;\
     munit_assert_int (((t_token*)vector_get(context->tokinizer->tokens, INDEX ))->type, ==, TOKEN_DOUBLE); \
-    munit_assert_int ((((t_token*)vector_get(context->tokinizer->tokens, INDEX ))->double_), ==, NUMBER );
+    munit_assert_double((((t_token*)vector_get(context->tokinizer->tokens, INDEX ))->double_), ==, NUMBER );
 
 
 /* STRING TESTS BEGIN --> */

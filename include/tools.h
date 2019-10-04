@@ -22,6 +22,8 @@ typedef struct {
 } t_string_stream;
 
 t_string_stream* string_stream_init       ();
+
+/* todo: should return status not char* or int */
 int              string_stream_add        (t_string_stream* stream, char const* data);
 int              string_stream_add_char   (t_string_stream* stream, char data);
 char*            string_stream_get        (t_string_stream* stream);
@@ -36,6 +38,8 @@ typedef struct {
 } t_vector;
 
 t_vector* vector_init   ();
+
+/* todo: should return status not char* or int */
 int       vector_add    (t_vector* vector, void* data);
 void*     vector_get    (t_vector* vector, size_t index);
 int       vector_destroy(t_vector* vector);

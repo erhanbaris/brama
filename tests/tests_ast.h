@@ -329,7 +329,7 @@ MunitResult ast_primary_expr_test_1(const MunitParameter params[], void* user_da
 
     ast = NULL;
     munit_assert_int(ast_expression(context, &ast, NULL), ==, BRAMA_OK);
-    munit_assert_int(ast->primative_ptr->double_, ==, 10.1);
+    munit_assert_double(ast->primative_ptr->double_, ==, 10.1);
     munit_assert_int(ast->primative_ptr->type,    ==, PRIMATIVE_DOUBLE);
 
     ast = NULL;
@@ -383,7 +383,7 @@ MunitResult ast_primary_expr_test_2(const MunitParameter params[], void* user_da
     munit_assert_int(((t_primative_ptr)vector_get(vector, 2))->type, ==, PRIMATIVE_NULL);
 
     munit_assert_int(((t_primative_ptr)vector_get(vector, 3))->type,    ==, PRIMATIVE_DOUBLE);
-    munit_assert_int(((t_primative_ptr)vector_get(vector, 3))->double_, ==, 1.1);
+    munit_assert_double(((t_primative_ptr)vector_get(vector, 3))->double_, ==, 1.1);
 
     munit_assert_int(((t_primative_ptr)vector_get(vector, 4))->type,         ==, PRIMATIVE_ARRAY);
     munit_assert_int(((t_primative_ptr)vector_get(vector, 4))->array->count, ==, 0);

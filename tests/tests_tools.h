@@ -60,7 +60,7 @@ MunitResult vector_6(const MunitParameter params[], void* user_data_or_fixture) 
     t_vector* vector = vector_init();
 
     for (int i = 0; i < 1024; ++i)
-        vector_add(vector, i);
+        vector_add(vector, (void*)i);
 
     for (int i = 0; i < 1024; ++i)
         munit_assert_int((int)vector_get(vector, i), ==, i);
@@ -81,7 +81,7 @@ MunitResult vector_7(const MunitParameter params[], void* user_data_or_fixture) 
 
     for (int i = 0; i < 1024; ++i)
     {
-        t_test* data = malloc(sizeof(t_test));
+        t_test* data = (t_test*)malloc(sizeof(t_test));
         data->i = i;
         vector_add(vector, data);
     }
@@ -104,7 +104,7 @@ MunitResult vector_8(const MunitParameter params[], void* user_data_or_fixture) 
     t_vector* vector = vector_init();
 
     for (int i = 0; i < 1024 * 1024; ++i)
-        vector_add(vector, i);
+        vector_add(vector, (void*)i);
 
     for (int i = 0; i < 1024 * 1024; ++i)
         munit_assert_int((int)vector_get(vector, i), ==, i);
@@ -120,7 +120,7 @@ MunitResult vector_9(const MunitParameter params[], void* user_data_or_fixture) 
     t_vector* vector = vector_init();
 
     for (int i = 0; i < 10; ++i)
-        vector_add(vector, i);
+        vector_add(vector, (void*)i);
 
     munit_assert_ptr_null(vector_get(vector, 1024));
     munit_assert_ptr_null(vector_get(vector, -1));
@@ -133,7 +133,7 @@ MunitResult vector_10(const MunitParameter params[], void* user_data_or_fixture)
     t_vector* vector = vector_init();
 
     for (int i = 0; i < 10; ++i)
-        vector_add(vector, i);
+        vector_add(vector, (void*)i);
 
     vector_destroy(vector);
     munit_assert_ptr_null(vector->data);
@@ -194,7 +194,7 @@ MunitResult string_stream_4(const MunitParameter params[], void* user_data_or_fi
 
 MunitResult string_stream_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_string_stream* stream = string_stream_init();
-    char* tmpData = malloc((sizeof(char) * (1024 * 3)) + 1);
+    char* tmpData = (char*)malloc((sizeof(char) * (1024 * 3)) + 1);
     char key[] = "abc";
 
     for (size_t i = 0; i < 1024; ++i)
@@ -217,7 +217,7 @@ MunitResult string_stream_5(const MunitParameter params[], void* user_data_or_fi
 
 MunitResult string_stream_6(const MunitParameter params[], void* user_data_or_fixture) {
     t_string_stream* stream = string_stream_init();
-    char* tmpData = malloc((sizeof(char) * (1024 * 3)) + 1);
+    char* tmpData = (char*)malloc((sizeof(char) * (1024 * 3)) + 1);
     char key[] = "abc";
 
     for (size_t i = 0; i < 1024; ++i)
@@ -243,7 +243,7 @@ MunitResult string_stream_7(const MunitParameter params[], void* user_data_or_fi
 
 MunitResult string_stream_8(const MunitParameter params[], void* user_data_or_fixture) {
     t_string_stream* stream = string_stream_init();
-    char* tmpData = malloc((sizeof(char) * (1024)) + 1);
+    char* tmpData = (char*)malloc((sizeof(char) * (1024)) + 1);
     char key[] = "a";
 
     for (size_t i = 0; i < 1024; ++i) {
