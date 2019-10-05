@@ -5,6 +5,17 @@
 #include "brama.h"
 #include "brama_internal.h"
 
+#define CHECK_OK(NAME, TEXT) \
+    MunitResult NAME (const MunitParameter params[], void* user_data_or_fixture) { \
+        t_context* context = brama_init();                                         \
+        brama_execute(context,  TEXT );                                            \
+        context->parser->index = 0;                                                \
+        t_ast_ptr ast = NULL;                                                      \
+        munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);\
+        brama_destroy(context);                                                    \
+        return MUNIT_OK;                                                           \
+    }
+
 MunitResult ast_peek_test(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_peek(context));
@@ -504,7 +515,7 @@ MunitResult ast_primary_expr_test_8(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_EXPRESSION_NOT_VALID);
+    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_OK);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -1165,6 +1176,9 @@ MunitResult ast_func_decl_test_7(const MunitParameter params[], void* user_data_
     return MUNIT_OK;
 }
 
+CHECK_OK(ast_func_decl_test_8, "var test = function () {}");
+CHECK_OK(ast_func_decl_test_9, "var test = {func: function () {}}");
+
 MunitResult ast_block_stmt_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_execute(context, "{{}}");
@@ -1208,6 +1222,83 @@ MunitResult ast_block_stmt_test_3(const MunitParameter params[], void* user_data
 
     t_ast_ptr ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_EXPRESSION_NOT_VALID);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_new_object_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "new test()");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_new_object(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast->type, ==, AST_OBJECT_CREATION);
+    munit_assert_ptr_not_null(ast->object_creation_ptr);
+    munit_assert_string_equal(ast->object_creation_ptr->object_name, "test");
+    munit_assert_ptr_not_null(ast->object_creation_ptr->args);
+    munit_assert_int         (ast->object_creation_ptr->args->count, ==, 0);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_new_object_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "var obj = new test()");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
+    munit_assert_ptr_not_null(ast->assign_ptr);
+    munit_assert_string_equal(ast->assign_ptr->symbol, "obj");
+    munit_assert_ptr_not_null(ast->assign_ptr->def_type);
+    munit_assert_ptr_not_null(ast->assign_ptr->assignment);
+    munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
+    munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
+    munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->count, ==, 0);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_new_object_3(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "var obj = new test()");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
+    munit_assert_ptr_not_null(ast->assign_ptr);
+    munit_assert_string_equal(ast->assign_ptr->symbol, "obj");
+    munit_assert_ptr_not_null(ast->assign_ptr->def_type);
+    munit_assert_ptr_not_null(ast->assign_ptr->assignment);
+    munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
+    munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
+    munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->count, ==, 0);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_new_object_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "var obj = new test({test:1}, 1, true, function() { })");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
+    munit_assert_ptr_not_null(ast->assign_ptr);
+    munit_assert_string_equal(ast->assign_ptr->symbol, "obj");
+    munit_assert_ptr_not_null(ast->assign_ptr->def_type);
+    munit_assert_ptr_not_null(ast->assign_ptr->assignment);
+    munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
+    munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
+    munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->count, ==, 4);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -1269,9 +1360,14 @@ MunitTest AST_TESTS[] = {
     ADD_TEST(ast_func_decl_test_5),
     ADD_TEST(ast_func_decl_test_6),
     ADD_TEST(ast_func_decl_test_7),
+    ADD_TEST(ast_func_decl_test_8),
     ADD_TEST(ast_block_stmt_test_1),
     ADD_TEST(ast_block_stmt_test_2),
     ADD_TEST(ast_block_stmt_test_3),
+    ADD_TEST(ast_new_object_1),
+    ADD_TEST(ast_new_object_2),
+    ADD_TEST(ast_new_object_3),
+    ADD_TEST(ast_new_object_4),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 

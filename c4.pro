@@ -27,4 +27,5 @@ HEADERS += \
     include/tools.h \
     tests/tests_tools.h \
     include/brama_internal.h \
-    tests/tests_ast.h
+    tests/tests_ast.h \
+    tests/macros.h

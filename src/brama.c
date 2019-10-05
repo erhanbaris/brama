@@ -354,14 +354,15 @@ NEW_PRIMATIVE_DEF(empty,  int,           PRIMATIVE_NULL,       int_)
 NEW_PRIMATIVE_DEF(array,  t_vector_ptr,  PRIMATIVE_ARRAY,      array)
 NEW_PRIMATIVE_DEF(dict,   map_ast_t_ptr, PRIMATIVE_DICTIONARY, dict)
 
-NEW_AST_DEF(symbol,    char_ptr,        AST_SYMBOL,               char_ptr)
-NEW_AST_DEF(unary,     t_unary_ptr,     AST_UNARY,                unary_ptr)
-NEW_AST_DEF(binary,    t_binary_ptr,    AST_BINARY_OPERATION,     binary_ptr)
-NEW_AST_DEF(control,   t_control_ptr,   AST_CONTROL_OPERATION,    control_ptr)
-NEW_AST_DEF(assign,    t_assign_ptr,    AST_ASSIGNMENT,           assign_ptr)
-NEW_AST_DEF(func_call, t_func_call_ptr, AST_FUNCTION_CALL,        func_call_ptr)
-NEW_AST_DEF(func_decl, t_func_decl_ptr, AST_FUNCTION_DECLARATION, func_decl_ptr)
-NEW_AST_DEF(block,     t_vector_ptr,    AST_BLOCK,                vector_ptr)
+NEW_AST_DEF(symbol,    char_ptr,              AST_SYMBOL,               char_ptr)
+NEW_AST_DEF(unary,     t_unary_ptr,           AST_UNARY,                unary_ptr)
+NEW_AST_DEF(binary,    t_binary_ptr,          AST_BINARY_OPERATION,     binary_ptr)
+NEW_AST_DEF(control,   t_control_ptr,         AST_CONTROL_OPERATION,    control_ptr)
+NEW_AST_DEF(assign,    t_assign_ptr,          AST_ASSIGNMENT,           assign_ptr)
+NEW_AST_DEF(func_call, t_func_call_ptr,       AST_FUNCTION_CALL,        func_call_ptr)
+NEW_AST_DEF(func_decl, t_func_decl_ptr,       AST_FUNCTION_DECLARATION, func_decl_ptr)
+NEW_AST_DEF(block,     t_vector_ptr,          AST_BLOCK,                vector_ptr)
+NEW_AST_DEF(object,    t_object_creation_ptr, AST_OBJECT_CREATION,      object_creation_ptr)
 
 brama_status as_primative(t_token_ptr token, t_ast_ptr_ptr ast) {
     switch (token->type) {
@@ -441,7 +442,7 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
                 if (ast_consume_operator(context, OPERATOR_COLON_MARK) == NULL) // Require ':' operator
                     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DICTIONARY_NOT_VALID);
 
-                brama_status status = ast_primary_expr(context, &item, NULL); // todo: should be also function decleration
+                brama_status status = ast_assignable(context, &item, NULL); // todo: should be also function decleration
                 if (status != BRAMA_OK)
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
 
@@ -569,7 +570,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
     if (ast_match_keyword(context, 1, KEYWORD_FUNCTION)) {
         t_ast_ptr function_name_ast = NULL;
         brama_status status = ast_symbol_expr(context, &function_name_ast, NULL);
-        if (!anony_func && status != BRAMA_OK)
+        if ((int*)extra_data != FUNC_DEF_ASSIGNMENT && !anony_func && status != BRAMA_OK)
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_FUNCTION_NAME_REQUIRED);
 
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
@@ -656,7 +657,13 @@ brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void
         return BRAMA_OK;
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
         return status;
-    
+
+    status = ast_new_object(context, ast, NULL);
+    if (status == BRAMA_OK)
+        return BRAMA_OK;
+    else if (status != BRAMA_DOES_NOT_MATCH_AST)
+        return status;
+
     status = ast_expression(context, ast, NULL);
     if (status == BRAMA_OK)
         return BRAMA_OK;
@@ -830,15 +837,62 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_
     return BRAMA_OK;
 }
 
+brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    BACKUP_PARSER_INDEX();
+
+    if (ast_match_keyword(context, 1, KEYWORD_NEW)) {
+        if (!is_symbol(ast_peek(context)))
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_NEW_CLASS_CREATION_NOT_VALID);
+
+        char_ptr object_name = get_symbol(ast_consume(context));
+        if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES) == NULL)
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_NEW_CLASS_CREATION_NOT_VALID);
+
+        t_vector_ptr args = vector_init();
+        if (ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES) == NULL) {
+            do {
+                t_ast_ptr arg = NULL;
+                brama_status status = ast_assignable(context, &arg, NULL);
+                if (status != BRAMA_OK) {
+                    vector_destroy(args);
+                    RESTORE_PARSER_INDEX_AND_RETURN(status);
+                }
+
+                vector_add(args, arg);
+            } while (ast_match_operator(context, 1, OPERATOR_COMMA));
+
+            if (ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES) == NULL) {
+                vector_destroy(args);
+                RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
+            }
+        }
+
+        t_object_creation_ptr object = (t_object_creation_ptr)malloc(sizeof(t_object_creation));
+        object->object_name = object_name;
+        object->args        = args;
+        *ast = new_object_ast(object);
+        return BRAMA_OK;
+    }
+
+    RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
+}
+
 brama_status ast_assignable(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
     brama_status status = BRAMA_NOK;
     
-    status = ast_function_decleration(context, ast, NULL);
+    status = ast_function_decleration(context, ast, FUNC_DEF_ASSIGNMENT);
     if (status == BRAMA_OK)
         return BRAMA_OK;
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
         return status;
-    
+
+
+    status = ast_new_object(context, ast, NULL);
+    if (status == BRAMA_OK)
+        return BRAMA_OK;
+    else if (status != BRAMA_DOES_NOT_MATCH_AST)
+        return status;
+
     status = ast_or_expr(context, ast, NULL);
     if (status == BRAMA_OK)
         return BRAMA_OK;
@@ -901,10 +955,10 @@ bool ast_match_token(t_context_ptr context, size_t count, ...) {
         int arg = va_arg (a_list, int);
         if (ast_check_token(context, arg)) {
             ast_consume(context);
-            return 1;
+            return true;
         }
     }
-    return 0;
+    return false;
 }
 
 bool ast_match_operator(t_context_ptr context, size_t count, ...) {
@@ -915,10 +969,10 @@ bool ast_match_operator(t_context_ptr context, size_t count, ...) {
         int arg = va_arg (a_list, int);
         if (ast_check_operator(context, arg)) {
             ast_consume(context);
-            return 1;
+            return true;
         }
     }
-    return 0;
+    return false;
 }
 
 bool ast_match_keyword(t_context_ptr context, size_t count, ...) {
@@ -929,10 +983,10 @@ bool ast_match_keyword(t_context_ptr context, size_t count, ...) {
         int arg = va_arg (a_list, int);
         if (ast_check_keyword(context, arg)) {
             ast_consume(context);
-            return 1;
+            return true;
         }
     }
-    return 0;
+    return false;
 }
 
 t_token_ptr ast_consume_operator(t_context_ptr context, brama_operator_type operator_type) {
