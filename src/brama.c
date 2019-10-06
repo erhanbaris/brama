@@ -363,6 +363,7 @@ NEW_AST_DEF(func_call, t_func_call_ptr,       AST_FUNCTION_CALL,        func_cal
 NEW_AST_DEF(func_decl, t_func_decl_ptr,       AST_FUNCTION_DECLARATION, func_decl_ptr)
 NEW_AST_DEF(block,     t_vector_ptr,          AST_BLOCK,                vector_ptr)
 NEW_AST_DEF(object,    t_object_creation_ptr, AST_OBJECT_CREATION,      object_creation_ptr)
+NEW_AST_DEF(while,     t_while_loop_ptr ,     AST_WHILE,                while_ptr)
 
 brama_status as_primative(t_token_ptr token, t_ast_ptr_ptr ast) {
     switch (token->type) {
@@ -877,10 +878,45 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 }
 
+brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    BACKUP_PARSER_INDEX();
+
+    if (ast_match_keyword(context, 1, KEYWORD_WHILE)) {
+        if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+
+        t_ast_ptr condition = NULL;
+        brama_status condition_status = ast_assignable(context, &condition, NULL);
+        if (condition_status != BRAMA_OK)
+            RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
+
+        if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES))
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+
+        t_ast_ptr body = NULL;
+        brama_status body_status = ast_block_stmt(context, &body, NULL);
+        if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
+            body_status = ast_assignable(context, &body, NULL);
+            if (body_status != BRAMA_OK)
+                RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_BODY_NOT_FOUND)
+        }
+        else if (condition_status != BRAMA_OK)
+            RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
+
+        t_while_loop_ptr object = (t_while_loop_ptr)malloc(sizeof(t_while_loop));
+        object->body      = body;
+        object->condition = condition;
+        *ast = new_while_ast(object);
+        return BRAMA_OK;
+    }
+
+    RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
+}
+
 brama_status ast_assignable(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
     brama_status status = BRAMA_NOK;
     
-    status = ast_function_decleration(context, ast, FUNC_DEF_ASSIGNMENT);
+    status = ast_function_decleration(context, ast, (void*)FUNC_DEF_ASSIGNMENT);
     if (status == BRAMA_OK)
         return BRAMA_OK;
     else if (status != BRAMA_DOES_NOT_MATCH_AST)

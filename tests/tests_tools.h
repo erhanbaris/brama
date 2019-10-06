@@ -59,10 +59,10 @@ MunitResult vector_5(const MunitParameter params[], void* user_data_or_fixture) 
 MunitResult vector_6(const MunitParameter params[], void* user_data_or_fixture) {
     t_vector* vector = vector_init();
 
-    for (int i = 0; i < 1024; ++i)
+    for (int32_t i = 0; i < 1024; ++i)
         vector_add(vector, (void*)i);
 
-    for (int i = 0; i < 1024; ++i)
+    for (int32_t i = 0; i < 1024; ++i)
         munit_assert_int((int)vector_get(vector, i), ==, i);
 
     munit_assert_int(vector->count,  ==, 1024);
@@ -74,25 +74,25 @@ MunitResult vector_6(const MunitParameter params[], void* user_data_or_fixture) 
 
 MunitResult vector_7(const MunitParameter params[], void* user_data_or_fixture) {
     typedef struct {
-        int i;
+        int32_t i;
     } t_test;
 
     t_vector* vector = vector_init();
 
-    for (int i = 0; i < 1024; ++i)
+    for (int32_t i = 0; i < 1024; ++i)
     {
         t_test* data = (t_test*)malloc(sizeof(t_test));
         data->i = i;
         vector_add(vector, data);
     }
 
-    for (int i = 0; i < 1024; ++i)
+    for (int32_t i = 0; i < 1024; ++i)
         munit_assert_int(((t_test*)vector_get(vector, i))->i, ==, i);
 
     munit_assert_int(vector->count,  ==, 1024);
     munit_assert_int(vector->length, ==, 1024);
 
-    for (int i = 0; i < 1024; ++i)
+    for (int32_t i = 0; i < 1024; ++i)
         free(vector_get(vector, i));
 
     vector_destroy(vector);
@@ -103,7 +103,7 @@ MunitResult vector_7(const MunitParameter params[], void* user_data_or_fixture) 
 MunitResult vector_8(const MunitParameter params[], void* user_data_or_fixture) {
     t_vector* vector = vector_init();
 
-    for (int i = 0; i < 1024 * 1024; ++i)
+    for (int32_t i = 0; i < 1024 * 1024; ++i)
         vector_add(vector, (void*)i);
 
     for (int i = 0; i < 1024 * 1024; ++i)
@@ -119,7 +119,7 @@ MunitResult vector_8(const MunitParameter params[], void* user_data_or_fixture) 
 MunitResult vector_9(const MunitParameter params[], void* user_data_or_fixture) {
     t_vector* vector = vector_init();
 
-    for (int i = 0; i < 10; ++i)
+    for (int32_t i = 0; i < 10; ++i)
         vector_add(vector, (void*)i);
 
     munit_assert_ptr_null(vector_get(vector, 1024));
@@ -132,7 +132,7 @@ MunitResult vector_9(const MunitParameter params[], void* user_data_or_fixture) 
 MunitResult vector_10(const MunitParameter params[], void* user_data_or_fixture) {
     t_vector* vector = vector_init();
 
-    for (int i = 0; i < 10; ++i)
+    for (int32_t i = 0; i < 10; ++i)
         vector_add(vector, (void*)i);
 
     vector_destroy(vector);

@@ -27,7 +27,8 @@ typedef enum brama_status  {
     BRAMA_CLOSE_OPERATOR_NOT_FOUND       = 9,
     BRAMA_DICTIONARY_NOT_VALID           = 10,
     BRAMA_FUNCTION_NAME_REQUIRED         = 11,
-    BRAMA_NEW_CLASS_CREATION_NOT_VALID   = 12
+    BRAMA_NEW_CLASS_CREATION_NOT_VALID   = 12,
+    BRAMA_BODY_NOT_FOUND                 = 13
 } brama_status;
 
 /* PRIMATIVE TYPES */
@@ -326,6 +327,9 @@ struct _t_context;
 struct _t_binary;
 struct _t_func_decl;
 struct _t_object_creation;
+struct _t_while_loop;
+
+typedef struct _t_ast t_ast;
 
 typedef map_t(struct _t_ast *) map_ast_t;
 
@@ -411,6 +415,11 @@ typedef struct _t_object_creation {
     t_vector* args;
 } t_object_creation;
 
+typedef struct _t_while_loop {
+    t_ast* condition;
+    t_ast* body;
+} t_while_loop;
+
 typedef struct _t_ast {
     brama_ast_type type;
     union {
@@ -423,6 +432,7 @@ typedef struct _t_ast {
         t_assign*          assign_ptr;
         t_vector*          vector_ptr;
         t_object_creation* object_creation_ptr;
+        t_while_loop*      while_ptr;
         struct _t_ast*     ast_ptr;
         char*              char_ptr;
         int                int_;
@@ -503,6 +513,7 @@ typedef t_ast**            t_ast_ptr_ptr;
 typedef t_context*         t_context_ptr;
 typedef t_string_stream*   t_string_stream_ptr;
 typedef t_object_creation* t_object_creation_ptr;
+typedef t_while_loop*      t_while_loop_ptr;
 typedef t_vector*          t_vector_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
