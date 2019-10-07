@@ -490,7 +490,11 @@ brama_status ast_symbol_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr 
 }
 
 brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    brama_status status = ast_primary_expr(context, ast, NULL);
+    brama_status status = ast_assignment_expr(context, ast, NULL);
+    if (status == BRAMA_OK)
+        return BRAMA_OK;
+
+    status = ast_primary_expr(context, ast, NULL);
     if (status == BRAMA_OK)
         return status;
 
@@ -653,12 +657,6 @@ brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
         return status;
 
-   status = ast_assignment_expr(context, ast, NULL);
-    if (status == BRAMA_OK)
-        return BRAMA_OK;
-    else if (status != BRAMA_DOES_NOT_MATCH_AST)
-        return status;
-
     status = ast_new_object(context, ast, NULL);
     if (status == BRAMA_OK)
         return BRAMA_OK;
@@ -728,7 +726,7 @@ brama_status ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr ext
         t_ast_ptr right = NULL;
         brama_status right_status = ast_equality_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
-            return right_status;
+            return right_status; // todo: restore index for all ast expr.
 
         t_control_ptr binary = malloc(sizeof(t_control));
         binary->left         = *ast;
