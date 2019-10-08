@@ -390,7 +390,7 @@ MunitResult symbol_token_3(const MunitParameter params[], void* user_data_or_fix
 MunitResult keyword_operator(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_execute(context, "+ - * / % ++ -- = += -= *= /= %= == === != !== ! && || & | ~ ^ << >> > < >= <= ? : &= |= ^= () [],;. // /* */");
-    munit_assert_int (context->tokinizer->tokens->count, ==, 45);
+    munit_assert_int (context->tokinizer->tokens->count, ==, 42);
     OPERATOR_CHECK(0,  OPERATOR_ADDITION);
     OPERATOR_CHECK(1,  OPERATOR_SUBTRACTION);
     OPERATOR_CHECK(2,  OPERATOR_MULTIPLICATION);
@@ -433,9 +433,6 @@ MunitResult keyword_operator(const MunitParameter params[], void* user_data_or_f
     OPERATOR_CHECK(39, OPERATOR_COMMA);
     OPERATOR_CHECK(40, OPERATOR_SEMICOLON);
     OPERATOR_CHECK(41, OPERATOR_DOT);
-    OPERATOR_CHECK(42, OPERATOR_COMMENT_LINE);
-    OPERATOR_CHECK(43, OPERATOR_COMMENT_MULTILINE_START);
-    OPERATOR_CHECK(44, OPERATOR_COMMENT_MULTILINE_END);
 
 
     brama_destroy(context);

@@ -278,7 +278,8 @@ int brama_tokinize(t_context_ptr context, char_ptr data) {
     tokinizer->contentLength  = strlen(data);
 
     while (!isEnd(tokinizer)) {
-        char ch = getChar(tokinizer);
+        char ch     = getChar(tokinizer);
+        char chNext = getNextChar(tokinizer);
 
         if (isWhitespace(ch)) {
             while (!isEnd(tokinizer) && isWhitespace(ch)) {
@@ -293,7 +294,35 @@ int brama_tokinize(t_context_ptr context, char_ptr data) {
             }
 
             continue;
-        } else if (isSymbol(ch)) {
+        } else if (ch == '/' && chNext == '/') {
+            while (!isEnd(tokinizer) && !isNewLine(ch)) {
+                increase(tokinizer);
+
+                if (isNewLine(ch)) {
+                    tokinizer->column = 0;
+                    ++tokinizer->line;
+                }
+
+                ch = getChar(tokinizer);
+            }
+
+            continue;
+        } else if (ch == '/' && chNext == '*') {
+            while (!isEnd(tokinizer) && !ch == '*' && !chNext == '/') {
+                increase(tokinizer);
+
+                if (isNewLine(ch)) {
+                    tokinizer->column = 0;
+                    ++tokinizer->line;
+                }
+
+                ch     = getChar(tokinizer);
+                chNext = getNextChar(tokinizer);
+            }
+
+            continue;
+        }
+        else if (isSymbol(ch)) {
             int state = getSymbol(tokinizer);
             RESULT_CHECK(state);
             continue;
@@ -331,12 +360,12 @@ IS_ITEM(text,     TOKEN_TEXT)
 IS_ITEM(symbol,   TOKEN_SYMBOL)
 IS_ITEM(operator, TOKEN_OPERATOR)
 
-GET_ITEM(keyword,  int_,     int)
+GET_ITEM(keyword,  int_,     brama_keyword_type)
 GET_ITEM(integer,  int_,     int)
 GET_ITEM(double,   double_,  double)
 GET_ITEM(text,     char_ptr, char_ptr)
 GET_ITEM(symbol,   char_ptr, char_ptr)
-GET_ITEM(operator, int_,     int)
+GET_ITEM(operator, int_,     brama_operator_type)
 
 #define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE)            \
     t_ast_ptr new_##NAME##_ast(INPUT variable) {       \
@@ -518,7 +547,7 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_d
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
             do {
                 t_ast_ptr arg = NULL;
-                brama_status status = ast_primary_expr(context, &arg, NULL);
+                brama_status status = ast_assignable(context, &arg, NULL);
                 if (status != BRAMA_OK)
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
 
@@ -533,9 +562,18 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_d
         func_call->args        = args;
         func_call->function    = function;
         *ast                   = new_func_call_ast(func_call);
+        return BRAMA_OK;
+    }
+    else {
+        vector_destroy(function);
+        RESTORE_PARSER_INDEX();
     }
 
-    return BRAMA_OK;
+    status = ast_symbol_expr(context, ast, NULL);
+    if (status == BRAMA_OK)
+        return status;
+
+    return BRAMA_DOES_NOT_MATCH_AST;
 }
 
 brama_status ast_block_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
@@ -622,19 +660,54 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
 
 
 brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    if (ast_match_operator(context, 4, OPERATOR_SUBTRACTION, OPERATOR_INCREMENT, OPERATOR_DECCREMENT, OPERATOR_NOT)){
-        int operator_type = get_operator_type(ast_previous(context));
-        t_ast_ptr right = NULL;
-        brama_status status = ast_unary_expr(context, &right, NULL);
+    BACKUP_PARSER_INDEX();
+
+    brama_operator_type operator_type   = OPERATOR_NONE;
+    brama_unary_operant_type unary_type = UNARY_OPERAND_BEFORE;
+    t_ast_ptr unary_content             = NULL;
+    brama_status status                 = BRAMA_NOK;
+
+    /* Looking for : --i ++i !i -i */
+    if (ast_match_operator(context, 4, OPERATOR_SUBTRACTION, OPERATOR_INCREMENT, OPERATOR_DECCREMENT, OPERATOR_NOT)) { 
+        operator_type = get_operator_type(ast_previous(context));
+
+        /* Looking for: -10 -10.1 */
+        if (operator_type == OPERATOR_SUBTRACTION && 
+           (is_integer(ast_peek(context)) || is_double(ast_peek(context)))) {
+            status = ast_primary_expr(context, &unary_content, NULL);
+        }
+        else {
+            status = ast_expression(context, &unary_content, NULL);
+        }
+
         if (status != BRAMA_OK)
-            return status;
+            RESTORE_PARSER_INDEX_AND_RETURN(status);
 
-        if ((operator_type == OPERATOR_INCREMENT || operator_type == OPERATOR_DECCREMENT) && right->type != AST_SYMBOL)
-            return BRAMA_EXPRESSION_NOT_VALID;
+        if ((operator_type == OPERATOR_INCREMENT || operator_type == OPERATOR_DECCREMENT) && unary_content->type != AST_SYMBOL)
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_EXPRESSION_NOT_VALID);
+    }
 
-        t_unary_ptr unary = malloc(sizeof (t_unary));
-        unary->opt        = operator_type;
-        unary->right      = right;
+    /* Looking for : i++ i-- 
+    todo: not working, fix it*/
+        
+    else if (is_symbol(ast_peek(context)) && ast_match_operator(context, 4, OPERATOR_INCREMENT, OPERATOR_DECCREMENT)) {
+        unary_type    = UNARY_OPERAND_AFTER;
+        operator_type = get_operator_type(ast_consume(context));
+        status = ast_primary_expr(context, &unary_content, NULL);
+        if (status != BRAMA_OK)
+            RESTORE_PARSER_INDEX_AND_RETURN(status);
+
+        if (unary_content->type != AST_PRIMATIVE || 
+            (unary_content->primative_ptr->type != PRIMATIVE_DOUBLE && unary_content->primative_ptr->type != PRIMATIVE_INTEGER))
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_INVALID_UNARY_EXPRESSION);
+    }
+
+
+    if (operator_type != OPERATOR_NONE) {
+        t_unary_ptr unary   = malloc(sizeof (t_unary));
+        unary->operand_type = UNARY_OPERAND_BEFORE;
+        unary->opt          = operator_type;
+        unary->content      = unary_content;
         *ast = new_unary_ast(unary);
         return BRAMA_OK;
     }
@@ -678,8 +751,8 @@ brama_status ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
         return left_status;
 
     while (ast_match_operator(context, 4, OPERATOR_GREATER_THAN, OPERATOR_GREATER_EQUAL_THAN, OPERATOR_LESS_THAN, OPERATOR_LESS_EQUAL_THAN)) {
-        int opt         = get_operator(ast_previous(context));
-        t_ast_ptr right = NULL;
+        brama_operator_type opt = get_operator(ast_previous(context));
+        t_ast_ptr right         = NULL;
         brama_status right_status = ast_addition_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status;
@@ -700,8 +773,8 @@ brama_status ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_pt
         return left_status;
 
     while (ast_match_operator(context, 4, OPERATOR_EQUAL, OPERATOR_EQUAL_VALUE, OPERATOR_NOT_EQUAL, OPERATOR_NOT_EQUAL_VALUE)) {
-        int opt         = get_operator(ast_previous(context));
-        t_ast_ptr right = NULL;
+        brama_operator_type opt = get_operator(ast_previous(context));
+        t_ast_ptr right         = NULL;
         brama_status right_status = ast_control_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status;
@@ -722,8 +795,8 @@ brama_status ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr ext
         return left_status;
 
     while (ast_match_operator(context, 1, OPERATOR_AND)) {
-        int opt         = get_operator(ast_previous(context));
-        t_ast_ptr right = NULL;
+        brama_operator_type opt = get_operator(ast_previous(context));
+        t_ast_ptr right         = NULL;
         brama_status right_status = ast_equality_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status; // todo: restore index for all ast expr.
@@ -744,8 +817,8 @@ brama_status ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extr
         return left_status;
 
     while (ast_match_operator(context, 1, OPERATOR_OR)) {
-        int opt         = get_operator(ast_previous(context));
-        t_ast_ptr right = NULL;
+        brama_operator_type opt = get_operator(ast_previous(context));
+        t_ast_ptr right         = NULL;
         brama_status right_status = ast_and_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status;
@@ -766,8 +839,8 @@ brama_status ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_pt
         return left_status;
 
     while (ast_match_operator(context, 2, OPERATOR_ADDITION, OPERATOR_SUBTRACTION)) {
-        int opt         = get_operator(ast_previous(context));
-        t_ast_ptr right = NULL;
+        brama_operator_type opt = get_operator(ast_previous(context));
+        t_ast_ptr right         = NULL;
         brama_status right_status = ast_multiplication_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status;
@@ -788,8 +861,8 @@ brama_status ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, v
         return left_status;
 
     while (ast_match_operator(context, 2, OPERATOR_DIVISION, OPERATOR_MULTIPLICATION)) {
-        int opt         = get_operator(ast_previous(context));
-        t_ast_ptr right = NULL;
+        brama_operator_type opt = get_operator(ast_previous(context));
+        t_ast_ptr right         = NULL;
         brama_status right_status = ast_unary_expr(context, &right, NULL);
         if (right_status != BRAMA_OK)
             return right_status;
@@ -812,13 +885,13 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_
         type = get_keyword(ast_previous(context));
 
     if (!is_symbol(ast_peek(context)))
-        return BRAMA_DOES_NOT_MATCH_AST;
+        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 
     char_ptr variable_name = get_symbol(ast_consume(context));
 
     if (ast_match_operator(context, 6, OPERATOR_ASSIGN, OPERATOR_ASSIGN_ADDITION, OPERATOR_ASSIGN_DIVISION, OPERATOR_ASSIGN_MODULUS, OPERATOR_ASSIGN_MULTIPLICATION, OPERATOR_ASSIGN_SUBTRACTION)) {
-        int opt         = get_operator(ast_previous(context));
-        t_ast_ptr right = NULL;
+        brama_operator_type opt = get_operator(ast_previous(context));
+        t_ast_ptr right         = NULL;
         brama_status right_status = ast_assignable(context, &right, NULL);
         if (right_status != BRAMA_OK)
             RESTORE_PARSER_INDEX_AND_RETURN(right_status);
@@ -964,6 +1037,10 @@ t_token_ptr ast_previous(t_context_ptr context) {
 
 t_token_ptr ast_peek(t_context_ptr context) {
     return vector_get(context->tokinizer->tokens, context->parser->index);
+}
+
+t_token_ptr ast_next(t_context_ptr context) {
+    return vector_get(context->tokinizer->tokens, context->parser->index + 1);
 }
 
 bool ast_check_token(t_context_ptr context, brama_token_type token_type) {

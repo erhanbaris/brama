@@ -57,6 +57,8 @@ MunitResult ast_ast_while_loop_3(const MunitParameter params[], void* user_data_
     t_ast_ptr ast = NULL;
     munit_assert_int         (ast_while_loop(context, &ast, NULL), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_WHILE);
+    munit_assert_ptr_not_null(ast->while_ptr->body);
+    munit_assert_int         (ast->while_ptr->body->type, ==, AST_BLOCK);
 
     brama_destroy(context);
     return MUNIT_OK;

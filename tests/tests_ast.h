@@ -5,17 +5,6 @@
 #include "brama.h"
 #include "brama_internal.h"
 
-#define CHECK_OK(NAME, TEXT) \
-    MunitResult NAME (const MunitParameter params[], void* user_data_or_fixture) { \
-        t_context* context = brama_init();                                         \
-        brama_execute(context,  TEXT );                                            \
-        context->parser->index = 0;                                                \
-        t_ast_ptr ast = NULL;                                                      \
-        munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);\
-        brama_destroy(context);                                                    \
-        return MUNIT_OK;                                                           \
-    }
-
 MunitResult ast_peek_test(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_peek(context));
@@ -1067,10 +1056,11 @@ MunitResult ast_unary_expr_test_1(const MunitParameter params[], void* user_data
 
     t_ast_ptr ast = NULL;
     munit_assert_int         (ast_expression(context, &ast, NULL), == , BRAMA_OK);
-    munit_assert_int         (ast->type, == , AST_UNARY);
+    munit_assert_int         (ast->type,                      == , AST_UNARY);
     munit_assert_ptr_not_null(ast->unary_ptr);
-    munit_assert_int         (ast->unary_ptr->opt,    == , OPERATOR_SUBTRACTION);
-    munit_assert_int         (ast->unary_ptr->right->type, == , AST_SYMBOL);
+    munit_assert_int         (ast->unary_ptr->operand_type,   == , UNARY_OPERAND_BEFORE);
+    munit_assert_int         (ast->unary_ptr->opt,            == , OPERATOR_SUBTRACTION);
+    munit_assert_int         (ast->unary_ptr->content->type,  == , AST_SYMBOL);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -1083,10 +1073,12 @@ MunitResult ast_unary_expr_test_2(const MunitParameter params[], void* user_data
 
     t_ast_ptr ast = NULL;
     munit_assert_int         (ast_expression(context, &ast, NULL), == , BRAMA_OK);
-    munit_assert_int         (ast->type, == , AST_UNARY);
+    munit_assert_int         (ast->type,                     == , AST_UNARY);
     munit_assert_ptr_not_null(ast->unary_ptr);
-    munit_assert_int         (ast->unary_ptr->opt,    == , OPERATOR_INCREMENT);
-    munit_assert_int         (ast->unary_ptr->right->type, == , AST_SYMBOL);
+    munit_assert_int         (ast->unary_ptr->opt,           == , OPERATOR_INCREMENT);
+    munit_assert_int         (ast->unary_ptr->operand_type,  == , UNARY_OPERAND_BEFORE);
+    munit_assert_int         (ast->unary_ptr->content->type, == , AST_SYMBOL);
+    munit_assert_string_equal(ast->unary_ptr->content->char_ptr, "test");
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -1099,10 +1091,10 @@ MunitResult ast_unary_expr_test_3(const MunitParameter params[], void* user_data
 
     t_ast_ptr ast = NULL;
     munit_assert_int         (ast_expression(context, &ast, NULL), == , BRAMA_OK);
-    munit_assert_int         (ast->type, == , AST_UNARY);
+    munit_assert_int         (ast->type,                     == , AST_UNARY);
     munit_assert_ptr_not_null(ast->unary_ptr);
-    munit_assert_int         (ast->unary_ptr->opt,    == , OPERATOR_NOT);
-    munit_assert_int         (ast->unary_ptr->right->type, == , AST_SYMBOL);
+    munit_assert_int         (ast->unary_ptr->opt,           == , OPERATOR_NOT);
+    munit_assert_int         (ast->unary_ptr->content->type, == , AST_SYMBOL);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -1111,6 +1103,35 @@ MunitResult ast_unary_expr_test_3(const MunitParameter params[], void* user_data
 MunitResult ast_unary_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_execute(context, "--10");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_expression(context, &ast, NULL), == , BRAMA_EXPRESSION_NOT_VALID);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_unary_expr_test_5(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context, "test++");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_expression(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast->type,                           == , AST_UNARY);
+    munit_assert_int         (ast->unary_ptr->operand_type,        == , UNARY_OPERAND_AFTER);
+    munit_assert_int         (ast->unary_ptr->opt,                 == , OPERATOR_INCREMENT);
+    munit_assert_int         (ast->unary_ptr->content->type,       == , AST_SYMBOL);
+    munit_assert_string_equal(ast->unary_ptr->content->char_ptr, "test");
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_unary_expr_test_6(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context, "10++");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1288,7 +1309,6 @@ MunitResult ast_new_object_2(const MunitParameter params[], void* user_data_or_f
     munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_string_equal(ast->assign_ptr->symbol, "obj");
-    munit_assert_ptr_not_null(ast->assign_ptr->def_type);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
@@ -1308,7 +1328,6 @@ MunitResult ast_new_object_3(const MunitParameter params[], void* user_data_or_f
     munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_string_equal(ast->assign_ptr->symbol, "obj");
-    munit_assert_ptr_not_null(ast->assign_ptr->def_type);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
@@ -1328,7 +1347,6 @@ MunitResult ast_new_object_4(const MunitParameter params[], void* user_data_or_f
     munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_string_equal(ast->assign_ptr->symbol, "obj");
-    munit_assert_ptr_not_null(ast->assign_ptr->def_type);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
@@ -1389,6 +1407,8 @@ MunitTest AST_TESTS[] = {
     ADD_TEST(ast_unary_expr_test_2),
     ADD_TEST(ast_unary_expr_test_3),
     ADD_TEST(ast_unary_expr_test_4),
+    ADD_TEST(ast_unary_expr_test_5),
+    ADD_TEST(ast_unary_expr_test_6),
     ADD_TEST(ast_func_decl_test_1),
     ADD_TEST(ast_func_decl_test_2),
     ADD_TEST(ast_func_decl_test_3),

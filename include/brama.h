@@ -28,7 +28,8 @@ typedef enum brama_status  {
     BRAMA_DICTIONARY_NOT_VALID           = 10,
     BRAMA_FUNCTION_NAME_REQUIRED         = 11,
     BRAMA_NEW_CLASS_CREATION_NOT_VALID   = 12,
-    BRAMA_BODY_NOT_FOUND                 = 13
+    BRAMA_BODY_NOT_FOUND                 = 13,
+    BRAMA_INVALID_UNARY_EXPRESSION       = 14
 } brama_status;
 
 /* PRIMATIVE TYPES */
@@ -180,6 +181,13 @@ typedef enum brama_ast_type {
     AST_EXPR_STATEMENT       ,
     AST_OBJECT_CREATION
 } brama_ast_type;
+
+
+/* Unary Operand Type */
+typedef enum _brama_unary_operant_type {
+    UNARY_OPERAND_BEFORE = 0,
+    UNARY_OPERAND_AFTER  = 1
+} brama_unary_operant_type;
 
 /* Function Definition Type */
 
@@ -376,8 +384,9 @@ typedef struct _t_primative {
 } t_primative;
 
 typedef struct _t_unary {
-    brama_operator_type opt;
-    struct _t_ast*      right;
+    brama_operator_type      opt;
+    brama_unary_operant_type operand_type;
+    struct _t_ast*           content;
 } t_unary;
 
 typedef struct _t_binary {

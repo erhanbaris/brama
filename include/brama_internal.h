@@ -17,6 +17,7 @@ bool        ast_check_token    (t_context_ptr context, brama_token_type    token
 
 t_token_ptr ast_peek          (t_context_ptr context);
 t_token_ptr ast_previous      (t_context_ptr context);
+t_token_ptr ast_next          (t_context_ptr context);
 t_token_ptr ast_consume       (t_context_ptr context);
 bool        ast_is_at_end     (t_context_ptr context);
 bool        is_primative      (t_token_ptr token);

@@ -16,5 +16,16 @@
         return MUNIT_OK;                                                           \
     }
 
+#define CHECK_STATUS(NAME, TEXT, STATUS) \
+    MunitResult NAME (const MunitParameter params[], void* user_data_or_fixture) { \
+        t_context* context = brama_init();                                         \
+        brama_execute(context,  TEXT );                                            \
+        context->parser->index = 0;                                                \
+        t_ast_ptr ast = NULL;                                                      \
+        munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , STATUS  );\
+        brama_destroy(context);                                                    \
+        return MUNIT_OK;                                                           \
+    }
+
 
 #endif // TESTS_CORE_H
