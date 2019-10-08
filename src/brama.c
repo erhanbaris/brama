@@ -308,7 +308,7 @@ int brama_tokinize(t_context_ptr context, char_ptr data) {
 
             continue;
         } else if (ch == '/' && chNext == '*') {
-            while (!isEnd(tokinizer) && !ch == '*' && !chNext == '/') {
+            while (!isEnd(tokinizer) && ch != '*' && chNext != '/') {
                 increase(tokinizer);
 
                 if (isNewLine(ch)) {
@@ -613,7 +613,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
     if (ast_match_keyword(context, 1, KEYWORD_FUNCTION)) {
         t_ast_ptr function_name_ast = NULL;
         brama_status status = ast_symbol_expr(context, &function_name_ast, NULL);
-        if ((int*)extra_data != FUNC_DEF_ASSIGNMENT && !anony_func && status != BRAMA_OK)
+        if ((extra_data == NULL || (int*)extra_data != FUNC_DEF_ASSIGNMENT) && !anony_func && status != BRAMA_OK)
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_FUNCTION_NAME_REQUIRED);
 
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
@@ -685,25 +685,7 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
 
         if ((operator_type == OPERATOR_INCREMENT || operator_type == OPERATOR_DECCREMENT) && unary_content->type != AST_SYMBOL)
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_EXPRESSION_NOT_VALID);
-    }
 
-    /* Looking for : i++ i-- 
-    todo: not working, fix it*/
-        
-    else if (is_symbol(ast_peek(context)) && ast_match_operator(context, 4, OPERATOR_INCREMENT, OPERATOR_DECCREMENT)) {
-        unary_type    = UNARY_OPERAND_AFTER;
-        operator_type = get_operator_type(ast_consume(context));
-        status = ast_primary_expr(context, &unary_content, NULL);
-        if (status != BRAMA_OK)
-            RESTORE_PARSER_INDEX_AND_RETURN(status);
-
-        if (unary_content->type != AST_PRIMATIVE || 
-            (unary_content->primative_ptr->type != PRIMATIVE_DOUBLE && unary_content->primative_ptr->type != PRIMATIVE_INTEGER))
-            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_INVALID_UNARY_EXPRESSION);
-    }
-
-
-    if (operator_type != OPERATOR_NONE) {
         t_unary_ptr unary   = malloc(sizeof (t_unary));
         unary->operand_type = UNARY_OPERAND_BEFORE;
         unary->opt          = operator_type;
@@ -712,7 +694,28 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
         return BRAMA_OK;
     }
 
-    return ast_call(context, ast, NULL);
+    /* Looking for : i++ i-- 
+    todo: not working, fix it*/
+
+    status = ast_call(context, ast, NULL);
+
+    if (status == BRAMA_OK && (*ast)->type == AST_SYMBOL && (ast_check_operator(context, OPERATOR_INCREMENT) ||  ast_check_operator(context, OPERATOR_DECCREMENT))) {
+        unary_type    = UNARY_OPERAND_AFTER;
+        operator_type = get_operator_type(ast_consume(context));
+        status = ast_primary_expr(context, &unary_content, NULL);
+
+        t_unary_ptr unary   = malloc(sizeof (t_unary));
+        unary->operand_type = UNARY_OPERAND_AFTER;
+        unary->opt          = operator_type;
+        unary->content      = *ast;
+        *ast = new_unary_ast(unary);
+        return BRAMA_OK;
+    }
+
+    if (status == BRAMA_OK && (*ast)->type == AST_PRIMATIVE && (ast_check_operator(context, OPERATOR_INCREMENT) ||  ast_check_operator(context, OPERATOR_DECCREMENT)))
+        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_INVALID_UNARY_EXPRESSION)
+
+    return status;
 }
 
 brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
@@ -725,6 +728,12 @@ brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void
         return status;
 
     status = ast_block_stmt(context, ast, NULL);
+    if (status == BRAMA_OK)
+        return BRAMA_OK;
+    else if (status != BRAMA_DOES_NOT_MATCH_AST)
+        return status;
+
+    status = ast_while_loop(context, ast, NULL);
     if (status == BRAMA_OK)
         return BRAMA_OK;
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
@@ -917,11 +926,11 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_NEW_CLASS_CREATION_NOT_VALID);
 
         char_ptr object_name = get_symbol(ast_consume(context));
-        if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES) == NULL)
+        if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_NEW_CLASS_CREATION_NOT_VALID);
 
         t_vector_ptr args = vector_init();
-        if (ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES) == NULL) {
+        if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES)) {
             do {
                 t_ast_ptr arg = NULL;
                 brama_status status = ast_assignable(context, &arg, NULL);
@@ -933,7 +942,7 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
                 vector_add(args, arg);
             } while (ast_match_operator(context, 1, OPERATOR_COMMA));
 
-            if (ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES) == NULL) {
+            if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES)) {
                 vector_destroy(args);
                 RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
             }
@@ -954,10 +963,45 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
 
     if (ast_match_keyword(context, 1, KEYWORD_WHILE)) {
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
-            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
 
         t_ast_ptr condition = NULL;
         brama_status condition_status = ast_assignable(context, &condition, NULL);
+        if (condition_status != BRAMA_OK)
+        RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
+
+        if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES))
+        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+
+        t_ast_ptr body = NULL;
+        brama_status body_status = ast_block_stmt(context, &body, NULL);
+        if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
+            body_status = ast_assignable(context, &body, NULL);
+            if (body_status != BRAMA_OK)
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_BODY_NOT_FOUND)
+        }
+        else if (condition_status != BRAMA_OK)
+        RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
+
+        t_while_loop_ptr object = (t_while_loop_ptr)malloc(sizeof(t_while_loop));
+        object->body      = body;
+        object->condition = condition;
+        *ast = new_while_ast(object);
+        return BRAMA_OK;
+    }
+
+    RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
+}
+
+brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
+    BACKUP_PARSER_INDEX();
+
+    if (ast_match_keyword(context, 1, KEYWORD_IF)) {
+        if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+
+        t_ast_ptr condition = NULL;
+        brama_status condition_status = ast_expression(context, &condition, NULL);
         if (condition_status != BRAMA_OK)
             RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
 
@@ -969,7 +1013,7 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
         if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
             body_status = ast_assignable(context, &body, NULL);
             if (body_status != BRAMA_OK)
-                RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_BODY_NOT_FOUND)
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_BODY_NOT_FOUND)
         }
         else if (condition_status != BRAMA_OK)
             RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
@@ -1160,15 +1204,15 @@ t_context_ptr brama_init() {
 char_ptr brama_set_error(t_context_ptr context, int error) {
     if (error == BRAMA_MISSING_TEXT_DELIMITER) {
         char_ptr buffer = malloc(sizeof(char) * 128);
-        sprintf(buffer, "Missing Delimiter at Line: %d, Column: %d", context->tokinizer->line, context->tokinizer->column);
+        sprintf(buffer, "Missing Delimiter at Line: %zu, Column: %zu", context->tokinizer->line, context->tokinizer->column);
         return buffer;
     } else if (error == BRAMA_MULTIPLE_DOT_ON_DOUBLE) {
         char_ptr buffer = malloc(sizeof(char) * 128);
-        sprintf(buffer, "Multiple dot used for double: %d, Column: %d", context->tokinizer->line, context->tokinizer->column);
+        sprintf(buffer, "Multiple dot used for double: %zu, Column: %zu", context->tokinizer->line, context->tokinizer->column);
         return buffer;
     } else if (error == BRAMA_EXPRESSION_NOT_VALID) {
         char_ptr buffer = malloc(sizeof(char) * 128);
-        sprintf(buffer, "Expression not valid\r\nLine:%d, Column: %d", context->tokinizer->line, context->tokinizer->column);
+        sprintf(buffer, "Expression not valid\r\nLine:%zu, Column: %zu", context->tokinizer->line, context->tokinizer->column);
         return buffer;
     }
 
@@ -1212,7 +1256,7 @@ void brama_dump(t_context_ptr context) {
         else if (token->type == TOKEN_INTEGER)
             printf("INTEGER  = '%d'\r\n", token->int_);
         else if (token->type == TOKEN_DOUBLE)
-            printf("DOUBLE   = '%d'\r\n", token->double_);
+            printf("DOUBLE   = '%f'\r\n", token->double_);
     }
 }
 

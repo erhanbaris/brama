@@ -71,7 +71,7 @@ case OPERATOR_1_SYMBOL :                     \
     }
 
 #define NEW_PRIMATIVE_DEF(EXT, TYPE, PRI_TYPE, STR_TYPE)       \
-    t_ast* new_primative_ast_##EXT ( TYPE value) {         \
+    t_ast* new_primative_ast_##EXT ( TYPE value ) {         \
         t_ast* ast        = malloc(sizeof (t_ast));  \
         t_primative* primative = malloc(sizeof (t_primative)); \
         ast->primative_ptr     = primative;                    \

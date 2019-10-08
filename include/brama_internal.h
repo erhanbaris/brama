@@ -43,6 +43,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_assignable          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_new_object          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_while_loop          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
+brama_status ast_if_stmt             (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 
 void destroy_ast          (t_ast_ptr ast);
 void destroy_ast_primative(t_primative_ptr primative);
