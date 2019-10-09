@@ -369,12 +369,12 @@ GET_ITEM(text,     char_ptr, char_ptr)
 GET_ITEM(symbol,   char_ptr, char_ptr)
 GET_ITEM(operator, int_,     brama_operator_type)
 
-#define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE)            \
+#define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE)       \
     t_ast_ptr new_##NAME##_ast(INPUT variable) {       \
-        t_ast_ptr ast = BRAMA_MALLOC(sizeof (t_ast));   \
-        ast->type     = STR_TYPE;                           \
-        ast-> TYPE    = variable;                           \
-        return ast;                                         \
+        t_ast_ptr ast = BRAMA_MALLOC(sizeof (t_ast));  \
+        ast->type     = STR_TYPE;                      \
+        ast-> TYPE    = variable;                      \
+        return ast;                                    \
     }
 
 NEW_PRIMATIVE_DEF(int,    int,           PRIMATIVE_INTEGER,    int_)
@@ -468,22 +468,34 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
                     key = get_text(ast_consume(context));
                 else if (ast_check_token(context, TOKEN_SYMBOL)) // should be key
                     key = get_symbol(ast_consume(context));
-                else
+                else {
+                    destroy_ast(*ast);
+                    BRAMA_FREE(*ast);
                     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DICTIONARY_NOT_VALID); // todo: It could accept expression (exp: 1+2)
+                }
 
-                if (ast_consume_operator(context, OPERATOR_COLON_MARK) == NULL) // Require ':' operator
+                if (ast_consume_operator(context, OPERATOR_COLON_MARK) == NULL) {// Require ':' operator
+                    destroy_ast(*ast);
+                    BRAMA_FREE(*ast);
                     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DICTIONARY_NOT_VALID);
+                }
 
                 brama_status status = ast_assignable(context, &item, NULL); // todo: should be also function decleration
-                if (status != BRAMA_OK)
+                if (status != BRAMA_OK) {
+                    destroy_ast(*ast);
+                    BRAMA_FREE(*ast);
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
+                }
 
                 map_set(dictionary, key, item);
             } while (ast_match_operator(context, 1, OPERATOR_COMMA));
         }
 
-        if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_END) == false)
+        if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_END) == false) {
+            destroy_ast(*ast);
+            BRAMA_FREE(*ast);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
+        }
 
         return BRAMA_OK;
     }
@@ -616,6 +628,7 @@ brama_status ast_block_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
                     if (!ast_is_at_end(context) && !ast_check_operator(context, OPERATOR_CURVE_BRACKET_END)) {
                         destroy_ast(block);
                         destroy_vector(blocks);
+                        BRAMA_FREE(block);
                         BRAMA_FREE(blocks);
 
                         if (ast_match_operator(context, 1, OPERATOR_COLON_MARK)) /* Is it dictionary? Is current token ':'?*/
@@ -1318,25 +1331,25 @@ bool destroy_ast(t_ast_ptr ast) {
    if (ast->type == AST_PRIMATIVE) {
        destroy_ast_primative(ast->primative_ptr);
        BRAMA_FREE(ast->primative_ptr);
+       ast->primative_ptr = NULL;
    }
 
    else if (ast->type == AST_ASSIGNMENT) {
        destroy_ast_assignment(ast->assign_ptr);
        BRAMA_FREE(ast->assign_ptr);
-   }
-
-   else if (ast->type == AST_ASSIGNMENT) {
-       /* Symbol is using char_ptr so we will free that in token */
+       ast->assign_ptr = NULL;
    }
 
    else if (ast->type == AST_BINARY_OPERATION) {
        destroy_ast_binary(ast->binary_ptr);
-       BRAMA_FREE(ast->primative_ptr);
+       BRAMA_FREE(ast->binary_ptr);
+       ast->binary_ptr = NULL;
    }
 
-   else if (ast->type == AST_STRUCT_OPERATION) {
-       destroy_ast_binary(ast->binary_ptr);
-       BRAMA_FREE(ast->primative_ptr);
+   else if (ast->type == AST_CONTROL_OPERATION) {
+       destroy_ast_control(ast->control_ptr);
+       BRAMA_FREE(ast->control_ptr);
+       ast->control_ptr = NULL;
    }
    else 
        return false;
@@ -1344,34 +1357,63 @@ bool destroy_ast(t_ast_ptr ast) {
    return true;
 }
 
-void destroy_ast_binary(t_binary_ptr binary) {
+bool destroy_ast_binary(t_binary_ptr binary) {
     if (binary->left != NULL) {
-        if (destroy_ast(binary->left))
+        if (destroy_ast(binary->left)) {
             BRAMA_FREE(binary->left);
+            return true;
+        }
     }
 
     if (binary->right != NULL) {
-        if (destroy_ast(binary->right))
+        if (destroy_ast(binary->right)) {
             BRAMA_FREE(binary->right);
+            return true;
+        }
     }
+    return false;
 }
 
-void destroy_ast_assignment(t_assign_ptr assignment) {
-    if (assignment->assignment != NULL) {
-        if (destroy_ast(assignment->assignment))
-            BRAMA_FREE(assignment->assignment);
+bool destroy_ast_control(t_control_ptr control) {
+    if (control->left != NULL) {
+        if (destroy_ast(control->left)) {
+            BRAMA_FREE(control->left);
+        }
     }
+
+    if (control->right != NULL) {
+        if (destroy_ast(control->right)) {
+            BRAMA_FREE(control->right);
+        }
+    }
+    return true;
 }
-void destroy_vector(t_vector_ptr vector) {
+
+bool destroy_ast_assignment(t_assign_ptr assignment) {
+    if (assignment->assignment != NULL) {
+        if (destroy_ast(assignment->assignment)) {
+            BRAMA_FREE(assignment->assignment);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool destroy_vector(t_vector_ptr vector) {
     size_t i;
     size_t total = vector->count;
-    for (i = 0; i < total; ++i)
-        destroy_ast((t_ast_ptr)vector_get(vector, i));
+    for (i = 0; i < total; ++i) {
+        t_ast_ptr item = vector_get(vector, i);
+        destroy_ast(item);
+        BRAMA_FREE(item);
+        item = NULL;
+    }
 
     vector_destroy(vector);
 }
 
-void destroy_ast_primative(t_primative_ptr primative) {
+bool destroy_ast_primative(t_primative_ptr primative) {
     switch (primative->type) {
         case PRIMATIVE_STRING:
         case PRIMATIVE_BOOL:
@@ -1384,6 +1426,7 @@ void destroy_ast_primative(t_primative_ptr primative) {
         case PRIMATIVE_ARRAY:
             destroy_vector(primative->array);
             BRAMA_FREE(primative->array);
+            primative->array = NULL;
             break;
 
         case PRIMATIVE_DICTIONARY: {
@@ -1392,13 +1435,21 @@ void destroy_ast_primative(t_primative_ptr primative) {
             while(key != NULL) {
                 t_ast_ptr ast = *map_get(primative->dict, key);
                 destroy_ast(ast);
+                BRAMA_FREE(ast);
                 key = map_next(primative->dict, &iter);
             }
             map_deinit(primative->dict);
+            BRAMA_FREE(primative->dict);
+            primative->dict = NULL;
 
             break;
         }
+
+        default:
+            break;
     }
+
+    return true;
 }
 
 void brama_destroy(t_context_ptr context) {

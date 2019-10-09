@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include "macros.h"
 
 #define STRING_STREAM_OK            0
 #define STRING_STREAM_ERR_NO_MEMORY 1

@@ -1,5 +1,4 @@
 #include "tools.h"
-#include "macros.h"
 
 int string_stream_grow_buffer(t_string_stream* stream);
 

@@ -346,7 +346,6 @@ typedef struct _t_token {
     size_t           current;
     brama_token_type type;
     union {
-        void*  data_ptr;
         char*  char_ptr;
         char   char_;
         int    int_;
