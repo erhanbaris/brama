@@ -22,8 +22,6 @@ t_token_ptr ast_consume       (t_context_ptr context);
 bool        ast_is_at_end     (t_context_ptr context);
 bool        is_primative      (t_token_ptr token);
 
-brama_status as_primative(t_token_ptr token, t_ast_ptr_ptr ast);
-
 brama_status ast_parser              (t_context_ptr context);
 brama_status ast_declaration_stmt    (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_expression          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
@@ -45,7 +43,9 @@ brama_status ast_new_object          (t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_while_loop          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_if_stmt             (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 
-void destroy_ast          (t_ast_ptr ast);
-void destroy_ast_primative(t_primative_ptr primative);
+void destroy_ast           (t_ast_ptr ast);
+void destroy_ast_primative (t_primative_ptr primative);
+void destroy_ast_assignment(t_assign_ptr assignment);
+void destroy_ast_binary    (t_binary_ptr binary);
 
 #endif // BRAMA_INTERNAL_H

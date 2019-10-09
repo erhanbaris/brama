@@ -374,25 +374,25 @@ MunitResult ast_primary_expr_test_2(const MunitParameter params[], void* user_da
     munit_assert_int(ast->primative_ptr->type,         ==, PRIMATIVE_ARRAY);
 
     t_vector_ptr vector = ast->primative_ptr->array;
-    munit_assert_int(((t_primative_ptr)vector_get(vector, 0))->type, ==, PRIMATIVE_INTEGER);
-    munit_assert_int(((t_primative_ptr)vector_get(vector, 0))->int_, ==, 1);
+    munit_assert_int(((t_ast_ptr)vector_get(vector, 0))->primative_ptr->type, ==, PRIMATIVE_INTEGER);
+    munit_assert_int(((t_ast_ptr)vector_get(vector, 0))->primative_ptr->int_, ==, 1);
 
-    munit_assert_int(((t_primative_ptr)vector_get(vector, 1))->type,  ==, PRIMATIVE_BOOL);
-    munit_assert_int(((t_primative_ptr)vector_get(vector, 1))->bool_, ==, true);
+    munit_assert_int(((t_ast_ptr)vector_get(vector, 1))->primative_ptr->type,  ==, PRIMATIVE_BOOL);
+    munit_assert_int(((t_ast_ptr)vector_get(vector, 1))->primative_ptr->bool_, ==, true);
 
-    munit_assert_int(((t_primative_ptr)vector_get(vector, 2))->type, ==, PRIMATIVE_NULL);
+    munit_assert_int(((t_ast_ptr)vector_get(vector, 2))->primative_ptr->type, ==, PRIMATIVE_NULL);
 
-    munit_assert_int(((t_primative_ptr)vector_get(vector, 3))->type,    ==, PRIMATIVE_DOUBLE);
-    munit_assert_double(((t_primative_ptr)vector_get(vector, 3))->double_, ==, 1.1);
+    munit_assert_int(((t_ast_ptr)vector_get(vector, 3))->primative_ptr->type,    ==, PRIMATIVE_DOUBLE);
+    munit_assert_double(((t_ast_ptr)vector_get(vector, 3))->primative_ptr->double_, ==, 1.1);
 
-    munit_assert_int(((t_primative_ptr)vector_get(vector, 4))->type,         ==, PRIMATIVE_ARRAY);
-    munit_assert_int(((t_primative_ptr)vector_get(vector, 4))->array->count, ==, 0);
+    munit_assert_int(((t_ast_ptr)vector_get(vector, 4))->primative_ptr->type,         ==, PRIMATIVE_ARRAY);
+    munit_assert_int(((t_ast_ptr)vector_get(vector, 4))->primative_ptr->array->count, ==, 0);
 
-    munit_assert_int         (((t_primative_ptr)vector_get(vector, 5))->type, ==, PRIMATIVE_STRING);
-    munit_assert_string_equal(((t_primative_ptr)vector_get(vector, 5))->char_ptr, "hello");
+    munit_assert_int         (((t_ast_ptr)vector_get(vector, 5))->primative_ptr->type, ==, PRIMATIVE_STRING);
+    munit_assert_string_equal(((t_ast_ptr)vector_get(vector, 5))->primative_ptr->char_ptr, "hello");
 
-    munit_assert_int         (((t_primative_ptr)vector_get(vector, 6))->type, ==, PRIMATIVE_STRING);
-    munit_assert_string_equal(((t_primative_ptr)vector_get(vector, 6))->char_ptr, "world");
+    munit_assert_int         (((t_ast_ptr)vector_get(vector, 6))->primative_ptr->type, ==, PRIMATIVE_STRING);
+    munit_assert_string_equal(((t_ast_ptr)vector_get(vector, 6))->primative_ptr->char_ptr, "world");
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -467,10 +467,10 @@ MunitResult ast_primary_expr_test_5(const MunitParameter params[], void* user_da
     munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "array"))->type,                 ==, AST_PRIMATIVE);
     munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "array"))->primative_ptr->type,  ==, PRIMATIVE_ARRAY);
     t_vector_ptr array = ((t_ast_ptr)*map_get(main_dict, "array"))->primative_ptr->array;
-    munit_assert_int         (((t_primative_ptr)vector_get(array, 0))->type, ==, PRIMATIVE_INTEGER);
-    munit_assert_int         (((t_primative_ptr)vector_get(array, 0))->int_, ==, 1);
-    munit_assert_int         (((t_primative_ptr)vector_get(array, 1))->type, ==, PRIMATIVE_INTEGER);
-    munit_assert_int         (((t_primative_ptr)vector_get(array, 1))->int_, ==, 2);
+    munit_assert_int         (((t_ast_ptr)vector_get(array, 0))->primative_ptr->type, ==, PRIMATIVE_INTEGER);
+    munit_assert_int         (((t_ast_ptr)vector_get(array, 0))->primative_ptr->int_, ==, 1);
+    munit_assert_int         (((t_ast_ptr)vector_get(array, 1))->primative_ptr->type, ==, PRIMATIVE_INTEGER);
+    munit_assert_int         (((t_ast_ptr)vector_get(array, 1))->primative_ptr->int_, ==, 2);
 
     brama_destroy(context);
     return MUNIT_OK;

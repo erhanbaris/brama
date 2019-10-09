@@ -81,16 +81,16 @@ int getSymbol(t_tokinizer_ptr tokinizer) {
     int_ptr keywordInfo = (int_ptr)map_get(&tokinizer->keywords, data);
 
     if (keywordInfo) {
-        t_token_ptr token = (t_token_ptr)malloc(sizeof (t_token));
+        t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
         token->type       = TOKEN_KEYWORD;
         token->current    = tokinizer->column;
         token->line       = tokinizer->line;
         token->int_       = *keywordInfo;
 
         vector_add(tokinizer->tokens, token);
-        free(data);
+        BRAMA_FREE(data);
     } else {
-        t_token_ptr token  = (t_token_ptr)malloc(sizeof (t_token));
+        t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
         token->type        = TOKEN_SYMBOL;
         token->current     = tokinizer->column;
         token->line        = tokinizer->line;
@@ -100,6 +100,7 @@ int getSymbol(t_tokinizer_ptr tokinizer) {
     }
 
     string_stream_destroy(stream);
+    BRAMA_FREE(stream);
     return BRAMA_OK;
 }
 
@@ -131,7 +132,7 @@ int getText(t_tokinizer_ptr tokinizer, char symbol) {
     if (ch != symbol)
         return BRAMA_MISSING_TEXT_DELIMITER;
 
-    t_token_ptr token  = (t_token_ptr)malloc(sizeof (t_token));
+    t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
     token->type        = TOKEN_TEXT;
     token->current     = tokinizer->column;
     token->line        = tokinizer->line;
@@ -142,6 +143,7 @@ int getText(t_tokinizer_ptr tokinizer, char symbol) {
         increase(tokinizer);
 
     string_stream_destroy(stream);
+    BRAMA_FREE(stream);
     return BRAMA_OK;
 }
 
@@ -192,7 +194,7 @@ int getNumber(t_tokinizer_ptr tokinizer) {
         chNext = getNextChar(tokinizer);
     }
 
-    t_token_ptr token = (t_token_ptr)malloc(sizeof (t_token));
+    t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
 
     if (!isDouble) {
         token->type = TOKEN_INTEGER;
@@ -206,7 +208,7 @@ int getNumber(t_tokinizer_ptr tokinizer) {
     token->line    = tokinizer->line;
 
     if (isMinus) {
-        t_token_ptr token = (t_token_ptr)malloc(sizeof (t_token));
+        t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
         token->type    = TOKEN_OPERATOR;
         token->current = tokinizer->column;
         token->line    = tokinizer->line;
@@ -228,7 +230,7 @@ brama_status getOperator(t_tokinizer_ptr tokinizer) {
         return getNumber(tokinizer);
 
     increase(tokinizer);
-    t_token_ptr token = (t_token_ptr)malloc(sizeof (t_token));
+    t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
     token->type       = TOKEN_OPERATOR;
     token->current    = tokinizer->column;
     token->line       = tokinizer->line;
@@ -369,7 +371,7 @@ GET_ITEM(operator, int_,     brama_operator_type)
 
 #define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE)            \
     t_ast_ptr new_##NAME##_ast(INPUT variable) {       \
-        t_ast_ptr ast = malloc(sizeof (t_ast));   \
+        t_ast_ptr ast = BRAMA_MALLOC(sizeof (t_ast));   \
         ast->type     = STR_TYPE;                           \
         ast-> TYPE    = variable;                           \
         return ast;                                         \
@@ -453,7 +455,7 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
     }
 
     if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_START)) { // Parse dictionary
-        map_void_t* dictionary = malloc(sizeof (map_void_t));
+        map_void_t* dictionary = BRAMA_MALLOC(sizeof (map_void_t));
         map_init(dictionary);
         *ast = new_primative_ast_dict(dictionary);
 
@@ -491,16 +493,22 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
         if (!ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
             do {
                 t_ast_ptr item = NULL;
-                brama_status status = ast_primary_expr(context, &item, NULL);
-                if (status != BRAMA_OK)
+                brama_status status = ast_expression(context, &item, NULL);
+                if (status != BRAMA_OK) {
+                    vector_destroy(args);
+                    BRAMA_FREE(args);
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
+                }
 
-                vector_add(args, item->primative_ptr);
+                vector_add(args, item);
             } while (ast_match_operator(context, 1, OPERATOR_COMMA));
         }
 
-        if (ast_consume_operator(context, OPERATOR_SQUARE_BRACKET_END) == NULL)
-           RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
+        if (ast_consume_operator(context, OPERATOR_SQUARE_BRACKET_END) == NULL) {
+            vector_destroy(args);
+            BRAMA_FREE(args);
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
+        }
 
         *ast = new_primative_ast_array(args);
         return BRAMA_OK;
@@ -533,6 +541,7 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_d
         status = ast_symbol_expr(context, ast, NULL);
         if (status != BRAMA_OK) {
             vector_destroy(function);
+            BRAMA_FREE(function);
             RESTORE_PARSER_INDEX_AND_RETURN(status);
         }
 
@@ -548,26 +557,37 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_d
             do {
                 t_ast_ptr arg = NULL;
                 brama_status status = ast_assignable(context, &arg, NULL);
-                if (status != BRAMA_OK)
+                if (status != BRAMA_OK) {
+                    vector_destroy(args);
+                    vector_destroy(function);
+                    BRAMA_FREE(args);
+                    BRAMA_FREE(function);
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
+                }
 
                 vector_add(args, arg);
             } while (ast_match_operator(context, 1, OPERATOR_COMMA));
         }
 
-        if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL)
+        if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL) {
+            vector_destroy(args);
+            vector_destroy(function);
+            BRAMA_FREE(args);
+            BRAMA_FREE(function);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_EXPRESSION_NOT_VALID);
+        }
 
-        t_func_call* func_call = malloc(sizeof (t_func_call));
+        t_func_call* func_call = BRAMA_MALLOC(sizeof (t_func_call));
         func_call->args        = args;
         func_call->function    = function;
         *ast                   = new_func_call_ast(func_call);
         return BRAMA_OK;
     }
-    else {
-        vector_destroy(function);
+    else   
         RESTORE_PARSER_INDEX();
-    }
+
+    vector_destroy(function);
+    BRAMA_FREE(function);
 
     status = ast_symbol_expr(context, ast, NULL);
     if (status == BRAMA_OK)
@@ -585,12 +605,18 @@ brama_status ast_block_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
             do {
                 t_ast_ptr block = NULL;
                 brama_status status = ast_declaration_stmt(context, &block, NULL);
-                if (status != BRAMA_OK) 
+                if (status != BRAMA_OK) {
+                    vector_destroy(blocks);
+                    BRAMA_FREE(blocks);
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
+                }
 
                 if (!ast_match_operator(context, 1, OPERATOR_SEMICOLON)) { // Remove ';'
-                    if (!ast_is_at_end(context) && !ast_check_operator(context, OPERATOR_CURVE_BRACKET_END))
+                    if (!ast_is_at_end(context) && !ast_check_operator(context, OPERATOR_CURVE_BRACKET_END)) {
+                        vector_destroy(blocks);
+                        BRAMA_FREE(blocks);
                         RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_EXPRESSION_NOT_VALID);
+                    }
                 }
                 vector_add(blocks, block);
             } while (!ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_END));
@@ -624,25 +650,37 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
             do {
                 t_ast_ptr arg = NULL;
                 brama_status status = ast_symbol_expr(context, &arg, NULL);
-                if (status != BRAMA_OK)
+                if (status != BRAMA_OK) {
+                    vector_destroy(args);
+                    BRAMA_FREE(args);
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
+                }
 
                 vector_add(args, arg);
             } while (ast_match_operator(context, 1, OPERATOR_COMMA));
         }
 
-        if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL)
+        if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL) {
+            vector_destroy(args);
+            BRAMA_FREE(args);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
+        }
 
         t_ast_ptr body = NULL;
         brama_status body_status = ast_block_stmt(context, &body, NULL);
-        if (body_status != BRAMA_OK)
+        if (body_status != BRAMA_OK) {
+            vector_destroy(args);
+            BRAMA_FREE(args);
             RESTORE_PARSER_INDEX_AND_RETURN(body_status);
+        }
 
-        if (anony_func && ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES) == false)
+        if (anony_func && ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES) == false) {
+            vector_destroy(args);
+            BRAMA_FREE(args);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
+        }
 
-        t_func_decl_ptr func_decl = malloc(sizeof(t_func_decl));
+        t_func_decl_ptr func_decl = BRAMA_MALLOC(sizeof(t_func_decl));
         func_decl->args = args;
         func_decl->body = body;
         
@@ -686,7 +724,7 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
         if ((operator_type == OPERATOR_INCREMENT || operator_type == OPERATOR_DECCREMENT) && unary_content->type != AST_SYMBOL)
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_EXPRESSION_NOT_VALID);
 
-        t_unary_ptr unary   = malloc(sizeof (t_unary));
+        t_unary_ptr unary   = BRAMA_MALLOC(sizeof (t_unary));
         unary->operand_type = UNARY_OPERAND_BEFORE;
         unary->opt          = operator_type;
         unary->content      = unary_content;
@@ -704,7 +742,7 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
         operator_type = get_operator_type(ast_consume(context));
         status = ast_primary_expr(context, &unary_content, NULL);
 
-        t_unary_ptr unary   = malloc(sizeof (t_unary));
+        t_unary_ptr unary   = BRAMA_MALLOC(sizeof (t_unary));
         unary->operand_type = UNARY_OPERAND_AFTER;
         unary->opt          = operator_type;
         unary->content      = *ast;
@@ -739,6 +777,12 @@ brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
         return status;
 
+    status = ast_if_stmt(context, ast, NULL);
+    if (status == BRAMA_OK)
+        return BRAMA_OK;
+    else if (status != BRAMA_DOES_NOT_MATCH_AST)
+        return status;
+
     status = ast_new_object(context, ast, NULL);
     if (status == BRAMA_OK)
         return BRAMA_OK;
@@ -766,7 +810,7 @@ brama_status ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
         if (right_status != BRAMA_OK)
             return right_status;
 
-        t_control_ptr binary = malloc(sizeof(t_control));
+        t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
@@ -788,7 +832,7 @@ brama_status ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_pt
         if (right_status != BRAMA_OK)
             return right_status;
 
-        t_control_ptr binary = malloc(sizeof(t_control));
+        t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
@@ -810,7 +854,7 @@ brama_status ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr ext
         if (right_status != BRAMA_OK)
             return right_status; // todo: restore index for all ast expr.
 
-        t_control_ptr binary = malloc(sizeof(t_control));
+        t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
@@ -832,10 +876,10 @@ brama_status ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extr
         if (right_status != BRAMA_OK)
             return right_status;
 
-        t_control_ptr binary = malloc(sizeof(t_control));
-        binary->left        = *ast;
-        binary->opt         = opt;
-        binary->right       = right;
+        t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
+        binary->left         = *ast;
+        binary->opt          = opt;
+        binary->right        = right;
         *ast = new_control_ast(binary);
     }
 
@@ -854,7 +898,7 @@ brama_status ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_pt
         if (right_status != BRAMA_OK)
             return right_status;
 
-        t_binary_ptr binary = malloc(sizeof(t_binary));
+        t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
         binary->left        = *ast;
         binary->opt         = opt;
         binary->right       = right;
@@ -876,7 +920,7 @@ brama_status ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, v
         if (right_status != BRAMA_OK)
             return right_status;
 
-        t_binary_ptr binary = malloc(sizeof(t_binary));
+        t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
         binary->left        = *ast;
         binary->opt         = opt;
         binary->right       = right;
@@ -905,7 +949,7 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_
         if (right_status != BRAMA_OK)
             RESTORE_PARSER_INDEX_AND_RETURN(right_status);
 
-        t_assign_ptr assign = malloc(sizeof(t_assign));
+        t_assign_ptr assign = BRAMA_MALLOC(sizeof(t_assign));
         assign->symbol      = variable_name;
         assign->def_type    = type;
         assign->opt         = opt;
@@ -936,6 +980,7 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
                 brama_status status = ast_assignable(context, &arg, NULL);
                 if (status != BRAMA_OK) {
                     vector_destroy(args);
+                    BRAMA_FREE(args);
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
                 }
 
@@ -944,11 +989,12 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
 
             if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES)) {
                 vector_destroy(args);
+                BRAMA_FREE(args);
                 RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
             }
         }
 
-        t_object_creation_ptr object = (t_object_creation_ptr)malloc(sizeof(t_object_creation));
+        t_object_creation_ptr object = (t_object_creation_ptr)BRAMA_MALLOC(sizeof(t_object_creation));
         object->object_name = object_name;
         object->args        = args;
         *ast = new_object_ast(object);
@@ -983,9 +1029,9 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
         else if (condition_status != BRAMA_OK)
         RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
 
-        t_while_loop_ptr object = (t_while_loop_ptr)malloc(sizeof(t_while_loop));
-        object->body      = body;
-        object->condition = condition;
+        t_while_loop_ptr object = (t_while_loop_ptr)BRAMA_MALLOC(sizeof(t_while_loop));
+        object->body            = body;
+        object->condition       = condition;
         *ast = new_while_ast(object);
         return BRAMA_OK;
     }
@@ -1018,9 +1064,9 @@ brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extr
         else if (condition_status != BRAMA_OK)
             RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
 
-        t_while_loop_ptr object = (t_while_loop_ptr)malloc(sizeof(t_while_loop));
-        object->body      = body;
-        object->condition = condition;
+        t_while_loop_ptr object = (t_while_loop_ptr)BRAMA_MALLOC(sizeof(t_while_loop));
+        object->body            = body;
+        object->condition       = condition;
         *ast = new_while_ast(object);
         return BRAMA_OK;
     }
@@ -1177,18 +1223,18 @@ brama_status ast_parser(t_context_ptr context) {
 /* AST PARSER OPERATIONS END */
 
 t_context_ptr brama_init() {
-    t_context_ptr context      = (t_context_ptr)malloc(sizeof(t_context));
+    t_context_ptr context      = (t_context_ptr)BRAMA_MALLOC(sizeof(t_context));
     context->error_message     = NULL;
 
     /* tokinizer */
-    context->tokinizer         = (t_tokinizer_ptr)malloc(sizeof(t_tokinizer));
+    context->tokinizer         = (t_tokinizer_ptr)BRAMA_MALLOC(sizeof(t_tokinizer));
     context->tokinizer->column = 0;
     context->tokinizer->index  = 0;
     context->tokinizer->line   = 1;
     context->tokinizer->tokens = vector_init();
 
     /* parser */
-    context->parser            = (t_parser_ptr)malloc(sizeof (t_parser));
+    context->parser            = (t_parser_ptr)BRAMA_MALLOC(sizeof (t_parser));
     context->parser->asts      = vector_init();
 
     /* keywords */
@@ -1203,15 +1249,15 @@ t_context_ptr brama_init() {
 
 char_ptr brama_set_error(t_context_ptr context, int error) {
     if (error == BRAMA_MISSING_TEXT_DELIMITER) {
-        char_ptr buffer = malloc(sizeof(char) * 128);
+        char_ptr buffer = BRAMA_MALLOC(sizeof(char) * 128);
         sprintf(buffer, "Missing Delimiter at Line: %zu, Column: %zu", context->tokinizer->line, context->tokinizer->column);
         return buffer;
     } else if (error == BRAMA_MULTIPLE_DOT_ON_DOUBLE) {
-        char_ptr buffer = malloc(sizeof(char) * 128);
+        char_ptr buffer = BRAMA_MALLOC(sizeof(char) * 128);
         sprintf(buffer, "Multiple dot used for double: %zu, Column: %zu", context->tokinizer->line, context->tokinizer->column);
         return buffer;
     } else if (error == BRAMA_EXPRESSION_NOT_VALID) {
-        char_ptr buffer = malloc(sizeof(char) * 128);
+        char_ptr buffer = BRAMA_MALLOC(sizeof(char) * 128);
         sprintf(buffer, "Expression not valid\r\nLine:%zu, Column: %zu", context->tokinizer->line, context->tokinizer->column);
         return buffer;
     }
@@ -1224,7 +1270,7 @@ void brama_execute(t_context_ptr context, char_ptr data) {
     if (tokinizer_status != BRAMA_OK) {
         context->status = tokinizer_status;
         if (context->error_message != NULL && strlen(context->error_message) > 0)
-            free(context->error_message);
+            BRAMA_FREE(context->error_message);
 
         context->error_message = brama_set_error(context, tokinizer_status);
         return;
@@ -1260,30 +1306,88 @@ void brama_dump(t_context_ptr context) {
     }
 }
 
-void destroy_ast(t_ast_ptr ast) {
+bool destroy_ast(t_ast_ptr ast) {
    if (ast == NULL)
-       return ;
+       return false;
 
-   if (ast->type == AST_PRIMATIVE)
-       destroy_ast_primative((t_primative_ptr)ast);
+   if (ast->type == AST_PRIMATIVE) {
+       destroy_ast_primative(ast->primative_ptr);
+       BRAMA_FREE(ast->primative_ptr);
+   }
+
+   else if (ast->type == AST_ASSIGNMENT) {
+       destroy_ast_assignment(ast->assign_ptr);
+       BRAMA_FREE(ast->assign_ptr);
+   }
+
+   else if (ast->type == AST_ASSIGNMENT) {
+       /* Symbol is using char_ptr so we will free that in token */
+   }
+
+   else if (ast->type == AST_BINARY_OPERATION) {
+       destroy_ast_binary(ast->binary_ptr);
+       BRAMA_FREE(ast->primative_ptr);
+   }
+
+   else if (ast->type == AST_STRUCT_OPERATION) {
+       destroy_ast_binary(ast->binary_ptr);
+       BRAMA_FREE(ast->primative_ptr);
+   }
+   else 
+       return false;
+
+   return true;
+}
+
+void destroy_ast_binary(t_binary_ptr binary) {
+    if (binary->left != NULL) {
+        if (destroy_ast(binary->left))
+            BRAMA_FREE(binary->left);
+    }
+
+    if (binary->right != NULL) {
+        if (destroy_ast(binary->right))
+            BRAMA_FREE(binary->right);
+    }
+}
+
+void destroy_ast_assignment(t_assign_ptr assignment) {
+    if (assignment->assignment != NULL) {
+        if (destroy_ast(assignment->assignment))
+            BRAMA_FREE(assignment->assignment);
+    }
 }
 
 void destroy_ast_primative(t_primative_ptr primative) {
-    if (primative->type == PRIMATIVE_STRING)
-        free(primative->char_ptr);
-    else if (primative->type == PRIMATIVE_ARRAY) {
-        size_t i;
-        size_t total = primative->array->count;
-        for (i = 0; i < total; ++i)
-            destroy_ast_primative((t_primative_ptr)vector_get(primative->array, i));
-    }
-    else if (primative->type == PRIMATIVE_DICTIONARY) {
-        map_iter_t iter = map_iter(primative->dict);
-        const char* key = map_next(primative->dict, &iter);
-        while(key != NULL) {
-            t_ast_ptr ast = *map_get(primative->dict, key);
-            destroy_ast(ast);
-            key = map_next(primative->dict, &iter);
+    switch (primative->type) {
+        case PRIMATIVE_STRING:
+        case PRIMATIVE_BOOL:
+        case PRIMATIVE_DOUBLE:
+        case PRIMATIVE_INTEGER:
+        case PRIMATIVE_NONE:
+            /* We do not need to free any of those types. String will be freed at token destroy operation */
+            break;
+
+        case PRIMATIVE_ARRAY: {
+            size_t i;
+            size_t total = primative->array->count;
+            for (i = 0; i < total; ++i)
+                destroy_ast((t_ast_ptr)vector_get(primative->array, i));
+
+            break;
+        }
+
+        case PRIMATIVE_DICTIONARY: {
+            map_iter_t iter = map_iter(primative->dict);
+            const char* key = map_next(primative->dict, &iter);
+            while(key != NULL) {
+                t_ast_ptr ast = *map_get(primative->dict, key);
+                destroy_ast(ast);
+                key = map_next(primative->dict, &iter);
+            }
+            map_deinit(primative->dict);
+
+            break;
         }
     }
 }
@@ -1296,16 +1400,27 @@ void brama_destroy(t_context_ptr context) {
         t_token_ptr token = (t_token_ptr)vector_get(_context->tokinizer->tokens, i);
         if (token->type == TOKEN_TEXT ||
             token->type == TOKEN_SYMBOL)
-            free((char_ptr)token->char_ptr);
+            BRAMA_FREE((char_ptr)token->char_ptr);
+        BRAMA_FREE(token);
     }
 
     size_t totalAst = _context->parser->asts->count;
-    for (i = 0; i < totalToken; i++) {
+    for (i = 0; i < totalAst; ++i) {
         t_ast_ptr ast = (t_ast_ptr)vector_get(_context->parser->asts, i);
         destroy_ast(ast);
+        BRAMA_FREE(ast);
     }
 
+    if (context->error_message != NULL)
+        BRAMA_FREE(context->error_message);
+
     map_deinit(&_context->tokinizer->keywords);
-    free(_context->tokinizer);
-    free(_context);
+    vector_destroy(_context->tokinizer->tokens);
+    BRAMA_FREE(_context->tokinizer->tokens);
+    BRAMA_FREE(_context->tokinizer);
+
+    vector_destroy(_context->parser->asts);
+    BRAMA_FREE(_context->parser->asts);
+    BRAMA_FREE(_context->parser);
+    BRAMA_FREE(_context);
 }
