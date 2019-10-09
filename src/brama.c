@@ -606,15 +606,20 @@ brama_status ast_block_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
                 t_ast_ptr block = NULL;
                 brama_status status = ast_declaration_stmt(context, &block, NULL);
                 if (status != BRAMA_OK) {
-                    vector_destroy(blocks);
+                    destroy_ast(block);
+                    destroy_vector(blocks);
                     BRAMA_FREE(blocks);
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
                 }
 
                 if (!ast_match_operator(context, 1, OPERATOR_SEMICOLON)) { // Remove ';'
                     if (!ast_is_at_end(context) && !ast_check_operator(context, OPERATOR_CURVE_BRACKET_END)) {
-                        vector_destroy(blocks);
+                        destroy_ast(block);
+                        destroy_vector(blocks);
                         BRAMA_FREE(blocks);
+
+                        if (ast_match_operator(context, 1, OPERATOR_COLON_MARK)) /* Is it dictionary? Is current token ':'?*/
+                            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
                         RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_EXPRESSION_NOT_VALID);
                     }
                 }
@@ -1357,6 +1362,14 @@ void destroy_ast_assignment(t_assign_ptr assignment) {
             BRAMA_FREE(assignment->assignment);
     }
 }
+void destroy_vector(t_vector_ptr vector) {
+    size_t i;
+    size_t total = vector->count;
+    for (i = 0; i < total; ++i)
+        destroy_ast((t_ast_ptr)vector_get(vector, i));
+
+    vector_destroy(vector);
+}
 
 void destroy_ast_primative(t_primative_ptr primative) {
     switch (primative->type) {
@@ -1368,14 +1381,10 @@ void destroy_ast_primative(t_primative_ptr primative) {
             /* We do not need to free any of those types. String will be freed at token destroy operation */
             break;
 
-        case PRIMATIVE_ARRAY: {
-            size_t i;
-            size_t total = primative->array->count;
-            for (i = 0; i < total; ++i)
-                destroy_ast((t_ast_ptr)vector_get(primative->array, i));
-
+        case PRIMATIVE_ARRAY:
+            destroy_vector(primative->array);
+            BRAMA_FREE(primative->array);
             break;
-        }
 
         case PRIMATIVE_DICTIONARY: {
             map_iter_t iter = map_iter(primative->dict);

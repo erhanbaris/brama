@@ -13,7 +13,7 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init();
-    brama_execute(context,  "var test = 1024;");
+    brama_execute(context,  "{'hi': 'all', test: true, 'dict': {'empty': false}, 'array': [1,2,3]}");
     brama_destroy(context);
 #ifdef _WIN32
     int test_status = munit_suite_main(&ALL_SUITE, (void*) "µnit", NULL, NULL);

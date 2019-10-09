@@ -44,6 +44,7 @@ brama_status ast_while_loop          (t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_if_stmt             (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 
 void destroy_ast           (t_ast_ptr ast);
+void destroy_vector        (t_vector_ptr vector);
 void destroy_ast_primative (t_primative_ptr primative);
 void destroy_ast_assignment(t_assign_ptr assignment);
 void destroy_ast_binary    (t_binary_ptr binary);
