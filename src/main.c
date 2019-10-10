@@ -13,7 +13,7 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init();
-    brama_execute(context,  "while(true) {}");
+    brama_execute(context,  "'hello world' \"hi all\" 1024 true null 3.14 =");
     brama_destroy(context);
 #ifdef _WIN32
     int test_status = munit_suite_main(&ALL_SUITE, (void*) "µnit", NULL, NULL);

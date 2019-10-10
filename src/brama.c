@@ -46,7 +46,7 @@ bool isNewLine(char ch) {
 }
 
 bool isWhitespace(char ch) {
-    return (ch == ' ' || ch == '\r' || isNewLine(ch) || ch == '\t');
+    return (ch == ' ' || ch == '\r' || ch == '\t');
 }
 
 bool isInteger(char ch) {
@@ -286,7 +286,19 @@ int brama_tokinize(t_context_ptr context, char_ptr data) {
         char ch     = getChar(tokinizer);
         char chNext = getNextChar(tokinizer);
 
-        if (isWhitespace(ch)) {
+        if (isNewLine(ch)) {
+            t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
+            token->type    = TOKEN_OPERATOR;
+            token->current = tokinizer->column;
+            token->line    = tokinizer->line;
+            token->int_    = OPERATOR_NEW_LINE;
+
+            vector_add(tokinizer->tokens, token);
+            tokinizer->column = 0;
+            ++tokinizer->line;
+            increase(tokinizer);
+        }
+        else if (isWhitespace(ch)) {
             while (!isEnd(tokinizer) && isWhitespace(ch)) {
                 increase(tokinizer);
 

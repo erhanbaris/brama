@@ -157,7 +157,8 @@ typedef enum brama_operator_type {
     OPERATOR_COMMENT_MULTILINE_START ,
     OPERATOR_COMMENT_MULTILINE_END   ,
     OPERATOR_CURVE_BRACKET_START     ,
-    OPERATOR_CURVE_BRACKET_END
+    OPERATOR_CURVE_BRACKET_END       ,
+    OPERATOR_NEW_LINE
 } brama_operator_type;
 
 /* AST TYPES */
@@ -269,6 +270,7 @@ static OperatorPair OPERATORS[] =  {
     { "COMMENT_MULTILINE_START", "/*"  },
     { "COMMENT_MULTILINE_END",   "*/"  },
     { "CURVE_BRACKET_START",     "{"   },
+    { "NEW_LINE",                "\n"  },
     { "CURVE_BRACKET_END",       "}"   }
 };
 
@@ -367,6 +369,7 @@ typedef struct _t_tokinizer {
 
 typedef struct _t_parser {
     size_t    index;
+    size_t    line;
     t_vector* asts;
 } t_parser;
 
