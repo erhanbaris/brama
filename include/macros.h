@@ -85,8 +85,29 @@ case OPERATOR_1_SYMBOL :                     \
 #define BACKUP_PARSER_INDEX()                        size_t parser_index = context->parser->index;
 #define RESTORE_PARSER_INDEX()                       context->parser->index = parser_index;
 #define RESTORE_PARSER_INDEX_AND_RETURN(RETURN_CODE) { RESTORE_PARSER_INDEX(); return RETURN_CODE ; }
+#define DESTROY_AST_AND_RETURN(RETURN_CODE, VAR) \
+{                          \
+    RESTORE_PARSER_INDEX();\
+    destroy_ast( VAR );    \
+    BRAMA_FREE ( VAR );    \
+    return RETURN_CODE ;   \
+}
 
+#define CLEAR_AST(AST) destroy_ast( AST ); BRAMA_FREE( AST );
+
+
+#if defined(_WIN32)
+
+#    define _CRTDBG_MAP_ALLOC
+#    include <stdlib.h>
+#    include <crtdbg.h>
+
+#    define BRAMA_MALLOC(SIZE) _malloc_dbg( SIZE , _NORMAL_BLOCK , __FILE__, __LINE__ )
+#    define BRAMA_FREE(PTR)    _free_dbg  ( PTR  , _NORMAL_BLOCK)
+
+#else
 #define BRAMA_MALLOC malloc
 #define BRAMA_FREE   free
+#endif
 
 #endif // MACROS_H

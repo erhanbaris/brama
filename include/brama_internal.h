@@ -50,6 +50,8 @@ bool destroy_ast_primative (t_primative_ptr primative);
 bool destroy_ast_assignment(t_assign_ptr assignment);
 bool destroy_ast_binary    (t_binary_ptr binary);
 bool destroy_ast_control   (t_control_ptr binary);
-
+bool destroy_ast_while_loop(t_while_loop_ptr while_ptr);
+bool destroy_ast_func_call (t_func_call_ptr func_call_ptr);
+bool destroy_ast_unary     (t_unary_ptr unary_ptr);
 
 #endif // BRAMA_INTERNAL_H

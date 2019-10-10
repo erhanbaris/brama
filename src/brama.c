@@ -129,8 +129,11 @@ int getText(t_tokinizer_ptr tokinizer, char symbol) {
         increase(tokinizer);
     }
 
-    if (ch != symbol)
+    if (ch != symbol) {
+        string_stream_destroy(stream);
+        BRAMA_FREE(stream);
         return BRAMA_MISSING_TEXT_DELIMITER;
+    }
 
     t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
     token->type        = TOKEN_TEXT;
@@ -446,10 +449,10 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) {
         brama_status status = ast_expression(context, ast, NULL);
         if (status != BRAMA_OK)
-            RESTORE_PARSER_INDEX_AND_RETURN(status);
+            DESTROY_AST_AND_RETURN(status, *ast);
 
         if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL)
-            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
+            DESTROY_AST_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND, *ast);
 
         return BRAMA_OK;
     }
@@ -550,14 +553,13 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_d
     BACKUP_PARSER_INDEX();
     t_vector_ptr function = vector_init();
     while (true) {
-        status = ast_symbol_expr(context, ast, NULL);
-        if (status != BRAMA_OK) {
+        if (!is_symbol(ast_peek(context))) {
             vector_destroy(function);
             BRAMA_FREE(function);
-            RESTORE_PARSER_INDEX_AND_RETURN(status);
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_EXPRESSION_NOT_VALID);
         }
 
-        vector_add(function, (*ast)->char_ptr);
+        vector_add(function, get_symbol(ast_consume(context)));
         if (!ast_match_operator(context, 1, OPERATOR_DOT))
             break;
     }
@@ -598,6 +600,8 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_d
     else   
         RESTORE_PARSER_INDEX();
 
+    destroy_ast(*ast);
+    BRAMA_FREE(*ast);
     vector_destroy(function);
     BRAMA_FREE(function);
 
@@ -605,6 +609,8 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_d
     if (status == BRAMA_OK)
         return status;
 
+    destroy_ast(*ast);
+    BRAMA_FREE(*ast);
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
@@ -658,10 +664,10 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
         t_ast_ptr function_name_ast = NULL;
         brama_status status = ast_symbol_expr(context, &function_name_ast, NULL);
         if ((extra_data == NULL || (int*)extra_data != FUNC_DEF_ASSIGNMENT) && !anony_func && status != BRAMA_OK)
-            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_FUNCTION_NAME_REQUIRED);
+            DESTROY_AST_AND_RETURN(BRAMA_FUNCTION_NAME_REQUIRED, function_name_ast);
 
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
-            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+            DESTROY_AST_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND, function_name_ast);
 
         t_vector_ptr args = vector_init();
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
@@ -705,7 +711,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
         if (function_name_ast != NULL)
             func_decl->name = function_name_ast->char_ptr;
         else
-            func_decl->name = strdup("");
+            func_decl->name = NULL;
 
         *ast = new_func_decl_ast(func_decl);
         return BRAMA_OK;
@@ -736,11 +742,17 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
             status = ast_expression(context, &unary_content, NULL);
         }
 
-        if (status != BRAMA_OK)
+        if (status != BRAMA_OK) {
+            destroy_ast(unary_content);
+            BRAMA_FREE(unary_content);
             RESTORE_PARSER_INDEX_AND_RETURN(status);
+        }
 
-        if ((operator_type == OPERATOR_INCREMENT || operator_type == OPERATOR_DECCREMENT) && unary_content->type != AST_SYMBOL)
+        if ((operator_type == OPERATOR_INCREMENT || operator_type == OPERATOR_DECCREMENT) && unary_content->type != AST_SYMBOL) {
+            destroy_ast(unary_content);
+            BRAMA_FREE(unary_content);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_EXPRESSION_NOT_VALID);
+        }
 
         t_unary_ptr unary   = BRAMA_MALLOC(sizeof (t_unary));
         unary->operand_type = UNARY_OPERAND_BEFORE;
@@ -768,9 +780,11 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
         return BRAMA_OK;
     }
 
-    if (status == BRAMA_OK && (*ast)->type == AST_PRIMATIVE && (ast_check_operator(context, OPERATOR_INCREMENT) ||  ast_check_operator(context, OPERATOR_DECCREMENT)))
-        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_INVALID_UNARY_EXPRESSION)
-
+    if (status == BRAMA_OK && (*ast)->type == AST_PRIMATIVE && (ast_check_operator(context, OPERATOR_INCREMENT) ||  ast_check_operator(context, OPERATOR_DECCREMENT))) {
+        destroy_ast(*ast);
+        BRAMA_FREE(*ast);
+        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_INVALID_UNARY_EXPRESSION);
+    }
     return status;
 }
 
@@ -825,8 +839,10 @@ brama_status ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr
         brama_operator_type opt = get_operator(ast_previous(context));
         t_ast_ptr right         = NULL;
         brama_status right_status = ast_addition_expr(context, &right, NULL);
-        if (right_status != BRAMA_OK)
+        if (right_status != BRAMA_OK) {
+            CLEAR_AST(right);
             return right_status;
+        }
 
         t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
         binary->left         = *ast;
@@ -847,8 +863,10 @@ brama_status ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_pt
         brama_operator_type opt = get_operator(ast_previous(context));
         t_ast_ptr right         = NULL;
         brama_status right_status = ast_control_expr(context, &right, NULL);
-        if (right_status != BRAMA_OK)
+        if (right_status != BRAMA_OK) {
+            CLEAR_AST(right);
             return right_status;
+        }
 
         t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
         binary->left         = *ast;
@@ -869,8 +887,10 @@ brama_status ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr ext
         brama_operator_type opt = get_operator(ast_previous(context));
         t_ast_ptr right         = NULL;
         brama_status right_status = ast_equality_expr(context, &right, NULL);
-        if (right_status != BRAMA_OK)
-            return right_status; // todo: restore index for all ast expr.
+        if (right_status != BRAMA_OK) {
+            CLEAR_AST(right);
+            return right_status;
+        }
 
         t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
         binary->left         = *ast;
@@ -891,8 +911,10 @@ brama_status ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extr
         brama_operator_type opt = get_operator(ast_previous(context));
         t_ast_ptr right         = NULL;
         brama_status right_status = ast_and_expr(context, &right, NULL);
-        if (right_status != BRAMA_OK)
+        if (right_status != BRAMA_OK) {
+            CLEAR_AST(right);
             return right_status;
+        }
 
         t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
         binary->left         = *ast;
@@ -913,8 +935,10 @@ brama_status ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_pt
         brama_operator_type opt = get_operator(ast_previous(context));
         t_ast_ptr right         = NULL;
         brama_status right_status = ast_multiplication_expr(context, &right, NULL);
-        if (right_status != BRAMA_OK)
+        if (right_status != BRAMA_OK) {
+            CLEAR_AST(right);
             return right_status;
+        }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
         binary->left        = *ast;
@@ -935,8 +959,10 @@ brama_status ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, v
         brama_operator_type opt = get_operator(ast_previous(context));
         t_ast_ptr right         = NULL;
         brama_status right_status = ast_unary_expr(context, &right, NULL);
-        if (right_status != BRAMA_OK)
+        if (right_status != BRAMA_OK) {
+            CLEAR_AST(right);
             return right_status;
+        }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
         binary->left        = *ast;
@@ -964,8 +990,10 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_
         brama_operator_type opt = get_operator(ast_previous(context));
         t_ast_ptr right         = NULL;
         brama_status right_status = ast_assignable(context, &right, NULL);
-        if (right_status != BRAMA_OK)
-            RESTORE_PARSER_INDEX_AND_RETURN(right_status);
+        if (right_status != BRAMA_OK) {
+            CLEAR_AST(right);
+            return right_status;
+        }
 
         t_assign_ptr assign = BRAMA_MALLOC(sizeof(t_assign));
         assign->symbol      = variable_name;
@@ -1027,25 +1055,47 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
 
     if (ast_match_keyword(context, 1, KEYWORD_WHILE)) {
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
-        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
 
         t_ast_ptr condition = NULL;
         brama_status condition_status = ast_assignable(context, &condition, NULL);
-        if (condition_status != BRAMA_OK)
-        RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
+        if (condition_status != BRAMA_OK) {
+            destroy_ast(condition);
+            BRAMA_FREE(condition);
+            condition = NULL;
+            RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
+        }
 
-        if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES))
-        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+        if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES)){
+            destroy_ast(condition);
+            BRAMA_FREE(condition);
+            condition = NULL;
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+        }
 
         t_ast_ptr body = NULL;
         brama_status body_status = ast_block_stmt(context, &body, NULL);
         if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
             body_status = ast_assignable(context, &body, NULL);
-            if (body_status != BRAMA_OK)
-            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_BODY_NOT_FOUND)
+            if (body_status != BRAMA_OK) {
+                destroy_ast(condition);
+                destroy_ast(body);
+                BRAMA_FREE(condition);
+                BRAMA_FREE(body);
+                condition = NULL;
+                body      = NULL;
+                RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_BODY_NOT_FOUND)
+            }
         }
-        else if (condition_status != BRAMA_OK)
-        RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
+        else if (condition_status != BRAMA_OK) {
+                destroy_ast(condition);
+                destroy_ast(body);
+                BRAMA_FREE(condition);
+                BRAMA_FREE(body);
+                condition = NULL;
+                body      = NULL;
+                RESTORE_PARSER_INDEX_AND_RETURN(condition_status)
+            }
 
         t_while_loop_ptr object = (t_while_loop_ptr)BRAMA_MALLOC(sizeof(t_while_loop));
         object->body            = body;
@@ -1226,7 +1276,7 @@ t_token_ptr ast_consume_keyword(t_context_ptr context, brama_keyword_type keywor
 brama_status ast_parser(t_context_ptr context) {
     context->parser->index = 0;
     while (!ast_is_at_end(context)) {
-        t_ast_ptr ast  = NULL;
+        t_ast_ptr ast       = NULL;
         brama_status status = ast_declaration_stmt(context, &ast, NULL);
         if (status == BRAMA_OK)
             vector_add(context->parser->asts, ast);
@@ -1351,27 +1401,90 @@ bool destroy_ast(t_ast_ptr ast) {
        BRAMA_FREE(ast->control_ptr);
        ast->control_ptr = NULL;
    }
+
+   else if (ast->type == AST_WHILE) {
+       destroy_ast_while_loop(ast->while_ptr);
+       BRAMA_FREE(ast->while_ptr);
+       ast->control_ptr = NULL;
+   }
+
+   else if (ast->type == AST_BLOCK) {
+       destroy_vector(ast->vector_ptr);
+       BRAMA_FREE(ast->vector_ptr);
+       ast->vector_ptr = NULL;
+   }
+
+   else if (ast->type == AST_UNARY) {
+       destroy_ast_unary(ast->vector_ptr);
+       BRAMA_FREE(ast->vector_ptr);
+       ast->vector_ptr = NULL;
+   }
+
+   else if (ast->type == AST_FUNCTION_CALL) {
+       destroy_ast_func_call(ast->vector_ptr);
+       BRAMA_FREE(ast->vector_ptr);
+       ast->vector_ptr = NULL;
+   }
+
+   else if (ast->type == AST_SYMBOL) 
+       return true;
+
    else 
        return false;
 
    return true;
 }
 
+bool destroy_ast_unary(t_unary_ptr unary_ptr) {
+    if (unary_ptr->content != NULL) {
+        destroy_ast(unary_ptr->content);
+        BRAMA_FREE(unary_ptr->content);
+    }
+
+    return true;
+}
+
+bool destroy_ast_func_call(t_func_call_ptr func_call_ptr) {
+    if (func_call_ptr->args != NULL) {
+        destroy_vector(func_call_ptr->args);
+        BRAMA_FREE(func_call_ptr->args);
+    }
+    if (func_call_ptr->function != NULL) {
+        vector_destroy(func_call_ptr->function);
+        BRAMA_FREE(func_call_ptr->function);
+    }
+
+    return true;
+}
+
+bool destroy_ast_while_loop(t_while_loop_ptr while_ptr) {
+    if (while_ptr->body != NULL) {
+        if (destroy_ast(while_ptr->body)) {
+            BRAMA_FREE(while_ptr->body);
+        }
+    }
+
+    if (while_ptr->condition != NULL) {
+        if (destroy_ast(while_ptr->condition)) {
+            BRAMA_FREE(while_ptr->condition);
+        }
+    }
+    return true;
+}
+
 bool destroy_ast_binary(t_binary_ptr binary) {
     if (binary->left != NULL) {
         if (destroy_ast(binary->left)) {
             BRAMA_FREE(binary->left);
-            return true;
         }
     }
 
     if (binary->right != NULL) {
         if (destroy_ast(binary->right)) {
             BRAMA_FREE(binary->right);
-            return true;
         }
     }
-    return false;
+    return true;
 }
 
 bool destroy_ast_control(t_control_ptr control) {
@@ -1409,7 +1522,6 @@ bool destroy_vector(t_vector_ptr vector) {
         BRAMA_FREE(item);
         item = NULL;
     }
-
     vector_destroy(vector);
 }
 

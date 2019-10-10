@@ -188,9 +188,11 @@ MunitResult string_stream_3(const MunitParameter params[], void* user_data_or_fi
     t_string_stream* stream = string_stream_init();
     int state = string_stream_add(stream, "hello world");
     munit_assert_int(state, ==, STRING_STREAM_OK);
-    munit_assert_string_equal(string_stream_get(stream), "hello world");
+    char_ptr result = string_stream_get(stream);
+    munit_assert_string_equal(result, "hello world");
     string_stream_destroy(stream);
     BRAMA_FREE(stream);
+    BRAMA_FREE(result);
 
     return MUNIT_OK;
 }
@@ -199,9 +201,11 @@ MunitResult string_stream_4(const MunitParameter params[], void* user_data_or_fi
     t_string_stream* stream = string_stream_init();
     string_stream_add(stream, "hello ");
     string_stream_add(stream, "world");
-    munit_assert_string_equal(string_stream_get(stream), "hello world");
+    char_ptr result = string_stream_get(stream);
+    munit_assert_string_equal(result, "hello world");
     string_stream_destroy(stream);
     BRAMA_FREE(stream);
+    BRAMA_FREE(result);
 
     return MUNIT_OK;
 }
@@ -218,8 +222,8 @@ MunitResult string_stream_5(const MunitParameter params[], void* user_data_or_fi
     }
 
     tmpData[(1024 * 3)] = '\0';
-
-    munit_assert_string_equal(string_stream_get(stream), tmpData);
+    char_ptr result = string_stream_get(stream);
+    munit_assert_string_equal(result, tmpData);
     munit_assert_int         (stream->text_length, ==, (1024 * 3));
     munit_assert_int         (stream->index,       ==, 1024);
     munit_assert_int         (stream->length,      ==, 1024);
@@ -227,6 +231,7 @@ MunitResult string_stream_5(const MunitParameter params[], void* user_data_or_fi
     string_stream_destroy(stream);
     BRAMA_FREE(stream);
     BRAMA_FREE(tmpData);
+    BRAMA_FREE(result);
 
     return MUNIT_OK;
 }
@@ -244,6 +249,8 @@ MunitResult string_stream_6(const MunitParameter params[], void* user_data_or_fi
     munit_assert_int     (stream->index,       ==, 0);
     munit_assert_int     (stream->length,      ==, 0);
     munit_assert_ptr_null(stream->data);
+    BRAMA_FREE(stream);
+    BRAMA_FREE(tmpData);
 
     return MUNIT_OK;
 }
@@ -269,7 +276,8 @@ MunitResult string_stream_8(const MunitParameter params[], void* user_data_or_fi
 
     tmpData[1024] = '\0';
 
-    munit_assert_string_equal(string_stream_get(stream), tmpData);
+    char_ptr result = string_stream_get(stream);
+    munit_assert_string_equal(result, tmpData);
     munit_assert_int         (stream->text_length, ==, 1024);
     munit_assert_int         (stream->index,       ==, 1024);
     munit_assert_int         (stream->length,      ==, 1024);
@@ -282,6 +290,8 @@ MunitResult string_stream_8(const MunitParameter params[], void* user_data_or_fi
     munit_assert_int     (stream->length,      ==, 0);
     munit_assert_ptr_null(stream->data);
     BRAMA_FREE(stream);
+    BRAMA_FREE(tmpData);
+    BRAMA_FREE(result);
 
     return MUNIT_OK;
 }
@@ -298,7 +308,8 @@ MunitResult string_stream_9(const MunitParameter params[], void* user_data_or_fi
 
     string_stream_add     (stream, "world");
 
-    munit_assert_string_equal(string_stream_get(stream), "hello world");
+    char_ptr result = string_stream_get(stream);
+    munit_assert_string_equal(result, "hello world");
     munit_assert_int         (stream->text_length, ==, 11);
     munit_assert_int         (stream->index,       ==, 7);
     munit_assert_int         (stream->length,      ==, 32);
@@ -311,6 +322,7 @@ MunitResult string_stream_9(const MunitParameter params[], void* user_data_or_fi
     munit_assert_int     (stream->length,      ==, 0);
     munit_assert_ptr_null(stream->data);
     BRAMA_FREE(stream);
+    BRAMA_FREE(result);
 
     return MUNIT_OK;
 }
