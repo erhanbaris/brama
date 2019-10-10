@@ -29,7 +29,10 @@ typedef enum brama_status  {
     BRAMA_FUNCTION_NAME_REQUIRED         = 11,
     BRAMA_NEW_CLASS_CREATION_NOT_VALID   = 12,
     BRAMA_BODY_NOT_FOUND                 = 13,
-    BRAMA_INVALID_UNARY_EXPRESSION       = 14
+    BRAMA_INVALID_UNARY_EXPRESSION       = 14,
+    BRAMA_FUNCTION_CALL_NOT_VALID        = 15,
+    BRAMA_ARRAY_NOT_VALID                = 16
+
 } brama_status;
 
 /* PRIMATIVE TYPES */

@@ -357,7 +357,7 @@ MunitResult ast_primary_expr_test_1(const MunitParameter params[], void* user_da
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_STRING);
 
     ast = NULL;
-    munit_assert_int(ast_expression(context, &ast, NULL), ==, BRAMA_EXPRESSION_NOT_VALID);
+    munit_assert_int(ast_expression(context, &ast, NULL), ==, BRAMA_DOES_NOT_MATCH_AST);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -482,7 +482,7 @@ MunitResult ast_primary_expr_test_6(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_EXPRESSION_NOT_VALID);
+    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_DICTIONARY_NOT_VALID);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -493,7 +493,7 @@ MunitResult ast_primary_expr_test_7(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_EXPRESSION_NOT_VALID);
+    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_DICTIONARY_NOT_VALID);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -515,7 +515,7 @@ MunitResult ast_primary_expr_test_9(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_EXPRESSION_NOT_VALID);
+    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_DICTIONARY_NOT_VALID);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -526,7 +526,7 @@ MunitResult ast_primary_expr_test_10(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_EXPRESSION_NOT_VALID);
+    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_DICTIONARY_NOT_VALID);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -537,7 +537,7 @@ MunitResult ast_primary_expr_test_11(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_EXPRESSION_NOT_VALID);
+    munit_assert_int(ast_expression(context, &ast, NULL),  ==, BRAMA_ARRAY_NOT_VALID);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -1309,7 +1309,7 @@ MunitResult ast_block_stmt_test_3(const MunitParameter params[], void* user_data
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_EXPRESSION_NOT_VALID);
+    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_CLOSE_OPERATOR_NOT_FOUND);
 
     brama_destroy(context);
     return MUNIT_OK;
