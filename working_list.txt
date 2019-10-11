@@ -1,3 +1,10 @@
 Todos:
 * "'hello world' \"hi all\" 1024 true null 3.14 =" should not success.
 * Change vector library
+* Removing new line (\n) will operator on each statement execution. Example;
+    for (var i = 0;
+    i < 5; ++i)
+        console.log(
+        i
+        );
+ 
