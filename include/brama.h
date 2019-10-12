@@ -33,7 +33,8 @@ typedef enum brama_status  {
     BRAMA_FUNCTION_CALL_NOT_VALID        = 15,
     BRAMA_ARRAY_NOT_VALID                = 16,
     BRAMA_BLOCK_NOT_VALID                = 17,
-    BRAMA_SEMICOLON_REQUIRED             = 18
+    BRAMA_SEMICOLON_REQUIRED             = 18,
+    BRAMA_ILLEGAL_RETURN_STATEMENT       = 19
 
 } brama_status;
 
@@ -189,11 +190,22 @@ typedef enum brama_ast_type {
 } brama_ast_type;
 
 
+typedef enum _brama_ast_extra_data_type {
+    AST_IN_NONE     = 0,
+    AST_IN_FUNCTION = 1
+} brama_ast_extra_data_type;
+
 /* Unary Operand Type */
 typedef enum _brama_unary_operant_type {
     UNARY_OPERAND_BEFORE = 0,
     UNARY_OPERAND_AFTER  = 1
 } brama_unary_operant_type;
+
+/* Function Call Type */
+typedef enum _brama_func_call_type {
+    FUNC_CALL_NORMAL = 0,
+    FUNC_CALL_ANONY  = 1
+} brama_func_call_type;
 
 /* Function Definition Type */
 
@@ -343,6 +355,7 @@ struct _t_binary;
 struct _t_func_decl;
 struct _t_object_creation;
 struct _t_while_loop;
+struct _t_if_stmt;
 
 typedef struct _t_ast t_ast;
 
@@ -416,8 +429,12 @@ typedef struct _t_control {
 } t_control;
 
 typedef struct _t_func_call {
-    t_vector* function;
-    t_vector* args;
+    union {
+        t_vector*            function;
+        struct _t_func_decl* func_decl_ptr;
+    };
+    brama_func_call_type     type;
+    t_vector*                args;
 } t_func_call;
 
 typedef struct _t_func_decl {
@@ -436,6 +453,12 @@ typedef struct _t_while_loop {
     t_ast* body;
 } t_while_loop;
 
+typedef struct _t_if_stmt {
+    t_ast* condition;
+    t_ast* true_body;
+    t_ast* false_body;
+} t_if_stmt;
+
 typedef struct _t_ast {
     brama_ast_type type;
     union {
@@ -449,6 +472,7 @@ typedef struct _t_ast {
         t_vector*          vector_ptr;
         t_object_creation* object_creation_ptr;
         t_while_loop*      while_ptr;
+        t_if_stmt*      if_stmt_ptr;
         struct _t_ast*     ast_ptr;
         char*              char_ptr;
         int                int_;
@@ -531,6 +555,7 @@ typedef t_string_stream*   t_string_stream_ptr;
 typedef t_object_creation* t_object_creation_ptr;
 typedef t_while_loop*      t_while_loop_ptr;
 typedef t_vector*          t_vector_ptr;
+typedef t_if_stmt*      t_if_stmt_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;

@@ -44,6 +44,8 @@ brama_status ast_assignable          (t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_new_object          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_while_loop          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_if_stmt             (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
+brama_status ast_return_stmt         (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
+brama_status ast_func_body           (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 
 bool destroy_ast                (t_ast_ptr ast);
 bool destroy_vector             (t_vector_ptr vector);
@@ -56,5 +58,6 @@ bool destroy_ast_func_call      (t_func_call_ptr func_call_ptr);
 bool destroy_ast_unary          (t_unary_ptr unary_ptr);
 bool destroy_ast_func_decl      (t_func_decl_ptr func_decl_ptr);
 bool destroy_ast_object_creation(t_object_creation_ptr object_creation_ptr);
+bool destroy_ast_if_stmt        (t_if_stmt_ptr if_stmt_ptr);
 
 #endif // BRAMA_INTERNAL_H

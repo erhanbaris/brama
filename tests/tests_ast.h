@@ -694,14 +694,34 @@ MunitResult ast_call_expr_test_3(const MunitParameter params[], void* user_data_
 
     t_ast_ptr ast = NULL;
     munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
-    munit_assert_int         (ast->type,               ==, AST_FUNCTION_CALL);
+    munit_assert_int         (ast->type,                                 ==, AST_FUNCTION_CALL);
     munit_assert_ptr_not_null(ast->func_call_ptr);
-    munit_assert_int         (ast->func_call_ptr->function->count, ==, 2);
+    munit_assert_int         (ast->func_call_ptr->function->count,       ==, 2);
     munit_assert_string_equal((char_ptr)vector_get(ast->func_call_ptr->function, 0), "test_2");
     munit_assert_string_equal((char_ptr)vector_get(ast->func_call_ptr->function, 1), "print");
     munit_assert_int         (ast->func_call_ptr->args->count, ==, 1);
-    munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->type,                ==, AST_FUNCTION_DECLARATION);
+    munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->type, ==, AST_FUNCTION_DECLARATION);
     munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->func_decl_ptr);
+    destroy_ast(ast);
+    BRAMA_FREE(ast);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_call_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context, "(function() { test = true; })()");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int         (ast->type,                                 ==, AST_FUNCTION_CALL);
+    munit_assert_ptr_not_null(ast->func_call_ptr);
+    munit_assert_ptr_not_null(ast->func_call_ptr->func_decl_ptr);
+    munit_assert_int         (ast->func_call_ptr->type, ==, FUNC_CALL_ANONY);
+    munit_assert_ptr_not_null(ast->func_call_ptr->func_decl_ptr->body);
+    munit_assert_int         (ast->func_call_ptr->func_decl_ptr->body->type, ==, AST_BLOCK);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -1576,6 +1596,7 @@ MunitTest AST_TESTS[] = {
     ADD_TEST(ast_call_expr_test_1),
     ADD_TEST(ast_call_expr_test_2),
     ADD_TEST(ast_call_expr_test_3),
+    ADD_TEST(ast_call_expr_test_4),
     ADD_TEST(ast_multiplication_expr_test_1),
     ADD_TEST(ast_multiplication_expr_test_2),
     ADD_TEST(ast_multiplication_expr_test_3),
