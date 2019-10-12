@@ -21,6 +21,7 @@ MunitResult ast_ast_while_loop_1(const MunitParameter params[], void* user_data_
 
     munit_assert_ptr_not_null(ast->while_ptr->body);
     munit_assert_int         (ast->while_ptr->body->type, ==, AST_FUNCTION_CALL);
+    CLEAR_AST(ast);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -41,6 +42,7 @@ MunitResult ast_ast_while_loop_2(const MunitParameter params[], void* user_data_
 
     munit_assert_ptr_not_null(ast->while_ptr->body);
     munit_assert_int         (ast->while_ptr->body->type, ==, AST_BLOCK);
+    CLEAR_AST(ast);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -74,6 +76,7 @@ MunitResult ast_ast_while_loop_3(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->while_ptr->condition->control_ptr->left->assign_ptr->opt,      ==, OPERATOR_ASSIGN);
     munit_assert_int         (ast->while_ptr->condition->control_ptr->left->assign_ptr->def_type, ==, KEYWORD_VAR);
     munit_assert_int         (ast->while_ptr->condition->control_ptr->left->assign_ptr->assignment->type, ==, AST_FUNCTION_CALL);
+    CLEAR_AST(ast);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -98,6 +101,7 @@ MunitResult ast_ast_while_loop_4(const MunitParameter params[], void* user_data_
     munit_assert_ptr_not_null(ast->while_ptr->condition);
     munit_assert_int         (ast->while_ptr->condition->type,                    ==, AST_CONTROL_OPERATION);
     munit_assert_int         (ast->while_ptr->condition->control_ptr->opt,        ==, OPERATOR_LESS_THAN);
+    CLEAR_AST(ast);
 
     brama_destroy(context);
     return MUNIT_OK;

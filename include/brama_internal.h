@@ -21,6 +21,7 @@ t_token_ptr ast_next          (t_context_ptr context);
 t_token_ptr ast_consume       (t_context_ptr context);
 bool        ast_is_at_end     (t_context_ptr context);
 bool        is_primative      (t_token_ptr token);
+bool        is_next_new_line  (t_context_ptr context);
 
 brama_status as_primative            (t_token_ptr token, t_ast_ptr_ptr ast);
 brama_status ast_parser              (t_context_ptr context);
@@ -44,14 +45,16 @@ brama_status ast_new_object          (t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_while_loop          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_if_stmt             (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 
-bool destroy_ast           (t_ast_ptr ast);
-bool destroy_vector        (t_vector_ptr vector);
-bool destroy_ast_primative (t_primative_ptr primative);
-bool destroy_ast_assignment(t_assign_ptr assignment);
-bool destroy_ast_binary    (t_binary_ptr binary);
-bool destroy_ast_control   (t_control_ptr binary);
-bool destroy_ast_while_loop(t_while_loop_ptr while_ptr);
-bool destroy_ast_func_call (t_func_call_ptr func_call_ptr);
-bool destroy_ast_unary     (t_unary_ptr unary_ptr);
+bool destroy_ast                (t_ast_ptr ast);
+bool destroy_vector             (t_vector_ptr vector);
+bool destroy_ast_primative      (t_primative_ptr primative);
+bool destroy_ast_assignment     (t_assign_ptr assignment);
+bool destroy_ast_binary         (t_binary_ptr binary);
+bool destroy_ast_control        (t_control_ptr binary);
+bool destroy_ast_while_loop     (t_while_loop_ptr while_ptr);
+bool destroy_ast_func_call      (t_func_call_ptr func_call_ptr);
+bool destroy_ast_unary          (t_unary_ptr unary_ptr);
+bool destroy_ast_func_decl      (t_func_decl_ptr func_decl_ptr);
+bool destroy_ast_object_creation(t_object_creation_ptr object_creation_ptr);
 
 #endif // BRAMA_INTERNAL_H

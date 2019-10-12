@@ -12,7 +12,7 @@
         context->parser->index = 0;                                                \
         t_ast_ptr ast = NULL;                                                      \
         munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);\
-        brama_destroy(context);                                                    \
+        brama_destroy(context); CLEAR_AST(ast);                                    \
         return MUNIT_OK;                                                           \
     }
 
@@ -23,7 +23,7 @@
         context->parser->index = 0;                                                \
         t_ast_ptr ast = NULL;                                                      \
         munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , STATUS  );\
-        brama_destroy(context);                                                    \
+        brama_destroy(context);  CLEAR_AST(ast);                                   \
         return MUNIT_OK;                                                           \
     }
 
@@ -46,7 +46,7 @@ void setUp(const MunitParameter params[], void* user_data) {
 void tearDown(void* fixture) {
     #if defined(_WIN32)
         // Send all reports to STDOUT
-    /*_CrtSetReportMode( _CRT_WARN, _CRTDBG_MODE_FILE );
+    _CrtSetReportMode( _CRT_WARN, _CRTDBG_MODE_FILE );
     _CrtSetReportFile( _CRT_WARN, _CRTDBG_FILE_STDOUT );
     _CrtSetReportMode( _CRT_ERROR, _CRTDBG_MODE_FILE );
     _CrtSetReportFile( _CRT_ERROR, _CRTDBG_FILE_STDOUT );
@@ -66,7 +66,7 @@ void tearDown(void* fixture) {
 
     free(s1);
     s1 = NULL;
-    */
+    
     #endif
 }
 

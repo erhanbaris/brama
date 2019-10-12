@@ -88,12 +88,11 @@ case OPERATOR_1_SYMBOL :                     \
 #define DESTROY_AST_AND_RETURN(RETURN_CODE, VAR) \
 {                          \
     RESTORE_PARSER_INDEX();\
-    destroy_ast( VAR );    \
-    BRAMA_FREE ( VAR );    \
+    CLEAR_AST( VAR );    \
     return RETURN_CODE ;   \
 }
 
-#define CLEAR_AST(AST) destroy_ast( AST ); BRAMA_FREE( AST );
+#define CLEAR_AST(AST) if ( AST != NULL ) { destroy_ast( AST ); BRAMA_FREE( AST ); AST = NULL; }
 
 
 #if defined(_WIN32)
