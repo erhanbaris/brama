@@ -38,14 +38,15 @@ brama_status ast_equality_expr       (t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_and_expr            (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_or_expr             (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_assignment_expr     (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
-brama_status ast_block_stmt          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
+brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
+brama_status ast_block_singleline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_assignable          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_new_object          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_while_loop          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_if_stmt             (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_return_stmt         (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
-brama_status ast_func_body           (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
+brama_status ast_block_body          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 
 bool destroy_ast                (t_ast_ptr ast);
 bool destroy_vector             (t_vector_ptr vector);

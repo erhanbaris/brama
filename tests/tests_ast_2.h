@@ -180,6 +180,57 @@ MunitResult ast_if_stmt_3(const MunitParameter params[], void* user_data_or_fixt
     return MUNIT_OK;
 }
 
+MunitResult ast_if_stmt_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "var test = 1;\n"
+                            "if (test == -1)\n"
+                            "    console.log(\"Test is -1\");\n"
+                            "else if (test == 0)\n"
+                            "    console.log(\"Test is 0\");\n"
+                            "else\n"
+                            "    console.log(\"Test is 1\");");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast->type,                                 ==, AST_ASSIGNMENT);
+    CLEAR_AST(ast);
+
+    ast = NULL;
+    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast->type,                                 ==, AST_IF_STATEMENT);
+    munit_assert_ptr_not_null(ast->if_stmt_ptr);
+    munit_assert_ptr_not_null(ast->if_stmt_ptr->condition);
+    munit_assert_int         (ast->if_stmt_ptr->condition->type, ==, AST_CONTROL_OPERATION);
+    munit_assert_int         (ast->if_stmt_ptr->condition->control_ptr->left->type,  ==, AST_FUNCTION_CALL);
+    munit_assert_int         (ast->if_stmt_ptr->condition->control_ptr->right->type, ==, AST_PRIMATIVE);
+
+    munit_assert_ptr_not_null(ast->if_stmt_ptr->true_body);
+    munit_assert_int         (ast->if_stmt_ptr->true_body->type, ==, AST_ASSIGNMENT);
+
+    munit_assert_ptr_null    (ast->if_stmt_ptr->false_body);
+    CLEAR_AST(ast);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_if_stmt_5(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "var test = 1;\n"
+                            "if (test == -1)\n"
+                            "    console.log(\"Test is -1\");\n"
+                            "    console.log(\"Test is -1\");\n"
+                            "else if (test == 0)\n"
+                            "    console.log(\"Test is 0\");\n"
+                            "else\n"
+                            "    console.log(\"Test is 1\");");
+    munit_assert_int(context->status, ==, BRAMA_DOES_NOT_MATCH_AST);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitResult ast_return_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_execute(context,  "return true");
@@ -213,6 +264,54 @@ MunitResult ast_return_3(const MunitParameter params[], void* user_data_or_fixtu
     return MUNIT_OK;
 }
 
+MunitResult ast_return_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "function test () {\n"
+                            "    if (true) \n"
+                            "        return false;\n"
+                            "    return true;\n"
+                            "}");
+    munit_assert_int(context->status, == , BRAMA_OK);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_return_5(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "function test () {\n"
+                            "    while(true) \n"
+                            "        return false;\n"
+                            "    return true;\n"
+                            "}");
+    munit_assert_int(context->status, == , BRAMA_OK);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_return_6(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "    while(true) \n"
+                            "        return false;\n"
+                            "    return true;\n");
+    munit_assert_int(context->status, == , BRAMA_ILLEGAL_RETURN_STATEMENT);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_return_7(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "{ \n"
+                            "return false;\n"
+                            "}");
+    munit_assert_int(context->status, == , BRAMA_ILLEGAL_RETURN_STATEMENT);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitTest AST_TESTS_2[] = {
 
     ADD_TEST(ast_while_loop_1),
@@ -222,9 +321,15 @@ MunitTest AST_TESTS_2[] = {
     ADD_TEST(ast_if_stmt_1),
     ADD_TEST(ast_if_stmt_2),
     ADD_TEST(ast_if_stmt_3),
+    ADD_TEST(ast_if_stmt_4),
+    ADD_TEST(ast_if_stmt_5),
     ADD_TEST(ast_return_1),
     ADD_TEST(ast_return_2),
     ADD_TEST(ast_return_3),
+    ADD_TEST(ast_return_4),
+    ADD_TEST(ast_return_5),
+    ADD_TEST(ast_return_6),
+    ADD_TEST(ast_return_7),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 

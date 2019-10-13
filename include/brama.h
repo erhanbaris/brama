@@ -169,24 +169,25 @@ typedef enum brama_operator_type {
 
 /* AST TYPES */
 typedef enum brama_ast_type {
-    AST_NONE              = 0,
-    AST_IF_STATEMENT         ,
-    AST_ASSIGNMENT           ,
-    AST_SYMBOL               ,
-    AST_PRIMATIVE            ,
-    AST_BINARY_OPERATION     ,
-    AST_STRUCT_OPERATION     ,
-    AST_CONTROL_OPERATION    ,
-    AST_FUNCTION_CALL        ,
-    AST_BLOCK                ,
-    AST_PARENTHESES_BLOCK    ,
-    AST_FOR                  ,
-    AST_WHILE                ,
-    AST_FUNCTION_DECLARATION ,
-    AST_RETURN               ,
-    AST_UNARY                ,
-    AST_EXPR_STATEMENT       ,
-    AST_OBJECT_CREATION
+    AST_NONE                 = 0,
+    AST_IF_STATEMENT         = 1,
+    AST_ASSIGNMENT           = 2,
+    AST_SYMBOL               = 3,
+    AST_PRIMATIVE            = 4,
+    AST_BINARY_OPERATION     = 5,
+    AST_STRUCT_OPERATION     = 6,
+    AST_CONTROL_OPERATION    = 7,
+    AST_FUNCTION_CALL        = 8,
+    AST_BLOCK                = 9,
+    AST_PARENTHESES_BLOCK    = 10,
+    AST_FOR                  = 11,
+    AST_WHILE                = 12,
+    AST_FUNCTION_DECLARATION = 13,
+    AST_RETURN               = 14,
+    AST_UNARY                = 15,
+    AST_EXPR_STATEMENT       = 16,
+    AST_OBJECT_CREATION      = 17,
+    AST_SWITCH               = 18
 } brama_ast_type;
 
 
