@@ -759,11 +759,12 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
             if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
                 do {
                     t_ast_ptr arg = NULL;
-                    brama_status status = ast_assignable(context, &call_args, NULL);
+                    brama_status status = ast_assignable(context, &arg, NULL);
                     if (status != BRAMA_OK) {
                         destroy_vector(call_args);
                         BRAMA_FREE(call_args);
                         CLEAR_AST(*ast);
+                        CLEAR_AST(arg);
                         RESTORE_PARSER_INDEX_AND_RETURN(status);
                     }
 
@@ -1077,7 +1078,7 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, void_
             return right_status;
         }
 
-        ast_consume_operator(context, OPERATOR_SEMICOLON);
+        //ast_consume_operator(context, OPERATOR_SEMICOLON);
 
         t_assign_ptr assign = BRAMA_MALLOC(sizeof(t_assign));
         assign->symbol      = variable_name;
@@ -1211,6 +1212,8 @@ brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extr
     BACKUP_PARSER_INDEX();
 
     if (ast_match_keyword(context, 1, KEYWORD_IF)) {
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE); /* Clear new line */
+
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
 
@@ -1228,7 +1231,7 @@ brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extr
 
         brama_status body_status = ast_block_multiline_stmt(context, &true_body, extra_data);
         if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
-            body_status = ast_block_body(context, &true_body, extra_data);
+            body_status = ast_declaration_stmt(context, &true_body, extra_data);
             if (body_status != BRAMA_OK) {
                 CLEAR_AST(true_body);
                 CLEAR_AST(condition);
@@ -1241,10 +1244,11 @@ brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extr
             RESTORE_PARSER_INDEX_AND_RETURN(condition_status)
         }
 
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE | END_LINE_CHECKER_SEMICOLON);
         if (ast_match_keyword(context, 1, KEYWORD_ELSE)) {
-            body_status = ast_block_multiline_stmt(context, &false_body, NULL);
+            body_status = ast_block_multiline_stmt(context, &false_body, extra_data);
             if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
-                body_status = ast_block_singleline_stmt(context, &false_body, NULL);
+                body_status = ast_declaration_stmt(context, &false_body, extra_data);
                 if (body_status != BRAMA_OK) {
                     CLEAR_AST(true_body);
                     CLEAR_AST(false_body);
@@ -1289,22 +1293,43 @@ brama_status ast_assignable(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
-brama_status ast_block_singleline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
-    brama_status status = BRAMA_NOK;
+brama_status check_end_of_line(t_context_ptr context, int operators) {
+    t_token_ptr token = vector_get(context->tokinizer->tokens, context->parser->index);
 
-    status = ast_new_object(context, ast, NULL);
-    if (status == BRAMA_OK)
+    if (operators == 0)
         return BRAMA_OK;
-    else if (status != BRAMA_DOES_NOT_MATCH_AST)
-        return status;
 
-    status = ast_or_expr(context, ast, NULL);
-    if (status == BRAMA_OK)
-        return BRAMA_OK;
-    else if (status != BRAMA_DOES_NOT_MATCH_AST)
-        return status;
+    int index = 0;
+    brama_status status = BRAMA_SEMICOLON_REQUIRED;
+    do {
+        /* If there is no more token, it means we are end of tokens and we do not event need to validate */
+        if (token == NULL)
+            return BRAMA_OK;
 
-    return BRAMA_DOES_NOT_MATCH_AST;
+        bool is_semicolon = operators & END_LINE_CHECKER_SEMICOLON && token->opt == OPERATOR_SEMICOLON;
+        bool is_newline   = operators & END_LINE_CHECKER_NEWLINE   && token->opt == OPERATOR_NEW_LINE;
+
+        /* If there is no token or it is not one of the required operator, respose error code */
+        if (token->type != TOKEN_OPERATOR || (!is_semicolon && !is_newline))
+            break;
+
+        /* Is semi colon required, if yes, consume all semicolons */
+        if (is_semicolon) {
+            ++context->parser->index;
+            status = BRAMA_OK;
+        }
+
+        /* Is end line required, if yes, consume all end lines */
+        if (is_newline) {
+            ++context->parser->index;
+            status = BRAMA_OK;
+        }
+        ++index;
+
+        token = vector_get(context->tokinizer->tokens, context->parser->index);
+    } while(true); /* Continue until next_token is null or operator not valid anymore*/
+
+    return status;
 }
 
 brama_status ast_block_body(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
@@ -1312,7 +1337,7 @@ brama_status ast_block_body(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
 
     status = ast_assignable(context, ast, extra_data);
     if (status == BRAMA_OK)
-        return BRAMA_OK;
+        goto check_semicolon_and_new_line;
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
         return status;
 
@@ -1320,12 +1345,19 @@ brama_status ast_block_body(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr e
     if (status == BRAMA_OK) {
         if (extra_data == NULL || extra_data != (void*)AST_IN_FUNCTION)
             return BRAMA_ILLEGAL_RETURN_STATEMENT;
-        return BRAMA_OK;
+        goto check_semicolon_and_new_line;
     }
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
         return status;
 
     return BRAMA_DOES_NOT_MATCH_AST;
+
+    check_semicolon_and_new_line: // It looks not good, I know, I will fix it
+    status = check_end_of_line(context, END_LINE_CHECKER_NEWLINE | END_LINE_CHECKER_SEMICOLON);
+    if (status != BRAMA_OK)
+        return status;
+
+    return BRAMA_OK;
 }
 
 brama_status ast_expression(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data) {
@@ -1360,26 +1392,6 @@ t_token_ptr ast_previous(t_context_ptr context) {
     return vector_get(context->tokinizer->tokens, context->parser->index - 1);
 }
 
-void ast_consume_new_lines(t_context_ptr context) {
-    t_token_ptr token = vector_get(context->tokinizer->tokens, context->parser->index);
-    while (vector_get(context->tokinizer->tokens, context->parser->index) != NULL &&
-        is_operator(token) &&
-        (token->opt == OPERATOR_NEW_LINE)) {
-        ++context->parser->index;
-        token = vector_get(context->tokinizer->tokens, context->parser->index);
-    }
-}
-
-void ast_consume_semi_colons(t_context_ptr context) {
-    t_token_ptr token = vector_get(context->tokinizer->tokens, context->parser->index);
-    while (vector_get(context->tokinizer->tokens, context->parser->index) != NULL &&
-           is_operator(token) &&
-           (token->opt == OPERATOR_SEMICOLON)) {
-        ++context->parser->index;
-        token = vector_get(context->tokinizer->tokens, context->parser->index);
-    }
-}
-
 bool is_next_new_line(t_context_ptr context) {
     t_token_ptr token = vector_get(context->tokinizer->tokens, context->parser->index);
     if (token != NULL && is_operator(token) && token->opt == OPERATOR_NEW_LINE)
@@ -1393,7 +1405,7 @@ bool is_next_new_line(t_context_ptr context) {
 }
 
 t_token_ptr ast_peek(t_context_ptr context) {
-    ast_consume_new_lines(context);
+    check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
     return vector_get(context->tokinizer->tokens, context->parser->index);
 }
 
@@ -1493,6 +1505,12 @@ brama_status validate_ast(t_context_ptr context, t_ast_ptr_ptr ast) {
 brama_status ast_parser(t_context_ptr context) {
     context->parser->index = 0;
     while (!ast_is_at_end(context)) {
+
+        /* In that situation, we don't need new line or semi colon. Clean all */
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE | END_LINE_CHECKER_SEMICOLON);
+        if (ast_peek(context) == NULL)
+            return BRAMA_OK;
+
         t_ast_ptr ast       = NULL;
         brama_status status = ast_declaration_stmt(context, &ast, (void*)AST_IN_NONE);
         if (status == BRAMA_OK) {

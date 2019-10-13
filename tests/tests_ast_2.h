@@ -189,27 +189,25 @@ MunitResult ast_if_stmt_4(const MunitParameter params[], void* user_data_or_fixt
                             "    console.log(\"Test is 0\");\n"
                             "else\n"
                             "    console.log(\"Test is 1\");");
-    context->parser->index = 0;
+    munit_assert_int         (context->parser->asts->count, ==, 2);
 
-    t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
     munit_assert_int         (ast->type,                                 ==, AST_ASSIGNMENT);
-    CLEAR_AST(ast);
 
-    ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
-    munit_assert_int         (ast->type,                                 ==, AST_IF_STATEMENT);
-    munit_assert_ptr_not_null(ast->if_stmt_ptr);
-    munit_assert_ptr_not_null(ast->if_stmt_ptr->condition);
-    munit_assert_int         (ast->if_stmt_ptr->condition->type, ==, AST_CONTROL_OPERATION);
-    munit_assert_int         (ast->if_stmt_ptr->condition->control_ptr->left->type,  ==, AST_FUNCTION_CALL);
-    munit_assert_int         (ast->if_stmt_ptr->condition->control_ptr->right->type, ==, AST_PRIMATIVE);
+    ast = (t_ast_ptr)vector_get(context->parser->asts, 1);
+    munit_assert_int         (ast->if_stmt_ptr->condition->control_ptr->left->type,  ==, AST_SYMBOL);
+    munit_assert_int         (ast->if_stmt_ptr->condition->control_ptr->right->type, ==, AST_UNARY);
 
     munit_assert_ptr_not_null(ast->if_stmt_ptr->true_body);
-    munit_assert_int         (ast->if_stmt_ptr->true_body->type, ==, AST_ASSIGNMENT);
+    munit_assert_int         (ast->if_stmt_ptr->true_body->type, ==, AST_FUNCTION_CALL);
 
-    munit_assert_ptr_null    (ast->if_stmt_ptr->false_body);
-    CLEAR_AST(ast);
+    munit_assert_ptr_not_null(ast->if_stmt_ptr->false_body);
+    munit_assert_int         (ast->if_stmt_ptr->false_body->type, ==, AST_IF_STATEMENT);
+    munit_assert_ptr_not_null(ast->if_stmt_ptr->false_body->if_stmt_ptr->condition);
+    munit_assert_int         (ast->if_stmt_ptr->false_body->if_stmt_ptr->condition->type, ==, AST_CONTROL_OPERATION);
+    munit_assert_int         (ast->if_stmt_ptr->false_body->if_stmt_ptr->condition->control_ptr->left->type,  ==, AST_SYMBOL);
+    munit_assert_int         (ast->if_stmt_ptr->false_body->if_stmt_ptr->condition->control_ptr->right->type, ==, AST_PRIMATIVE);
+    munit_assert_ptr_not_null(ast->if_stmt_ptr->false_body->if_stmt_ptr->false_body);
 
     brama_destroy(context);
     return MUNIT_OK;

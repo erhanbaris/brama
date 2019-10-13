@@ -15,6 +15,8 @@ bool        ast_check_keyword  (t_context_ptr context, brama_keyword_type  keywo
 bool        ast_check_operator (t_context_ptr context, brama_operator_type operator_type);
 bool        ast_check_token    (t_context_ptr context, brama_token_type    token_type);
 
+brama_status check_end_of_line(t_context_ptr context, int operators);
+
 t_token_ptr ast_peek          (t_context_ptr context);
 t_token_ptr ast_previous      (t_context_ptr context);
 t_token_ptr ast_next          (t_context_ptr context);
@@ -39,7 +41,6 @@ brama_status ast_and_expr            (t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_or_expr             (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_assignment_expr     (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
-brama_status ast_block_singleline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_assignable          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);
 brama_status ast_new_object          (t_context_ptr context, t_ast_ptr_ptr ast, void_ptr extra_data);

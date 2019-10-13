@@ -208,6 +208,12 @@ typedef enum _brama_func_call_type {
     FUNC_CALL_ANONY  = 1
 } brama_func_call_type;
 
+/* End of line checker */
+typedef enum _brama_end_line_checker_type {
+    END_LINE_CHECKER_SEMICOLON = 1 << 0,
+    END_LINE_CHECKER_NEWLINE   = 1 << 1
+} brama_end_line_checker_type;
+
 /* Function Definition Type */
 
 typedef enum func_def_type {
