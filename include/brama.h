@@ -34,7 +34,9 @@ typedef enum brama_status  {
     BRAMA_ARRAY_NOT_VALID                = 16,
     BRAMA_BLOCK_NOT_VALID                = 17,
     BRAMA_SEMICOLON_REQUIRED             = 18,
-    BRAMA_ILLEGAL_RETURN_STATEMENT       = 19
+    BRAMA_ILLEGAL_RETURN_STATEMENT       = 19,
+    BRAMA_ILLEGAL_BREAK_STATEMENT        = 20,
+    BRAMA_ILLEGAL_CONTINUE_STATEMENT     = 21
 
 } brama_status;
 
@@ -187,13 +189,17 @@ typedef enum brama_ast_type {
     AST_UNARY                = 15,
     AST_EXPR_STATEMENT       = 16,
     AST_OBJECT_CREATION      = 17,
-    AST_SWITCH               = 18
+    AST_SWITCH               = 18,
+    AST_BREAK                = 19,
+    AST_CONTINUE             = 20
 } brama_ast_type;
 
 
 typedef enum _brama_ast_extra_data_type {
     AST_IN_NONE     = 0,
-    AST_IN_FUNCTION = 1
+    AST_IN_FUNCTION = 1 << 0,
+    AST_IN_LOOP     = 1 << 1,
+    AST_IN_SWITCH   = 1 << 2
 } brama_ast_extra_data_type;
 
 /* Unary Operand Type */

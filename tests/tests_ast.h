@@ -729,7 +729,7 @@ MunitResult ast_call_expr_test_4(const MunitParameter params[], void* user_data_
     return MUNIT_OK;
 }
 
-MunitResult ast_multiplication_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
+MunitResult ast_mult_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_execute(context, "10 * 20");
     context->parser->index = 0;
@@ -748,7 +748,7 @@ MunitResult ast_multiplication_expr_test_1(const MunitParameter params[], void* 
     return MUNIT_OK;
 }
 
-MunitResult ast_multiplication_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
+MunitResult ast_mult_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_execute(context, "10 / 20");
     context->parser->index = 0;
@@ -767,7 +767,7 @@ MunitResult ast_multiplication_expr_test_2(const MunitParameter params[], void* 
     return MUNIT_OK;
 }
 
-MunitResult ast_multiplication_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
+MunitResult ast_mult_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_execute(context, "_ten / _twelve");
     context->parser->index = 0;
@@ -790,7 +790,7 @@ MunitResult ast_multiplication_expr_test_3(const MunitParameter params[], void* 
     return MUNIT_OK;
 }
 
-MunitResult ast_multiplication_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
+MunitResult ast_mult_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_execute(context, "_ten / 124");
     context->parser->index = 0;
@@ -1597,10 +1597,10 @@ MunitTest AST_TESTS[] = {
     ADD_TEST(ast_call_expr_test_2),
     ADD_TEST(ast_call_expr_test_3),
     ADD_TEST(ast_call_expr_test_4),
-    ADD_TEST(ast_multiplication_expr_test_1),
-    ADD_TEST(ast_multiplication_expr_test_2),
-    ADD_TEST(ast_multiplication_expr_test_3),
-    ADD_TEST(ast_multiplication_expr_test_4),
+    ADD_TEST(ast_mult_expr_test_1),
+    ADD_TEST(ast_mult_expr_test_2),
+    ADD_TEST(ast_mult_expr_test_3),
+    ADD_TEST(ast_mult_expr_test_4),
     ADD_TEST(ast_addition_expr_test_1),
     ADD_TEST(ast_addition_expr_test_2),
     ADD_TEST(ast_addition_expr_test_3),

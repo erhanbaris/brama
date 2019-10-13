@@ -107,6 +107,29 @@ MunitResult ast_while_loop_4(const MunitParameter params[], void* user_data_or_f
     return MUNIT_OK;
 }
 
+MunitResult ast_while_loop_5(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "while (count < 10) {\n"
+                            "break;\n"
+                            "}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast->type,                               ==, AST_WHILE);
+    munit_assert_ptr_not_null(ast->while_ptr->body);
+    munit_assert_int         (ast->while_ptr->body->type,              ==, AST_BLOCK);
+    munit_assert_int         (ast->while_ptr->body->vector_ptr->count, ==, 1);
+    munit_assert_int         (((t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 0))->type,                    ==, AST_BREAK);
+    munit_assert_ptr_not_null(ast->while_ptr->condition);
+    munit_assert_int         (ast->while_ptr->condition->type,                    ==, AST_CONTROL_OPERATION);
+    munit_assert_int         (ast->while_ptr->condition->control_ptr->opt,        ==, OPERATOR_LESS_THAN);
+    CLEAR_AST(ast);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitResult ast_if_stmt_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_execute(context,  "if (true == true) { console.log(true) } else console.log(false)");
@@ -310,12 +333,80 @@ MunitResult ast_return_7(const MunitParameter params[], void* user_data_or_fixtu
     return MUNIT_OK;
 }
 
+MunitResult ast_break_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "break");
+    munit_assert_int(context->status, == , BRAMA_ILLEGAL_BREAK_STATEMENT);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_break_2(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "{ \n"
+                            "break\n"
+                            "}");
+    munit_assert_int(context->status, == , BRAMA_ILLEGAL_BREAK_STATEMENT);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_break_3(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "if (true) break;");
+    munit_assert_int(context->status, == , BRAMA_ILLEGAL_BREAK_STATEMENT);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_break_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "while (true) {\n"
+                            "    (function(){\n"
+                            "        break;\n"
+                            "    })();\n"
+                            "}");
+    munit_assert_int(context->status, == , BRAMA_ILLEGAL_BREAK_STATEMENT);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_break_5(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "var data = 1;\n"
+                            "while (true) {\n"
+                            "\n"
+                            "    if (data != 10)\n"
+                            "        console.log(data);\n"
+                            "    else\n"
+                            "        ++data;\n"
+                            "}");
+    munit_assert_int(context->status, == , BRAMA_OK);
+    munit_assert_int         (context->parser->asts->count, ==, 2);
+
+    t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
+    munit_assert_int         (ast->type,  ==, AST_ASSIGNMENT);
+
+    ast = (t_ast_ptr)vector_get(context->parser->asts, 1);
+    munit_assert_int         (ast->type,  ==, AST_WHILE);
+    munit_assert_int         (ast->while_ptr->condition->type, ==, AST_PRIMATIVE);
+    munit_assert_int         (ast->while_ptr->body->type,      ==, AST_BLOCK);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitTest AST_TESTS_2[] = {
 
     ADD_TEST(ast_while_loop_1),
     ADD_TEST(ast_while_loop_2),
     ADD_TEST(ast_while_loop_3),
     ADD_TEST(ast_while_loop_4),
+    ADD_TEST(ast_while_loop_5),
     ADD_TEST(ast_if_stmt_1),
     ADD_TEST(ast_if_stmt_2),
     ADD_TEST(ast_if_stmt_3),
@@ -328,6 +419,11 @@ MunitTest AST_TESTS_2[] = {
     ADD_TEST(ast_return_5),
     ADD_TEST(ast_return_6),
     ADD_TEST(ast_return_7),
+    ADD_TEST(ast_break_1),
+    ADD_TEST(ast_break_2),
+    ADD_TEST(ast_break_3),
+    ADD_TEST(ast_break_4),
+    ADD_TEST(ast_break_5),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 
