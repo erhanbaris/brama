@@ -35,6 +35,7 @@ brama_status ast_symbol_expr         (t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_primary_expr        (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);
 brama_status ast_multiplication_expr (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);
 brama_status ast_addition_expr       (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);
+brama_status ast_bitwise_shift_expr  (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);
 brama_status ast_control_expr        (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);
 brama_status ast_equality_expr       (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);
 brama_status ast_and_expr            (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);

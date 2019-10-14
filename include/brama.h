@@ -145,6 +145,7 @@ typedef enum brama_operator_type {
     OPERATOR_BITWISE_XOR             ,
     OPERATOR_BITWISE_LEFT_SHIFT      ,
     OPERATOR_BITWISE_RIGHT_SHIFT     ,
+    OPERATOR_BITWISE_UNSIGNED_RIGHT_SHIFT,
     OPERATOR_GREATER_THAN            ,
     OPERATOR_LESS_THAN               ,
     OPERATOR_GREATER_EQUAL_THAN      ,

@@ -240,11 +240,32 @@ brama_status getOperator(t_tokinizer_ptr tokinizer) {
     token->int_       = OPERATOR_NONE;
 
     switch (ch) {
+        
+        /* 
+         * This is special case that is why coded like that.
+         * '>>>' is requre all tree token could be same but others just looking first two char 
+         */
+        case '>' : {
+            if (chNext == '>') {
+                if (chThird == '>') {
+                    token->int_ = OPERATOR_BITWISE_UNSIGNED_RIGHT_SHIFT;
+                    increase(tokinizer);
+                }
+                else 
+                    token->int_ = OPERATOR_BITWISE_RIGHT_SHIFT;
+                increase(tokinizer);
+
+            } else if (chNext == '=' ) {
+                token->int_ = OPERATOR_GREATER_EQUAL_THAN;
+                increase(tokinizer);
+            } else token->int_ = OPERATOR_GREATER_THAN;
+        }
+        break;
+
         OPERATOR_CASE_DOUBLE_START_WITH_FOUR('/', '=', '*', '/', OPERATOR_DIVISION, OPERATOR_ASSIGN_DIVISION, OPERATOR_COMMENT_MULTILINE_START, OPERATOR_COMMENT_LINE);
 
         OPERATOR_CASE_DOUBLE_START_WITH('+', '+', '=', OPERATOR_ADDITION,       OPERATOR_INCREMENT,             OPERATOR_ASSIGN_ADDITION);
         OPERATOR_CASE_DOUBLE_START_WITH('-', '-', '=', OPERATOR_SUBTRACTION,    OPERATOR_DECCREMENT,            OPERATOR_ASSIGN_SUBTRACTION);
-        OPERATOR_CASE_DOUBLE_START_WITH('>', '=', '>', OPERATOR_GREATER_THAN,   OPERATOR_GREATER_EQUAL_THAN,    OPERATOR_BITWISE_RIGHT_SHIFT);
         OPERATOR_CASE_DOUBLE_START_WITH('<', '=', '<', OPERATOR_LESS_THAN,      OPERATOR_LESS_EQUAL_THAN,       OPERATOR_BITWISE_LEFT_SHIFT);
         OPERATOR_CASE_DOUBLE_START_WITH('&', '&', '=', OPERATOR_BITWISE_AND,    OPERATOR_AND,                   OPERATOR_BITWISE_AND_ASSIGN);
         OPERATOR_CASE_DOUBLE_START_WITH('|', '|', '=', OPERATOR_BITWISE_OR,     OPERATOR_OR,                    OPERATOR_BITWISE_OR_ASSIGN);
@@ -816,7 +837,7 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_
     brama_status status                 = BRAMA_NOK;
 
     /* Looking for : --i ++i !i -i */
-    if (ast_match_operator(context, 4, OPERATOR_SUBTRACTION, OPERATOR_INCREMENT, OPERATOR_DECCREMENT, OPERATOR_NOT)) {
+    if (ast_match_operator(context, 5, OPERATOR_SUBTRACTION, OPERATOR_INCREMENT, OPERATOR_DECCREMENT, OPERATOR_NOT, OPERATOR_BITWISE_NOT)) {
         operator_type = get_operator_type(ast_previous(context));
 
         /* Looking for: -10 -10.1 */
@@ -945,14 +966,14 @@ brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int 
 }
 
 brama_status ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
-    brama_status left_status = ast_addition_expr(context, ast, extra_data);
+    brama_status left_status = ast_bitwise_shift_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 4, OPERATOR_GREATER_THAN, OPERATOR_GREATER_EQUAL_THAN, OPERATOR_LESS_THAN, OPERATOR_LESS_EQUAL_THAN)) {
         brama_operator_type opt = get_operator(ast_previous(context));
         t_ast_ptr right         = NULL;
-        brama_status right_status = ast_addition_expr(context, &right, extra_data);
+        brama_status right_status = ast_bitwise_shift_expr(context, &right, extra_data);
         if (right_status != BRAMA_OK) {
             CLEAR_AST(right);
             return right_status;
@@ -997,7 +1018,7 @@ brama_status ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_da
     if (left_status != BRAMA_OK)
         return left_status;
 
-    while (ast_match_operator(context, 1, OPERATOR_AND)) {
+    while (ast_match_operator(context, 2, OPERATOR_AND, OPERATOR_BITWISE_AND)) {
         brama_operator_type opt = get_operator(ast_previous(context));
         t_ast_ptr right         = NULL;
         brama_status right_status = ast_equality_expr(context, &right, extra_data);
@@ -1021,7 +1042,7 @@ brama_status ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_dat
     if (left_status != BRAMA_OK)
         return left_status;
 
-    while (ast_match_operator(context, 1, OPERATOR_OR)) {
+    while (ast_match_operator(context, 3, OPERATOR_OR, OPERATOR_BITWISE_OR, OPERATOR_BITWISE_XOR)) {
         brama_operator_type opt = get_operator(ast_previous(context));
         t_ast_ptr right         = NULL;
         brama_status right_status = ast_and_expr(context, &right, extra_data);
@@ -1035,6 +1056,31 @@ brama_status ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_dat
         binary->opt          = opt;
         binary->right        = right;
         *ast = new_control_ast(binary);
+    }
+
+    return BRAMA_OK;
+}
+
+
+brama_status ast_bitwise_shift_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+    brama_status left_status = ast_addition_expr(context, ast, extra_data);
+    if (left_status != BRAMA_OK)
+        return left_status;
+
+    while (ast_match_operator(context, 3, OPERATOR_BITWISE_LEFT_SHIFT, OPERATOR_BITWISE_RIGHT_SHIFT, OPERATOR_BITWISE_UNSIGNED_RIGHT_SHIFT)) {
+        brama_operator_type opt = get_operator(ast_previous(context));
+        t_ast_ptr right         = NULL;
+        brama_status right_status = ast_addition_expr(context, &right, extra_data);
+        if (right_status != BRAMA_OK) {
+            CLEAR_AST(right);
+            return right_status;
+        }
+
+        t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
+        binary->left        = *ast;
+        binary->opt         = opt;
+        binary->right       = right;
+        *ast = new_binary_ast(binary);
     }
 
     return BRAMA_OK;
@@ -1091,7 +1137,7 @@ brama_status ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, i
 brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
     BACKUP_PARSER_INDEX()
 
-    int type = KEYWORD_VAR;
+    brama_keyword_type type = KEYWORD_VAR;
     if (ast_match_keyword(context, 3, KEYWORD_VAR, KEYWORD_LET, KEYWORD_CONST))
         type = get_keyword(ast_previous(context));
 
