@@ -36,7 +36,8 @@ typedef enum brama_status  {
     BRAMA_SEMICOLON_REQUIRED             = 18,
     BRAMA_ILLEGAL_RETURN_STATEMENT       = 19,
     BRAMA_ILLEGAL_BREAK_STATEMENT        = 20,
-    BRAMA_ILLEGAL_CONTINUE_STATEMENT     = 21
+    BRAMA_ILLEGAL_CONTINUE_STATEMENT     = 21,
+    BRAMA_ILLEGAL_ACCESSOR_STATEMENT     = 22
 
 } brama_status;
 
@@ -192,7 +193,8 @@ typedef enum brama_ast_type {
     AST_OBJECT_CREATION      = 17,
     AST_SWITCH               = 18,
     AST_BREAK                = 19,
-    AST_CONTINUE             = 20
+    AST_CONTINUE             = 20,
+    AST_ACCESSOR             = 21
 } brama_ast_type;
 
 
@@ -370,6 +372,7 @@ struct _t_func_decl;
 struct _t_object_creation;
 struct _t_while_loop;
 struct _t_if_stmt;
+struct _t_accessor;
 
 typedef struct _t_ast t_ast;
 
@@ -462,6 +465,11 @@ typedef struct _t_object_creation {
     t_vector* args;
 } t_object_creation;
 
+typedef struct _t_accessor{
+    t_ast* data;
+    t_ast* index;
+} t_accessor;
+
 typedef struct _t_while_loop {
     t_ast* condition;
     t_ast* body;
@@ -486,7 +494,8 @@ typedef struct _t_ast {
         t_vector*          vector_ptr;
         t_object_creation* object_creation_ptr;
         t_while_loop*      while_ptr;
-        t_if_stmt*      if_stmt_ptr;
+        t_if_stmt*         if_stmt_ptr;
+        t_accessor*        accessor_ptr;
         struct _t_ast*     ast_ptr;
         char*              char_ptr;
         int                int_;
@@ -569,7 +578,8 @@ typedef t_string_stream*   t_string_stream_ptr;
 typedef t_object_creation* t_object_creation_ptr;
 typedef t_while_loop*      t_while_loop_ptr;
 typedef t_vector*          t_vector_ptr;
-typedef t_if_stmt*      t_if_stmt_ptr;
+typedef t_if_stmt*         t_if_stmt_ptr;
+typedef t_accessor*        t_accessor_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;

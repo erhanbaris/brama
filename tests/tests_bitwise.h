@@ -28,7 +28,7 @@ MunitResult ast_bitwise_2(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_int(context->parser->asts->count, ==, 1);
 
     t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
-    munit_assert_int         (ast->type,                        ==, AST_CONTROL_OPERATION);
+    munit_assert_int         (ast->type,                        ==, AST_BINARY_OPERATION);
     munit_assert_int         (ast->control_ptr->opt,            ==, OPERATOR_BITWISE_AND);
     munit_assert_int         (ast->control_ptr->left->type,     ==, AST_SYMBOL);
     munit_assert_int         (ast->control_ptr->right->type,    ==, AST_SYMBOL);
@@ -47,7 +47,7 @@ MunitResult ast_bitwise_3(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_int(context->parser->asts->count, ==, 1);
 
     t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
-    munit_assert_int         (ast->type,                        ==, AST_CONTROL_OPERATION);
+    munit_assert_int         (ast->type,                        ==, AST_BINARY_OPERATION);
     munit_assert_int         (ast->control_ptr->opt,            ==, OPERATOR_BITWISE_OR);
     munit_assert_int         (ast->control_ptr->left->type,     ==, AST_SYMBOL);
     munit_assert_int         (ast->control_ptr->right->type,    ==, AST_SYMBOL);
@@ -66,7 +66,7 @@ MunitResult ast_bitwise_4(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_int(context->parser->asts->count, ==, 1);
 
     t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
-    munit_assert_int         (ast->type,                        ==, AST_CONTROL_OPERATION);
+    munit_assert_int         (ast->type,                        ==, AST_BINARY_OPERATION);
     munit_assert_int         (ast->control_ptr->opt,            ==, OPERATOR_BITWISE_XOR);
     munit_assert_int         (ast->control_ptr->left->type,     ==, AST_SYMBOL);
     munit_assert_int         (ast->control_ptr->right->type,    ==, AST_SYMBOL);
@@ -135,6 +135,25 @@ MunitResult ast_bitwise_7(const MunitParameter params[], void* user_data_or_fixt
     return MUNIT_OK;
 }
 
+MunitResult ast_bitwise_8(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context, "~(ld | cols | rd) & all;");
+
+    t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
+    munit_assert_int         (ast->type,                                 ==, AST_BINARY_OPERATION);
+    munit_assert_ptr_not_null(ast->control_ptr);
+    munit_assert_ptr_not_null(ast->control_ptr->left);
+    munit_assert_ptr_not_null(ast->control_ptr->right);
+    munit_assert_int         (ast->control_ptr->opt,                     ==, OPERATOR_BITWISE_AND);
+    munit_assert_int         (ast->control_ptr->left->type,              ==, AST_UNARY);
+    munit_assert_int         (ast->control_ptr->left->unary_ptr->opt,    ==, OPERATOR_BITWISE_NOT);
+    munit_assert_int         (ast->control_ptr->left->unary_ptr->operand_type,  ==, UNARY_OPERAND_BEFORE);
+    munit_assert_int         (ast->control_ptr->left->unary_ptr->content->type, ==, AST_BINARY_OPERATION);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitTest BITWISE_TESTS[] = {
 
     ADD_TEST(ast_bitwise_1),
@@ -144,6 +163,7 @@ MunitTest BITWISE_TESTS[] = {
     ADD_TEST(ast_bitwise_5),
     ADD_TEST(ast_bitwise_6),
     ADD_TEST(ast_bitwise_7),
+    ADD_TEST(ast_bitwise_8),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 
