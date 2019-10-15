@@ -447,7 +447,7 @@ typedef struct _t_control {
 
 typedef struct _t_func_call {
     union {
-        t_vector*            function;
+        struct _t_ast*       function;
         struct _t_func_decl* func_decl_ptr;
     };
     brama_func_call_type     type;
@@ -466,8 +466,8 @@ typedef struct _t_object_creation {
 } t_object_creation;
 
 typedef struct _t_accessor{
-    t_ast* data;
-    t_ast* index;
+    t_ast* object;
+    t_ast* property;
 } t_accessor;
 
 typedef struct _t_while_loop {

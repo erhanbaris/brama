@@ -51,6 +51,8 @@ brama_status ast_return_stmt         (t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_block_body          (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);
 brama_status ast_continue            (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);
 brama_status ast_break               (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);
+brama_status ast_bitwise_or_expr     (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);
+brama_status ast_bitwise_xor_expr    (t_context_ptr context, t_ast_ptr_ptr ast, int extra_data);
 
 bool destroy_ast                (t_ast_ptr ast);
 bool destroy_vector             (t_vector_ptr vector);

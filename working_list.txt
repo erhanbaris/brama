@@ -7,3 +7,7 @@ Todos:
         console.log(
         i
         );
+
+* this.data
+* this.data[this.getIndex()]
+* this.self.data.content

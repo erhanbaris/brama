@@ -654,8 +654,8 @@ MunitResult ast_call_expr_test_1(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_FUNCTION_CALL);
     munit_assert_ptr_not_null(ast->func_call_ptr);
-    munit_assert_int         (ast->func_call_ptr->function->count, ==, 1);
-    munit_assert_string_equal((char_ptr)vector_get(ast->func_call_ptr->function, 0), "test");
+    munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_SYMBOL);
+    munit_assert_string_equal(ast->func_call_ptr->function->char_ptr, "test");
     munit_assert_int         (ast->func_call_ptr->args->count, ==, 1);
     destroy_ast(ast);
     BRAMA_FREE(ast);
@@ -673,9 +673,9 @@ MunitResult ast_call_expr_test_2(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
     munit_assert_int         (ast->type,               ==, AST_FUNCTION_CALL);
     munit_assert_ptr_not_null(ast->func_call_ptr);
-    munit_assert_int         (ast->func_call_ptr->function->count, ==, 2);
-    munit_assert_string_equal((char_ptr)vector_get(ast->func_call_ptr->function, 0), "test_2");
-    munit_assert_string_equal((char_ptr)vector_get(ast->func_call_ptr->function, 1), "print");
+    munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_ACCESSOR);
+    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->object->char_ptr, "test_2");
+    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->property->char_ptr, "print");
     munit_assert_int         (ast->func_call_ptr->args->count, ==, 1);
     munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->type,                ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->primative_ptr);
@@ -696,9 +696,9 @@ MunitResult ast_call_expr_test_3(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
     munit_assert_int         (ast->type,                                 ==, AST_FUNCTION_CALL);
     munit_assert_ptr_not_null(ast->func_call_ptr);
-    munit_assert_int         (ast->func_call_ptr->function->count,       ==, 2);
-    munit_assert_string_equal((char_ptr)vector_get(ast->func_call_ptr->function, 0), "test_2");
-    munit_assert_string_equal((char_ptr)vector_get(ast->func_call_ptr->function, 1), "print");
+    munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_ACCESSOR);
+    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->object->char_ptr, "test_2");
+    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->property->char_ptr, "print");
     munit_assert_int         (ast->func_call_ptr->args->count, ==, 1);
     munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->type, ==, AST_FUNCTION_DECLARATION);
     munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->func_decl_ptr);

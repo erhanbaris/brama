@@ -604,31 +604,47 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
     BACKUP_PARSER_INDEX();
 
     if (!is_symbol(ast_peek(context)))
-        RESTORE_PARSER_INDEX_AND_RETURN(status)
+        RESTORE_PARSER_INDEX_AND_RETURN(status);
 
-    t_vector_ptr function = vector_init();
+    t_vector_ptr accessors = vector_init();
     while (true) {
         if (!is_symbol(ast_peek(context))) {
-            CLEAR_VECTOR(function);
+            CLEAR_VECTOR(accessors);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_FUNCTION_CALL_NOT_VALID);
         }
 
-        vector_add(function, get_symbol(ast_consume(context)));
+        vector_add(accessors, get_symbol(ast_consume(context)));
         if (!ast_match_operator(context, 1, OPERATOR_DOT))
             break;
     }
 
+    if (accessors->count > 1) {
+        *ast = new_symbol_ast(vector_get(accessors, 0));
+
+        size_t total = accessors->count;
+        for (size_t i = 1; i < total; ++i) {
+            t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
+            accessor->object        = *ast;
+            accessor->property      = new_symbol_ast(vector_get(accessors, i));
+            *ast                    = new_accessor_ast(accessor);
+        }
+
+        status = BRAMA_OK;
+    } else
+        *ast = new_symbol_ast(vector_get(accessors, 0));
+
+    /* We are parsing function parameters */
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) {
         t_vector_ptr args = vector_init();
 
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
             do {
                 t_ast_ptr arg = NULL;
-                brama_status status = ast_assignable(context, &arg, extra_data);
-                if (status != BRAMA_OK) {
+                brama_status inner_status = ast_assignable(context, &arg, extra_data);
+                if (inner_status != BRAMA_OK) {
                     CLEAR_VECTOR(args);
-                    CLEAR_VECTOR(function);
-                    RESTORE_PARSER_INDEX_AND_RETURN(status);
+                    CLEAR_VECTOR(accessors);
+                    RESTORE_PARSER_INDEX_AND_RETURN(inner_status);
                 }
 
                 vector_add(args, arg);
@@ -637,44 +653,42 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
 
         if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL) {
             CLEAR_VECTOR(args);
-            CLEAR_VECTOR(function);
+            CLEAR_VECTOR(accessors);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
         }
 
         t_func_call* func_call = BRAMA_MALLOC(sizeof (t_func_call));
         func_call->args        = args;
-        func_call->function    = function;
+        func_call->function    = *ast;
         func_call->type        = FUNC_CALL_NORMAL;
         *ast                   = new_func_call_ast(func_call);
         status = BRAMA_OK;
     }
-    else
-        RESTORE_PARSER_INDEX();
 
-    if (status == BRAMA_OK && ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START)) {
+    if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START)) {
         if (ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
             CLEAR_AST(*ast);
-            CLEAR_VECTOR(function);
+            CLEAR_VECTOR(accessors);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ILLEGAL_ACCESSOR_STATEMENT);
         }
 
         t_ast_ptr indexer = NULL;
-        brama_status status = ast_assignable(context, &indexer, extra_data);
-        if (status != BRAMA_OK) {
-            CLEAR_VECTOR(function);
+        brama_status inner_status = ast_assignable(context, &indexer, extra_data);
+        if (inner_status != BRAMA_OK) {
+            CLEAR_VECTOR(accessors);
             CLEAR_AST(*ast);
-            RESTORE_PARSER_INDEX_AND_RETURN(status);
+            RESTORE_PARSER_INDEX_AND_RETURN(inner_status);
         }
 
         if (ast_consume_operator(context, OPERATOR_SQUARE_BRACKET_END) == NULL) {
-            CLEAR_VECTOR(function);
+            CLEAR_VECTOR(accessors);
             CLEAR_AST(*ast);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ILLEGAL_ACCESSOR_STATEMENT);
         }
 
         t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
-        accessor->data          = *ast;
-        accessor->index         = indexer;
+        accessor->object        = *ast;
+        accessor->property      = indexer;
         *ast                    = new_accessor_ast(accessor);
         status = BRAMA_OK;
     }
@@ -683,8 +697,8 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
         return status;
 
     CLEAR_AST(*ast);
-    vector_destroy(function);
-    BRAMA_FREE(function);
+    CLEAR_VECTOR(accessors);
+    RESTORE_PARSER_INDEX();
 
     status = ast_symbol_expr(context, ast, extra_data);
     if (status == BRAMA_OK)
@@ -1972,7 +1986,7 @@ bool destroy_ast_func_call(t_func_call_ptr func_call_ptr) {
 
     if (func_call_ptr->type == FUNC_CALL_NORMAL) {
         if (func_call_ptr->function != NULL) {
-            vector_destroy(func_call_ptr->function);
+            destroy_ast(func_call_ptr->function);
             BRAMA_FREE(func_call_ptr->function);
         }
     } else {
