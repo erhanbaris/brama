@@ -66,5 +66,6 @@ bool destroy_ast_unary          (t_unary_ptr unary_ptr);
 bool destroy_ast_func_decl      (t_func_decl_ptr func_decl_ptr);
 bool destroy_ast_object_creation(t_object_creation_ptr object_creation_ptr);
 bool destroy_ast_if_stmt        (t_if_stmt_ptr if_stmt_ptr);
+bool destroy_ast_accessor       (t_accessor_ptr accessor_ptr);
 
 #endif // BRAMA_INTERNAL_H

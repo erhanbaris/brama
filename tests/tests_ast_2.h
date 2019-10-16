@@ -400,6 +400,36 @@ MunitResult ast_break_5(const MunitParameter params[], void* user_data_or_fixtur
     return MUNIT_OK;
 }
 
+MunitResult ast_accessor_1(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_execute(context,  "e.data[0]");
+    munit_assert_int(context->status, == , BRAMA_OK);
+    munit_assert_int         (context->parser->asts->count, ==, 1);
+
+    t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
+    munit_assert_int         (ast->type,  ==, AST_ACCESSOR);
+    munit_assert_ptr_not_null(ast->accessor_ptr);
+    munit_assert_ptr_not_null(ast->accessor_ptr->property);
+    munit_assert_int         (ast->accessor_ptr->property->type,  ==, AST_PRIMATIVE);
+    munit_assert_ptr_not_null(ast->accessor_ptr->property->primative_ptr);
+    munit_assert_int         (ast->accessor_ptr->property->primative_ptr->type, ==, PRIMATIVE_INTEGER);
+    munit_assert_int         (ast->accessor_ptr->property->primative_ptr->int_, ==, 0);
+
+    munit_assert_ptr_not_null(ast->accessor_ptr->object);
+    munit_assert_int         (ast->accessor_ptr->object->type,  ==, AST_ACCESSOR);
+    munit_assert_ptr_not_null(ast->accessor_ptr->object->accessor_ptr);
+    munit_assert_ptr_not_null(ast->accessor_ptr->object->accessor_ptr->object);
+    munit_assert_int         (ast->accessor_ptr->object->accessor_ptr->object->type, ==, AST_SYMBOL);
+    munit_assert_string_equal(ast->accessor_ptr->object->accessor_ptr->object->char_ptr, "e");
+    
+    munit_assert_ptr_not_null(ast->accessor_ptr->object->accessor_ptr->property);
+    munit_assert_int         (ast->accessor_ptr->object->accessor_ptr->property->type, ==, AST_SYMBOL);
+    munit_assert_string_equal(ast->accessor_ptr->object->accessor_ptr->property->char_ptr, "data");
+   
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitTest AST_TESTS_2[] = {
 
     ADD_TEST(ast_while_loop_1),
@@ -424,6 +454,7 @@ MunitTest AST_TESTS_2[] = {
     ADD_TEST(ast_break_3),
     ADD_TEST(ast_break_4),
     ADD_TEST(ast_break_5),
+    ADD_TEST(ast_accessor_1),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 

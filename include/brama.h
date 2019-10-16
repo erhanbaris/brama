@@ -194,7 +194,8 @@ typedef enum brama_ast_type {
     AST_SWITCH               = 18,
     AST_BREAK                = 19,
     AST_CONTINUE             = 20,
-    AST_ACCESSOR             = 21
+    AST_ACCESSOR             = 21,
+    AST_KEYWORD              = 22
 } brama_ast_type;
 
 
@@ -466,8 +467,8 @@ typedef struct _t_object_creation {
 } t_object_creation;
 
 typedef struct _t_accessor{
-    t_ast* object;
-    t_ast* property;
+    struct _t_ast* object;
+    struct _t_ast* property;
 } t_accessor;
 
 typedef struct _t_while_loop {
@@ -499,6 +500,7 @@ typedef struct _t_ast {
         struct _t_ast*     ast_ptr;
         char*              char_ptr;
         int                int_;
+        brama_keyword_type keyword;
     };
 } t_ast;
 
@@ -589,6 +591,7 @@ t_context_ptr brama_init       ();
 void          brama_execute    (t_context_ptr context, char_ptr data);
 void_ptr      brama_last_error (t_context_ptr context);
 void          brama_dump       (t_context_ptr context);
+void          brama_dump_ast   (t_context_ptr context);
 void          brama_destroy    (t_context_ptr context);
 
 

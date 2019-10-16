@@ -405,22 +405,6 @@ GET_ITEM(text,     char_ptr, char_ptr)
 GET_ITEM(symbol,   char_ptr, char_ptr)
 GET_ITEM(operator, int_,     brama_operator_type)
 
-#define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE)       \
-    t_ast_ptr new_##NAME##_ast(INPUT variable) {       \
-        t_ast_ptr ast = BRAMA_MALLOC(sizeof (t_ast));  \
-        ast->type     = STR_TYPE;                      \
-        ast-> TYPE    = variable;                      \
-        return ast;                                    \
-    }
-
-#define NEW_AST_DEF_NULL(NAME, STR_TYPE)               \
-    t_ast_ptr new_##NAME##_ast() {                     \
-        t_ast_ptr ast = BRAMA_MALLOC(sizeof (t_ast));  \
-        ast->type     = STR_TYPE;                      \
-        ast->ast_ptr  = NULL;                          \
-        return ast;                                    \
-    }
-
 NEW_PRIMATIVE_DEF(int,    int,           PRIMATIVE_INTEGER,    int_)
 NEW_PRIMATIVE_DEF(double, double,        PRIMATIVE_DOUBLE,     double_)
 NEW_PRIMATIVE_DEF(text,   char_ptr,      PRIMATIVE_STRING,     char_ptr)
@@ -442,6 +426,7 @@ NEW_AST_DEF(while,     t_while_loop_ptr ,     AST_WHILE,                while_pt
 NEW_AST_DEF(if,        t_if_stmt_ptr,         AST_IF_STATEMENT,         if_stmt_ptr)
 NEW_AST_DEF(return,    t_ast_ptr,             AST_RETURN,               ast_ptr)
 NEW_AST_DEF(accessor,  t_accessor_ptr,        AST_ACCESSOR,             accessor_ptr)
+NEW_AST_DEF(keyword,   brama_keyword_type,    AST_KEYWORD,              keyword)
 
 NEW_AST_DEF_NULL(break,    AST_BREAK)
 NEW_AST_DEF_NULL(continue, AST_CONTINUE)
@@ -603,29 +588,36 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
 
     BACKUP_PARSER_INDEX();
 
-    if (!is_symbol(ast_peek(context)))
+    if (!is_symbol(ast_peek(context)) && (!is_keyword(ast_peek(context)) || get_keyword(ast_peek(context)) != KEYWORD_THIS))
         RESTORE_PARSER_INDEX_AND_RETURN(status);
 
     t_vector_ptr accessors = vector_init();
+    t_token_ptr token      = NULL;
+
     while (true) {
-        if (!is_symbol(ast_peek(context))) {
+        token = ast_consume(context);
+        if (accessors->count != 0 && !is_symbol(token)) {
             CLEAR_VECTOR(accessors);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_FUNCTION_CALL_NOT_VALID);
         }
 
-        vector_add(accessors, get_symbol(ast_consume(context)));
+        if (is_symbol(token))
+            vector_add(accessors, new_symbol_ast(get_symbol(token))); // todo: fix memory leak
+        else 
+            vector_add(accessors, new_keyword_ast(get_keyword(token)));
+
         if (!ast_match_operator(context, 1, OPERATOR_DOT))
             break;
     }
 
     if (accessors->count > 1) {
-        *ast = new_symbol_ast(vector_get(accessors, 0));
+        *ast = vector_get(accessors, 0);
 
         size_t total = accessors->count;
         for (size_t i = 1; i < total; ++i) {
             t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
             accessor->object        = *ast;
-            accessor->property      = new_symbol_ast(vector_get(accessors, i));
+            accessor->property      = vector_get(accessors, i);
             *ast                    = new_accessor_ast(accessor);
         }
 
@@ -693,11 +685,12 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
         status = BRAMA_OK;
     }
 
+    CLEAR_VECTOR(accessors);
+
     if (status == BRAMA_OK)
         return status;
 
     CLEAR_AST(*ast);
-    CLEAR_VECTOR(accessors);
     RESTORE_PARSER_INDEX();
 
     status = ast_symbol_expr(context, ast, extra_data);
@@ -1833,7 +1826,7 @@ void brama_dump(t_context_ptr context) {
     t_context_ptr _context = (t_context_ptr)context;
     int i;
     int totalToken = _context->tokinizer->tokens->count;
-    for (i = 0; i < totalToken; i++) {
+    for (i = 0; i < totalToken; ++i) {
         t_token_ptr token = (t_token_ptr)vector_get(_context->tokinizer->tokens, i);
         if (token->type == TOKEN_TEXT)
             printf("TEXT     = '%s'\r\n", token->char_ptr);
@@ -1849,6 +1842,59 @@ void brama_dump(t_context_ptr context) {
             printf("DOUBLE   = '%f'\r\n", token->double_);
     }
 }
+
+#define LEVEL_PADDING 2
+
+void brama_dump_ast_internal(t_ast_ptr ast, size_t level) {
+    brama_ast_type type = ast->type;
+    switch (type)
+    {
+    case AST_IF_STATEMENT:
+        printf(" {\r\n");
+        printf("%*s  type      : IF_STATEMENT\r\n", (level + 1) * LEVEL_PADDING, "");
+        printf("%*s- condition : ", (level + 1) * LEVEL_PADDING, "");
+        brama_dump_ast_internal(ast->if_stmt_ptr->condition, level + 1);
+        brama_dump_ast_internal(ast->if_stmt_ptr->true_body, level + 1);
+        printf(" }\r\n");
+        break;
+
+
+    case AST_PRIMATIVE:
+        printf(" {\r\n");
+        printf("%*s  type      : PRIMATIVE\r\n", (level + 1) * LEVEL_PADDING, "");
+
+        switch (ast->primative_ptr->type)
+        {
+        case PRIMATIVE_BOOL:
+            printf("%*s  bool      : %s\r\n", (level + 1) * LEVEL_PADDING, "", (ast->primative_ptr->bool_? "TRUE": "FALSE"));
+            break;
+
+        case PRIMATIVE_INTEGER:
+            printf("%*s  int       : %d\r\n", (level + 1) * LEVEL_PADDING, "", ast->primative_ptr->int_);
+            break;
+        }
+
+        printf("%*s}\r\n", (level + 1) * LEVEL_PADDING);
+        break;
+
+    default:
+        break;
+    }
+}
+
+
+void brama_dump_ast(t_context_ptr context) {
+    t_context_ptr _context = (t_context_ptr)context;
+    int i             = 0;
+    int totalAst      = _context->parser->asts->count;
+    t_vector_ptr asts = _context->parser->asts;
+
+    for (i = 0; i < totalAst; ++i) {
+        t_ast_ptr ast = (t_ast_ptr)vector_get(asts, i);
+        brama_dump_ast_internal(ast, 1);
+    }
+}
+
 
 bool destroy_ast(t_ast_ptr ast) {
    if (ast == NULL)
@@ -1924,6 +1970,12 @@ bool destroy_ast(t_ast_ptr ast) {
        destroy_ast_if_stmt(ast->if_stmt_ptr);
        BRAMA_FREE(ast->if_stmt_ptr);
        ast->if_stmt_ptr = NULL;
+   }
+
+   else if (ast->type == AST_ACCESSOR) {
+       destroy_ast_accessor(ast->accessor_ptr);
+       BRAMA_FREE(ast->accessor_ptr);
+       ast->accessor_ptr = NULL;
    }
 
    else if (ast->type == AST_BREAK)
@@ -2025,6 +2077,20 @@ bool destroy_ast_while_loop(t_while_loop_ptr while_ptr) {
         }
     }
     return true;
+}
+
+bool destroy_ast_accessor(t_accessor_ptr accessor_ptr) {
+    if (accessor_ptr->object != NULL) {
+        if (destroy_ast(accessor_ptr->object)) {
+            BRAMA_FREE(accessor_ptr->object);
+        }
+    }
+
+    if (accessor_ptr->property != NULL) {
+        if (destroy_ast(accessor_ptr->property)) {
+            BRAMA_FREE(accessor_ptr->property);
+        }
+    }
 }
 
 bool destroy_ast_binary(t_binary_ptr binary) {
