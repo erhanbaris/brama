@@ -68,4 +68,7 @@ bool destroy_ast_object_creation(t_object_creation_ptr object_creation_ptr);
 bool destroy_ast_if_stmt        (t_if_stmt_ptr if_stmt_ptr);
 bool destroy_ast_accessor       (t_accessor_ptr accessor_ptr);
 
+void brama_dump_vector_internal(t_vector_ptr vector, size_t level);
+void brama_dump_ast_internal   (t_ast_ptr ast, size_t level);
+
 #endif // BRAMA_INTERNAL_H

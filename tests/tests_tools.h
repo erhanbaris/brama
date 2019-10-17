@@ -188,7 +188,8 @@ MunitResult string_stream_3(const MunitParameter params[], void* user_data_or_fi
     t_string_stream* stream = string_stream_init();
     int state = string_stream_add(stream, "hello world");
     munit_assert_int(state, ==, STRING_STREAM_OK);
-    char_ptr result = string_stream_get(stream);
+    char_ptr result = NULL;
+    string_stream_get(stream, &result);
     munit_assert_string_equal(result, "hello world");
     string_stream_destroy(stream);
     BRAMA_FREE(stream);
@@ -201,7 +202,8 @@ MunitResult string_stream_4(const MunitParameter params[], void* user_data_or_fi
     t_string_stream* stream = string_stream_init();
     string_stream_add(stream, "hello ");
     string_stream_add(stream, "world");
-    char_ptr result = string_stream_get(stream);
+    char_ptr result = NULL;
+    string_stream_get(stream, &result);
     munit_assert_string_equal(result, "hello world");
     string_stream_destroy(stream);
     BRAMA_FREE(stream);
@@ -222,7 +224,8 @@ MunitResult string_stream_5(const MunitParameter params[], void* user_data_or_fi
     }
 
     tmpData[(1024 * 3)] = '\0';
-    char_ptr result = string_stream_get(stream);
+    char_ptr result = NULL;
+    string_stream_get(stream, &result);
     munit_assert_string_equal(result, tmpData);
     munit_assert_int         (stream->text_length, ==, (1024 * 3));
     munit_assert_int         (stream->index,       ==, 1024);
@@ -258,7 +261,8 @@ MunitResult string_stream_6(const MunitParameter params[], void* user_data_or_fi
 MunitResult string_stream_7(const MunitParameter params[], void* user_data_or_fixture) {
     munit_assert_int(string_stream_add     (NULL, NULL), ==, STRING_STREAM_ERR_NULL_OBJ);
     munit_assert_int(string_stream_add_char(NULL, NULL), ==, STRING_STREAM_ERR_NULL_OBJ);
-    munit_assert_int((int)string_stream_get(NULL),       ==, STRING_STREAM_ERR_NULL_OBJ);
+
+    munit_assert_int(string_stream_get(NULL, NULL),      ==, STRING_STREAM_ERR_NULL_OBJ);
     munit_assert_int(string_stream_destroy (NULL),       ==, STRING_STREAM_ERR_NULL_OBJ);
 
     return MUNIT_OK;
@@ -276,7 +280,8 @@ MunitResult string_stream_8(const MunitParameter params[], void* user_data_or_fi
 
     tmpData[1024] = '\0';
 
-    char_ptr result = string_stream_get(stream);
+    char_ptr result = NULL;
+    string_stream_get(stream, &result);
     munit_assert_string_equal(result, tmpData);
     munit_assert_int         (stream->text_length, ==, 1024);
     munit_assert_int         (stream->index,       ==, 1024);
@@ -308,7 +313,8 @@ MunitResult string_stream_9(const MunitParameter params[], void* user_data_or_fi
 
     string_stream_add     (stream, "world");
 
-    char_ptr result = string_stream_get(stream);
+    char_ptr result = NULL;
+    string_stream_get(stream, &result);
     munit_assert_string_equal(result, "hello world");
     munit_assert_int         (stream->text_length, ==, 11);
     munit_assert_int         (stream->index,       ==, 7);

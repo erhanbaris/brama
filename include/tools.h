@@ -8,9 +8,9 @@
 #include <stdbool.h>
 #include "macros.h"
 
-#define STRING_STREAM_OK            0
-#define STRING_STREAM_ERR_NO_MEMORY 1
-#define STRING_STREAM_ERR_NULL_OBJ  2
+#define STRING_STREAM_OK            1
+#define STRING_STREAM_ERR_NO_MEMORY 2
+#define STRING_STREAM_ERR_NULL_OBJ  3
 
 #define CHECK_STREAM_PTR(stream) if (stream == NULL) return STRING_STREAM_ERR_NULL_OBJ;
 #define CHECK_VECTOR_PTR(vector) if (vector == NULL) return STRING_STREAM_ERR_NULL_OBJ;
@@ -24,11 +24,10 @@ typedef struct {
 
 t_string_stream* string_stream_init       ();
 
-/* todo: should return status not char* or int */
-int              string_stream_add        (t_string_stream* stream, char const* data);
-int              string_stream_add_char   (t_string_stream* stream, char data);
-char*            string_stream_get        (t_string_stream* stream);
-int              string_stream_destroy    (t_string_stream* stream);
+int string_stream_add        (t_string_stream* stream, char const* data);
+int string_stream_add_char   (t_string_stream* stream, char data);
+int string_stream_get        (t_string_stream* stream, char** data);
+int string_stream_destroy    (t_string_stream* stream);
 
 /* VECTOR START --> */
 
@@ -40,10 +39,9 @@ typedef struct {
 
 t_vector* vector_init   ();
 
-/* todo: should return status not char* or int */
-int       vector_add    (t_vector* vector, void* data);
-void*     vector_get    (t_vector* vector, size_t index);
-int       vector_destroy(t_vector* vector);
+int   vector_add    (t_vector* vector, void* data);
+void* vector_get    (t_vector* vector, size_t index);
+int   vector_destroy(t_vector* vector);
 
 
 /* <-- VECTOR END */

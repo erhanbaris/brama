@@ -40,7 +40,7 @@ int string_stream_add_char(t_string_stream* stream, char data) {
             return status;
     }
 
-    char* tmpData                 = (char*)BRAMA_MALLOC(sizeof(char) * 2);
+    char* tmpData                 = (char*)BRAMA_MALLOC((sizeof(char) * 2));
     tmpData[0]                    = data;
     tmpData[1]                    = '\0';
     stream->data[stream->index++] = tmpData;
@@ -65,12 +65,12 @@ int string_stream_grow_buffer(t_string_stream* stream) {
 }
 
 
-char* string_stream_get(t_string_stream* stream) {
+int string_stream_get(t_string_stream* stream, char** text) {
     CHECK_STREAM_PTR(stream);
 
     char* tmpData   = (char*)BRAMA_MALLOC((sizeof(char) * stream->text_length) + 1);
     if (tmpData == NULL)
-        return NULL;
+        return STRING_STREAM_ERR_NO_MEMORY;
 
     size_t index = 0;
     for (size_t i = 0; i < stream->index; ++i) {
@@ -78,7 +78,8 @@ char* string_stream_get(t_string_stream* stream) {
         index += strlen(stream->data[i]);
     }
     tmpData[stream->text_length] = '\0';
-    return tmpData;
+    *text = tmpData;
+    return STRING_STREAM_OK;
 }
 
 int string_stream_destroy(t_string_stream* stream) {
@@ -105,7 +106,7 @@ t_vector* vector_init() {
     vector->data     = (void**)BRAMA_MALLOC(sizeof(void*) * vector->length);
 
     if (vector->data == NULL)
-        return NULL;
+        return STRING_STREAM_ERR_NO_MEMORY;
 
     return vector;
 }

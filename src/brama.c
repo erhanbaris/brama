@@ -77,7 +77,8 @@ int getSymbol(t_tokinizer_ptr tokinizer) {
         increase(tokinizer);
     }
 
-    char_ptr data       = string_stream_get(stream);
+    char_ptr data       = NULL;
+    string_stream_get(stream, &data);
     int_ptr keywordInfo = (int_ptr)map_get(&tokinizer->keywords, data);
 
     if (keywordInfo) {
@@ -139,7 +140,8 @@ int getText(t_tokinizer_ptr tokinizer, char symbol) {
     token->type        = TOKEN_TEXT;
     token->current     = tokinizer->column;
     token->line        = tokinizer->line;
-    token->char_ptr    = string_stream_get(stream);
+    token->char_ptr    = NULL;
+    string_stream_get(stream, &token->char_ptr);
     vector_add(tokinizer->tokens, token);
 
     if (stream->text_length == 0)
@@ -623,7 +625,7 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
 
         status = BRAMA_OK;
     } else
-        *ast = new_symbol_ast(vector_get(accessors, 0));
+        *ast = vector_get(accessors, 0);
 
     /* We are parsing function parameters */
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) {
@@ -1844,37 +1846,105 @@ void brama_dump(t_context_ptr context) {
 }
 
 #define LEVEL_PADDING 2
+#define AST_DUMP_START()                           printf("{")
+#define AST_DUMP_END()                             printf("\n%*s}", (level) * LEVEL_PADDING, "")
+#define AST_DUMP_AST(AST)                          brama_dump_ast_internal( AST , level + 1)
+#define AST_PRINT_PROPERTY(PROPERTY, DATA)         printf("\r\n%*s%s : '%s'", (level + 1) * LEVEL_PADDING, "", PROPERTY , DATA )
+#define AST_PRINT_PROPERTY_DECIMAL(PROPERTY, DATA) printf("\r\n%*s%s : '%d'", (level + 1) * LEVEL_PADDING, "", PROPERTY , DATA )
+#define AST_PRINT_PROPERTY_FLOAT(PROPERTY, DATA)   printf("\r\n%*s%s : '%f'", (level + 1) * LEVEL_PADDING, "", PROPERTY , DATA )
+#define AST_PRINT_SECTION(PROPERTY)                printf("\r\n%*s%s : ", (level + 1) * LEVEL_PADDING, "", PROPERTY)
+#define AST_PRINT_SIMPLE(PROPERTY)                 printf("%s", PROPERTY)
+
+void brama_dump_vector_internal(t_vector_ptr vector, size_t level) {
+    int i     = 0;
+    int total = vector->count;
+    AST_PRINT_SIMPLE("[");
+    for (i = 0; i < total; ++i) {
+        t_ast_ptr ast = (t_ast_ptr)vector_get(vector, i);
+        AST_DUMP_AST(ast);
+    }
+    AST_PRINT_SIMPLE("]");
+}
 
 void brama_dump_ast_internal(t_ast_ptr ast, size_t level) {
     brama_ast_type type = ast->type;
     switch (type)
     {
     case AST_IF_STATEMENT:
-        printf(" {\r\n");
-        printf("%*s  type      : IF_STATEMENT\r\n", (level + 1) * LEVEL_PADDING, "");
-        printf("%*s- condition : ", (level + 1) * LEVEL_PADDING, "");
-        brama_dump_ast_internal(ast->if_stmt_ptr->condition, level + 1);
-        brama_dump_ast_internal(ast->if_stmt_ptr->true_body, level + 1);
-        printf(" }\r\n");
+        AST_DUMP_START();
+        AST_PRINT_PROPERTY("type", "IF_STATEMENT");
+        AST_PRINT_SECTION("condition");
+        AST_DUMP_AST(ast->if_stmt_ptr->condition);
+        AST_PRINT_SECTION("true body");
+        AST_DUMP_AST(ast->if_stmt_ptr->true_body);
+
+        if (ast->if_stmt_ptr->false_body != NULL) {
+            AST_PRINT_SECTION("false body");
+            AST_DUMP_AST(ast->if_stmt_ptr->false_body);
+        }
+        AST_DUMP_END();
         break;
 
+    case AST_FUNCTION_CALL:
+        AST_DUMP_START();
+        AST_PRINT_PROPERTY("type", "FUNC_CALL");
+        AST_PRINT_PROPERTY("call type", (ast->func_call_ptr->type == FUNC_CALL_NORMAL ? "NORMAL" : "ANONY"));
+        AST_PRINT_SECTION("function");
+        if (ast->func_call_ptr->type == FUNC_CALL_NORMAL)
+            AST_DUMP_AST(ast->func_call_ptr->function);
+        else {
+            // todo: finish later
+        }
+        AST_PRINT_SECTION("args");
+        brama_dump_vector_internal(ast->func_call_ptr->args, level + 1);
+        AST_DUMP_END();
+        break;
+
+    case AST_ACCESSOR:
+        AST_DUMP_START();
+        AST_PRINT_PROPERTY("type", "ACCESSOR");
+        AST_PRINT_SECTION("object");
+        AST_DUMP_AST(ast->accessor_ptr->object);
+        AST_PRINT_SECTION("property");
+        AST_DUMP_AST(ast->accessor_ptr->property);
+        AST_DUMP_END();
+        break;
+
+    case AST_SYMBOL:
+        AST_DUMP_START();
+        AST_PRINT_PROPERTY("type", "SYMBOL");
+        AST_PRINT_PROPERTY("data", ast->char_ptr);
+        AST_DUMP_END();  
+        break;
 
     case AST_PRIMATIVE:
-        printf(" {\r\n");
-        printf("%*s  type      : PRIMATIVE\r\n", (level + 1) * LEVEL_PADDING, "");
+        AST_DUMP_START();
+        AST_PRINT_PROPERTY("type", "PRIMATIVE");
 
         switch (ast->primative_ptr->type)
         {
         case PRIMATIVE_BOOL:
-            printf("%*s  bool      : %s\r\n", (level + 1) * LEVEL_PADDING, "", (ast->primative_ptr->bool_? "TRUE": "FALSE"));
+            AST_PRINT_PROPERTY("bool", (ast->primative_ptr->bool_? "TRUE": "FALSE"));
             break;
 
         case PRIMATIVE_INTEGER:
-            printf("%*s  int       : %d\r\n", (level + 1) * LEVEL_PADDING, "", ast->primative_ptr->int_);
+            AST_PRINT_PROPERTY_DECIMAL("int", ast->primative_ptr->int_);
+            break;
+
+        case PRIMATIVE_STRING:
+            AST_PRINT_PROPERTY_DECIMAL("string", ast->primative_ptr->char_ptr);
+            break;
+
+        case PRIMATIVE_NULL:
+            AST_PRINT_PROPERTY_DECIMAL("null", "null");
+            break;
+
+        case PRIMATIVE_DOUBLE:
+            AST_PRINT_PROPERTY_FLOAT("float", ast->primative_ptr->double_);
             break;
         }
 
-        printf("%*s}\r\n", (level + 1) * LEVEL_PADDING);
+        AST_DUMP_END();
         break;
 
     default:
@@ -1891,7 +1961,7 @@ void brama_dump_ast(t_context_ptr context) {
 
     for (i = 0; i < totalAst; ++i) {
         t_ast_ptr ast = (t_ast_ptr)vector_get(asts, i);
-        brama_dump_ast_internal(ast, 1);
+        brama_dump_ast_internal(ast, 0);
     }
 }
 
