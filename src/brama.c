@@ -430,9 +430,6 @@ NEW_AST_DEF(return,    t_ast_ptr,             AST_RETURN,               ast_ptr)
 NEW_AST_DEF(accessor,  t_accessor_ptr,        AST_ACCESSOR,             accessor_ptr)
 NEW_AST_DEF(keyword,   brama_keyword_type,    AST_KEYWORD,              keyword)
 
-NEW_AST_DEF_NULL(break,    AST_BREAK)
-NEW_AST_DEF_NULL(continue, AST_CONTINUE)
-
 brama_status as_primative(t_token_ptr token, t_ast_ptr_ptr ast) {
     switch (token->type) {
     case TOKEN_INTEGER:
@@ -571,6 +568,79 @@ brama_status ast_symbol_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra
     }
 
     return BRAMA_EXPRESSION_NOT_VALID;
+}
+
+brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+    BACKUP_PARSER_INDEX();
+
+    if (!is_symbol(ast_peek(context)) && (!is_keyword(ast_peek(context)) || get_keyword(ast_peek(context)) != KEYWORD_THIS))
+        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
+
+    brama_status status    = BRAMA_NOK;
+    t_vector_ptr accessors = vector_init();
+    t_token_ptr token      = NULL;
+
+    while (true) {
+        token = ast_consume(context);
+        if (accessors->count != 0 && !is_symbol(token)) {
+            CLEAR_VECTOR(accessors);
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_FUNCTION_CALL_NOT_VALID);
+        }
+
+        if (is_symbol(token))
+            vector_add(accessors, new_symbol_ast(get_symbol(token))); // todo: fix memory leak
+        else
+            vector_add(accessors, new_keyword_ast(get_keyword(token)));
+
+        if (!ast_match_operator(context, 1, OPERATOR_DOT))
+            break;
+    }
+
+    if (accessors->count > 1) {
+        *ast = vector_get(accessors, 0);
+
+        size_t total = accessors->count;
+        for (size_t i = 1; i < total; ++i) {
+            t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
+            accessor->object        = *ast;
+            accessor->property      = vector_get(accessors, i);
+            *ast                    = new_accessor_ast(accessor);
+        }
+
+        return BRAMA_OK;
+    } else
+        *ast = vector_get(accessors, 0);
+
+    if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START)) {
+        if (ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
+            CLEAR_AST(*ast);
+            CLEAR_VECTOR(accessors);
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ILLEGAL_ACCESSOR_STATEMENT);
+        }
+
+        t_ast_ptr indexer = NULL;
+        brama_status inner_status = ast_assignable(context, &indexer, extra_data);
+        if (inner_status != BRAMA_OK) {
+            CLEAR_VECTOR(accessors);
+            CLEAR_AST(*ast);
+            RESTORE_PARSER_INDEX_AND_RETURN(inner_status);
+        }
+
+        if (ast_consume_operator(context, OPERATOR_SQUARE_BRACKET_END) == NULL) {
+            CLEAR_VECTOR(accessors);
+            CLEAR_AST(*ast);
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ILLEGAL_ACCESSOR_STATEMENT);
+        }
+
+        t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
+        accessor->object        = *ast;
+        accessor->property      = indexer;
+        *ast                    = new_accessor_ast(accessor);
+        return BRAMA_OK;
+    }
+
+    CLEAR_VECTOR(accessors);
+    RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 }
 
 brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
@@ -977,7 +1047,6 @@ brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int 
         if (extra_data & AST_IN_LOOP)
             return BRAMA_OK;
         return BRAMA_ILLEGAL_CONTINUE_STATEMENT;
-
     }
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
         return status;
@@ -1250,6 +1319,8 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, int e
     if (ast_match_keyword(context, 3, KEYWORD_VAR, KEYWORD_LET, KEYWORD_CONST))
         type = get_keyword(ast_previous(context));
 
+    brama_status data = ast_accessor_stmt(context, &ast, extra_data);
+
     if (!is_symbol(ast_peek(context)))
         RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 
@@ -1281,7 +1352,7 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, int e
 
 brama_status ast_continue(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
     if (ast_match_keyword(context, 1, KEYWORD_CONTINUE)) {
-        *ast = new_continue_ast();
+        *ast = new_keyword_ast(KEYWORD_CONTINUE);
         return BRAMA_OK;
     }
 
@@ -1290,7 +1361,7 @@ brama_status ast_continue(t_context_ptr context, t_ast_ptr_ptr ast, int extra_da
 
 brama_status ast_break(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
     if (ast_match_keyword(context, 1, KEYWORD_BREAK)) {
-        *ast = new_break_ast();
+        *ast = new_keyword_ast(KEYWORD_BREAK);
         return BRAMA_OK;
     }
 
@@ -1302,9 +1373,14 @@ brama_status ast_return_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int extra
 
     if (ast_match_keyword(context, 1, KEYWORD_RETURN)) {
         t_ast_ptr statement = NULL;
+        if (check_end_of_line(context, END_LINE_CHECKER_SEMICOLON) == BRAMA_OK || ast_check_operator(context, OPERATOR_CURVE_BRACKET_END)) {
+            *ast = new_return_ast(statement);
+            return BRAMA_OK;
+        }
+
         brama_status status = ast_assignable(context, &statement, extra_data);
         if (status != BRAMA_OK)
-        DESTROY_AST_AND_RETURN(status, statement);
+            DESTROY_AST_AND_RETURN(status, statement);
 
         *ast = new_return_ast(statement);
         return BRAMA_OK;
@@ -1365,9 +1441,7 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, int extra_
         t_ast_ptr condition = NULL;
         brama_status condition_status = ast_assignable(context, &condition, extra_data | AST_IN_LOOP);
         if (condition_status != BRAMA_OK) {
-            destroy_ast(condition);
-            BRAMA_FREE(condition);
-            condition = NULL;
+            CLEAR_AST(condition);
             RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
         }
 
@@ -1383,24 +1457,16 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, int extra_
         if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
             body_status = ast_block_body(context, &body, extra_data | AST_IN_LOOP);
             if (body_status != BRAMA_OK) {
-                destroy_ast(condition);
-                destroy_ast(body);
-                BRAMA_FREE(condition);
-                BRAMA_FREE(body);
-                condition = NULL;
-                body      = NULL;
+                CLEAR_AST(condition);
+                CLEAR_AST(body);
                 RESTORE_PARSER_INDEX_AND_RETURN(body_status)
             }
         }
         else if (condition_status != BRAMA_OK) {
-                destroy_ast(condition);
-                destroy_ast(body);
-                BRAMA_FREE(condition);
-                BRAMA_FREE(body);
-                condition = NULL;
-                body      = NULL;
-                RESTORE_PARSER_INDEX_AND_RETURN(condition_status)
-            }
+            CLEAR_AST(condition);
+            CLEAR_AST(body);
+            RESTORE_PARSER_INDEX_AND_RETURN(condition_status)
+        }
 
         t_while_loop_ptr object = (t_while_loop_ptr)BRAMA_MALLOC(sizeof(t_while_loop));
         object->body            = body;

@@ -14,3 +14,4 @@ Todos:
 - this.self.data.content
 * add tests for continue
 * use dmalloc on mac and linux for memory leak
+* accessor configure for assignment

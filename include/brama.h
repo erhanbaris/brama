@@ -437,7 +437,7 @@ typedef struct _t_assign {
     brama_operator_type opt;
     brama_keyword_type  def_type; /* let, var, const */
     struct _t_ast*      assignment;
-    char*               symbol;
+    char*               symbol; // todo: change to struct _t_ast*
 } t_assign;
 
 typedef struct _t_control {
