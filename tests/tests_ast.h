@@ -1123,8 +1123,8 @@ MunitResult ast_assignment_expr_test_1(const MunitParameter params[], void* user
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_int         (ast->assign_ptr->opt, == , OPERATOR_ASSIGN);
     munit_assert_int         (ast->assign_ptr->def_type, == , KEYWORD_VAR);
-    munit_assert_ptr_not_null(ast->assign_ptr->symbol);
-    munit_assert_string_equal(ast->assign_ptr->symbol, "erhan");
+    munit_assert_ptr_not_null(ast->assign_ptr->object);
+    munit_assert_string_equal(ast->assign_ptr->object->primative_ptr->char_ptr, "erhan");
     munit_assert_ptr_not_null(ast->assign_ptr->assignment);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->primative_ptr);
     munit_assert_int         (ast->assign_ptr->assignment->primative_ptr->type, ==, PRIMATIVE_INTEGER);
@@ -1147,8 +1147,8 @@ MunitResult ast_assignment_expr_test_2(const MunitParameter params[], void* user
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_int         (ast->assign_ptr->opt, == , OPERATOR_ASSIGN);
     munit_assert_int         (ast->assign_ptr->def_type, == , KEYWORD_LET);
-    munit_assert_ptr_not_null(ast->assign_ptr->symbol);
-    munit_assert_string_equal(ast->assign_ptr->symbol, "data_test");
+    munit_assert_ptr_not_null(ast->assign_ptr->object);
+    munit_assert_string_equal(ast->assign_ptr->object->primative_ptr->char_ptr, "data_test");
     munit_assert_ptr_not_null(ast->assign_ptr->assignment);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->primative_ptr);
     munit_assert_int         (ast->assign_ptr->assignment->primative_ptr->type,     ==, PRIMATIVE_STRING);
@@ -1510,7 +1510,7 @@ MunitResult ast_new_object_2(const MunitParameter params[], void* user_data_or_f
     munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
-    munit_assert_string_equal(ast->assign_ptr->symbol, "obj");
+    munit_assert_string_equal(ast->assign_ptr->object->primative_ptr->char_ptr, "obj");
     munit_assert_ptr_not_null(ast->assign_ptr->assignment);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
@@ -1531,7 +1531,7 @@ MunitResult ast_new_object_3(const MunitParameter params[], void* user_data_or_f
     munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
-    munit_assert_string_equal(ast->assign_ptr->symbol, "obj");
+    munit_assert_string_equal(ast->assign_ptr->object->primative_ptr->char_ptr, "obj");
     munit_assert_ptr_not_null(ast->assign_ptr->assignment);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
@@ -1552,7 +1552,7 @@ MunitResult ast_new_object_4(const MunitParameter params[], void* user_data_or_f
     munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
-    munit_assert_string_equal(ast->assign_ptr->symbol, "obj");
+    munit_assert_string_equal(ast->assign_ptr->object->primative_ptr->char_ptr, "obj");
     munit_assert_ptr_not_null(ast->assign_ptr->assignment);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");

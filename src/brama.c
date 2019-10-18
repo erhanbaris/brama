@@ -567,7 +567,7 @@ brama_status ast_symbol_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra
         return BRAMA_OK;
     }
 
-    return BRAMA_EXPRESSION_NOT_VALID;
+    return BRAMA_DOES_NOT_MATCH_AST;
 }
 
 brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
@@ -607,9 +607,10 @@ brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int ext
             *ast                    = new_accessor_ast(accessor);
         }
 
-        return BRAMA_OK;
-    } else
+        status = BRAMA_OK;
+    } else {
         *ast = vector_get(accessors, 0);
+    }
 
     if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START)) {
         if (ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
@@ -636,10 +637,14 @@ brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int ext
         accessor->object        = *ast;
         accessor->property      = indexer;
         *ast                    = new_accessor_ast(accessor);
-        return BRAMA_OK;
+        status = BRAMA_OK;
     }
 
-    CLEAR_VECTOR(accessors);
+    CLEAR_VECTOR(accessors); // todo: not use vector
+    if (status == BRAMA_OK)
+        return BRAMA_OK;
+
+    CLEAR_AST(*ast);
     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 }
 
@@ -1319,12 +1324,13 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, int e
     if (ast_match_keyword(context, 3, KEYWORD_VAR, KEYWORD_LET, KEYWORD_CONST))
         type = get_keyword(ast_previous(context));
 
-    brama_status data = ast_accessor_stmt(context, &ast, extra_data);
+    brama_status status = ast_accessor_stmt(context, ast, extra_data);
 
-    if (!is_symbol(ast_peek(context)))
-        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
+    if (status != BRAMA_OK && !is_symbol(ast_peek(context)))
+        DESTROY_AST_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST, *ast);
 
-    char_ptr variable_name = get_symbol(ast_consume(context));
+    if (status != BRAMA_OK)
+        *ast = new_symbol_ast(get_symbol(ast_consume(context)));
 
     if (ast_match_operator(context, 6, OPERATOR_ASSIGN, OPERATOR_ASSIGN_ADDITION, OPERATOR_ASSIGN_DIVISION, OPERATOR_ASSIGN_MODULUS, OPERATOR_ASSIGN_MULTIPLICATION, OPERATOR_ASSIGN_SUBTRACTION)) {
         brama_operator_type opt = get_operator(ast_previous(context));
@@ -1332,20 +1338,21 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, int e
         brama_status right_status = ast_assignable(context, &right, extra_data);
         if (right_status != BRAMA_OK) {
             CLEAR_AST(right);
+            CLEAR_AST(*ast);
             return right_status;
         }
 
         //ast_consume_operator(context, OPERATOR_SEMICOLON);
 
         t_assign_ptr assign = BRAMA_MALLOC(sizeof(t_assign));
-        assign->symbol      = variable_name;
+        assign->object      = *ast;
         assign->def_type    = type;
         assign->opt         = opt;
         assign->assignment  = right;
         *ast = new_assign_ast(assign);
     }
     else
-        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST)
+        DESTROY_AST_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST, *ast);
 
     return BRAMA_OK;
 }
@@ -2263,11 +2270,14 @@ bool destroy_ast_assignment(t_assign_ptr assignment) {
     if (assignment->assignment != NULL) {
         if (destroy_ast(assignment->assignment)) {
             BRAMA_FREE(assignment->assignment);
-            return true;
         }
     }
-
-    return false;
+    if (assignment->object != NULL) {
+        if (destroy_ast(assignment->object)) {
+            BRAMA_FREE(assignment->object);
+        }
+    }
+    return true;
 }
 
 bool destroy_vector(t_vector_ptr vector) {

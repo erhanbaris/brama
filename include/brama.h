@@ -435,9 +435,9 @@ typedef struct _t_binary {
 
 typedef struct _t_assign {
     brama_operator_type opt;
-    brama_keyword_type  def_type; /* let, var, const */
+    brama_keyword_type  def_type;
     struct _t_ast*      assignment;
-    char*               symbol; // todo: change to struct _t_ast*
+    struct _t_ast*      object;
 } t_assign;
 
 typedef struct _t_control {
