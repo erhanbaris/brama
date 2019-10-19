@@ -577,58 +577,49 @@ brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int ext
         RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 
     brama_status status    = BRAMA_NOK;
-    t_vector_ptr accessors = vector_init();
     t_token_ptr token      = NULL;
 
     while (true) {
+        t_ast_ptr tmp_ast = NULL;
         token = ast_consume(context);
-        if (accessors->count != 0 && !is_symbol(token)) {
-            CLEAR_VECTOR(accessors);
+        if (*ast != NULL != 0 && !is_symbol(token)) {
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_FUNCTION_CALL_NOT_VALID);
         }
 
         if (is_symbol(token))
-            vector_add(accessors, new_symbol_ast(get_symbol(token))); // todo: fix memory leak
+            tmp_ast = new_symbol_ast(get_symbol(token));
         else
-            vector_add(accessors, new_keyword_ast(get_keyword(token)));
+            tmp_ast = new_keyword_ast(get_keyword(token));
+
+        if (*ast != NULL) {
+            t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
+            accessor->object        = *ast;
+            accessor->property      = tmp_ast;
+            *ast                    = new_accessor_ast(accessor);
+        }
+        else
+            *ast = tmp_ast;
+
+        status = BRAMA_OK;
 
         if (!ast_match_operator(context, 1, OPERATOR_DOT))
             break;
     }
 
-    if (accessors->count > 1) {
-        *ast = vector_get(accessors, 0);
-
-        size_t total = accessors->count;
-        for (size_t i = 1; i < total; ++i) {
-            t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
-            accessor->object        = *ast;
-            accessor->property      = vector_get(accessors, i);
-            *ast                    = new_accessor_ast(accessor);
-        }
-
-        status = BRAMA_OK;
-    } else {
-        *ast = vector_get(accessors, 0);
-    }
-
     if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START)) {
         if (ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
             CLEAR_AST(*ast);
-            CLEAR_VECTOR(accessors);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ILLEGAL_ACCESSOR_STATEMENT);
         }
 
         t_ast_ptr indexer = NULL;
         brama_status inner_status = ast_assignable(context, &indexer, extra_data);
         if (inner_status != BRAMA_OK) {
-            CLEAR_VECTOR(accessors);
             CLEAR_AST(*ast);
             RESTORE_PARSER_INDEX_AND_RETURN(inner_status);
         }
 
         if (ast_consume_operator(context, OPERATOR_SQUARE_BRACKET_END) == NULL) {
-            CLEAR_VECTOR(accessors);
             CLEAR_AST(*ast);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ILLEGAL_ACCESSOR_STATEMENT);
         }
@@ -640,7 +631,6 @@ brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int ext
         status = BRAMA_OK;
     }
 
-    CLEAR_VECTOR(accessors); // todo: not use vector
     if (status == BRAMA_OK)
         return BRAMA_OK;
 
@@ -660,47 +650,18 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
         return status;
 
     status = ast_primary_expr(context, ast, extra_data);
-    if (status == BRAMA_OK)
+    if (status == BRAMA_OK || status != BRAMA_DOES_NOT_MATCH_AST)
         return status;
 
     BACKUP_PARSER_INDEX();
 
-    if (!is_symbol(ast_peek(context)) && (!is_keyword(ast_peek(context)) || get_keyword(ast_peek(context)) != KEYWORD_THIS))
+    status = ast_accessor_stmt(context, ast, extra_data);
+
+    if (status != BRAMA_OK && !is_symbol(ast_peek(context)))
         RESTORE_PARSER_INDEX_AND_RETURN(status);
 
-    t_vector_ptr accessors = vector_init();
-    t_token_ptr token      = NULL;
-
-    while (true) {
-        token = ast_consume(context);
-        if (accessors->count != 0 && !is_symbol(token)) {
-            CLEAR_VECTOR(accessors);
-            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_FUNCTION_CALL_NOT_VALID);
-        }
-
-        if (is_symbol(token))
-            vector_add(accessors, new_symbol_ast(get_symbol(token))); // todo: fix memory leak
-        else 
-            vector_add(accessors, new_keyword_ast(get_keyword(token)));
-
-        if (!ast_match_operator(context, 1, OPERATOR_DOT))
-            break;
-    }
-
-    if (accessors->count > 1) {
-        *ast = vector_get(accessors, 0);
-
-        size_t total = accessors->count;
-        for (size_t i = 1; i < total; ++i) {
-            t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
-            accessor->object        = *ast;
-            accessor->property      = vector_get(accessors, i);
-            *ast                    = new_accessor_ast(accessor);
-        }
-
-        status = BRAMA_OK;
-    } else
-        *ast = vector_get(accessors, 0);
+    if (status != BRAMA_OK)
+        *ast = ast_symbol_expr(context, ast, extra_data);
 
     /* We are parsing function parameters */
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) {
@@ -712,7 +673,6 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
                 brama_status inner_status = ast_assignable(context, &arg, extra_data);
                 if (inner_status != BRAMA_OK) {
                     CLEAR_VECTOR(args);
-                    CLEAR_VECTOR(accessors);
                     RESTORE_PARSER_INDEX_AND_RETURN(inner_status);
                 }
 
@@ -722,7 +682,6 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
 
         if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL) {
             CLEAR_VECTOR(args);
-            CLEAR_VECTOR(accessors);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
         }
 
@@ -737,20 +696,17 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
     if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START)) {
         if (ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
             CLEAR_AST(*ast);
-            CLEAR_VECTOR(accessors);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ILLEGAL_ACCESSOR_STATEMENT);
         }
 
         t_ast_ptr indexer = NULL;
         brama_status inner_status = ast_assignable(context, &indexer, extra_data);
         if (inner_status != BRAMA_OK) {
-            CLEAR_VECTOR(accessors);
             CLEAR_AST(*ast);
             RESTORE_PARSER_INDEX_AND_RETURN(inner_status);
         }
 
         if (ast_consume_operator(context, OPERATOR_SQUARE_BRACKET_END) == NULL) {
-            CLEAR_VECTOR(accessors);
             CLEAR_AST(*ast);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ILLEGAL_ACCESSOR_STATEMENT);
         }
@@ -761,8 +717,6 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
         *ast                    = new_accessor_ast(accessor);
         status = BRAMA_OK;
     }
-
-    CLEAR_VECTOR(accessors);
 
     if (status == BRAMA_OK)
         return status;
@@ -861,7 +815,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
                 if (status != BRAMA_OK) {
                     vector_destroy(args);
                     BRAMA_FREE(args);
-                    RESTORE_PARSER_INDEX_AND_RETURN(status);
+                    RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ILLEGAL_FUNCTION_ARGUMENT);
                 }
 
                 vector_add(args, arg);
@@ -1320,9 +1274,12 @@ brama_status ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, i
 brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
     BACKUP_PARSER_INDEX()
 
+    bool new_def            = false;
     brama_keyword_type type = KEYWORD_VAR;
-    if (ast_match_keyword(context, 3, KEYWORD_VAR, KEYWORD_LET, KEYWORD_CONST))
+    if (ast_match_keyword(context, 3, KEYWORD_VAR, KEYWORD_LET, KEYWORD_CONST)) {
         type = get_keyword(ast_previous(context));
+        new_def = true;
+    }
 
     brama_status status = ast_accessor_stmt(context, ast, extra_data);
 
@@ -1349,6 +1306,7 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, int e
         assign->def_type    = type;
         assign->opt         = opt;
         assign->assignment  = right;
+        assign->new_def     = new_def;
         *ast = new_assign_ast(assign);
     }
     else

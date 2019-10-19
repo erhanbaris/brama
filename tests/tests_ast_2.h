@@ -72,7 +72,7 @@ MunitResult ast_while_loop_3(const MunitParameter params[], void* user_data_or_f
     munit_assert_int         (ast->while_ptr->condition->type,                    ==, AST_CONTROL_OPERATION);
     munit_assert_int         (ast->while_ptr->condition->control_ptr->opt,        ==, OPERATOR_NOT_EQUAL_VALUE);
     munit_assert_int         (ast->while_ptr->condition->control_ptr->left->type, ==, AST_ASSIGNMENT);
-    munit_assert_string_equal(ast->while_ptr->condition->control_ptr->left->assign_ptr->object->primative_ptr->char_ptr, "elem");
+    munit_assert_string_equal(ast->while_ptr->condition->control_ptr->left->assign_ptr->object->char_ptr, "elem");
     munit_assert_int         (ast->while_ptr->condition->control_ptr->left->assign_ptr->opt,      ==, OPERATOR_ASSIGN);
     munit_assert_int         (ast->while_ptr->condition->control_ptr->left->assign_ptr->def_type, ==, KEYWORD_VAR);
     munit_assert_int         (ast->while_ptr->condition->control_ptr->left->assign_ptr->assignment->type, ==, AST_FUNCTION_CALL);

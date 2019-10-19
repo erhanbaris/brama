@@ -37,7 +37,8 @@ typedef enum brama_status  {
     BRAMA_ILLEGAL_RETURN_STATEMENT       = 19,
     BRAMA_ILLEGAL_BREAK_STATEMENT        = 20,
     BRAMA_ILLEGAL_CONTINUE_STATEMENT     = 21,
-    BRAMA_ILLEGAL_ACCESSOR_STATEMENT     = 22
+    BRAMA_ILLEGAL_ACCESSOR_STATEMENT     = 22,
+    BRAMA_ILLEGAL_FUNCTION_ARGUMENT      = 23
 
 } brama_status;
 
@@ -436,6 +437,7 @@ typedef struct _t_binary {
 typedef struct _t_assign {
     brama_operator_type opt;
     brama_keyword_type  def_type;
+    bool                new_def;
     struct _t_ast*      assignment;
     struct _t_ast*      object;
 } t_assign;
