@@ -1835,10 +1835,12 @@ t_context_ptr brama_init() {
         map_set(&context->tokinizer->keywords, KEYWORDS_PAIR[i].name,  KEYWORDS_PAIR[i].keyword);
 
     /* Compiler */
-    context->compiler           = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
-    context->compiler->index    = 0;
-    context->compiler->op_codes = BRAMA_MALLOC(sizeof (vec_t_brama_opcode_t));
+    context->compiler            = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
+    context->compiler->index     = 0;
+    context->compiler->op_codes  = BRAMA_MALLOC(sizeof (vec_t_brama_opcode_t));
+    context->compiler->constants = BRAMA_MALLOC(sizeof (vec_const_item));
     vec_init(context->compiler->op_codes);
+    vec_init(context->compiler->constants);
 
     return context;
 }
@@ -1880,6 +1882,7 @@ void brama_execute(t_context_ptr context, char_ptr data) {
     }
 
     compile(context);
+    run(context);
     context->status = BRAMA_OK;
 }
 
@@ -2339,80 +2342,87 @@ bool destroy_ast_primative(t_primative_ptr primative) {
  * Example : 10 + 20 - 10 * 5.5 */
 void compile_binary(t_context_ptr context, t_ast_ptr const ast) {
     compile_internal(context, ast->binary_ptr->left);
+    size_t left_index = context->compiler->constants->length - 1;
+
     compile_internal(context, ast->binary_ptr->right);
+    size_t right_index = context->compiler->constants->length - 1;
+
+    t_brama_byte opcode;
+    t_brama_vmdata code;
+    code.op   = 0;
+    code.reg1 = 0;
+    code.reg2 = 0;
+    code.reg3 = 0;
+
+    code.reg1 = left_index;
+    code.reg2 = right_index;
 
     switch (ast->binary_ptr->opt) {
         case OPERATOR_ADDITION:
-            vec_push(context->compiler->op_codes, VM_OPT_ADDITION);
+            code.op = VM_OPT_ADDITION;
             break;
 
         case OPERATOR_SUBTRACTION:
-            vec_push(context->compiler->op_codes, VM_OPT_SUBTRACTION);
+            code.op = VM_OPT_SUBTRACTION;
             break;
 
         case OPERATOR_BITWISE_AND:
-            vec_push(context->compiler->op_codes, VM_OPT_SUBTRACTION);
+            code.op = VM_OPT_SUBTRACTION;
             break;
 
         case OPERATOR_BITWISE_OR:
-            vec_push(context->compiler->op_codes, VM_OPT_BITWISE_OR);
+            code.op = VM_OPT_BITWISE_OR;
             break;
 
         case OPERATOR_BITWISE_XOR:
-            vec_push(context->compiler->op_codes, VM_OPT_BITWISE_XOR);
+            code.op = VM_OPT_BITWISE_XOR;
             break;
 
         case OPERATOR_DIVISION:
-            vec_push(context->compiler->op_codes, VM_OPT_DIVISION);
+            code.op = VM_OPT_DIVISION;
             break;
 
         case OPERATOR_MULTIPLICATION:
-            vec_push(context->compiler->op_codes, VM_OPT_MULTIPLICATION);
+            code.op = VM_OPT_MULTIPLICATION;
             break;
 
         case OPERATOR_BITWISE_LEFT_SHIFT:
-            vec_push(context->compiler->op_codes, VM_OPT_BITWISE_LEFT_SHIFT);
+            code.op = VM_OPT_BITWISE_LEFT_SHIFT;
             break;
 
         case OPERATOR_BITWISE_RIGHT_SHIFT:
-            vec_push(context->compiler->op_codes, VM_OPT_BITWISE_RIGHT_SHIFT);
+            code.op = VM_OPT_BITWISE_RIGHT_SHIFT;
             break;
 
         case OPERATOR_BITWISE_UNSIGNED_RIGHT_SHIFT:
-            vec_push(context->compiler->op_codes, VM_OPT_BITWISE_UNSIGNED_RIGHT_SHIFT);
+            code.op = VM_OPT_BITWISE_UNSIGNED_RIGHT_SHIFT;
             break;
     }
+
+    vec_push(context->compiler->op_codes, vm_encode(&code));
 }
 
 void compile_primative(t_context_ptr context, t_ast_ptr const ast) {
     switch (ast->primative_ptr->type) {
-        case PRIMATIVE_INTEGER:
-            vec_push(context->compiler->op_codes, VM_OPT_CONST_INT);
-            t_brama_int i;
-            i.int_ = ast->primative_ptr->int_;
-            vec_push(context->compiler->op_codes, i.bytes[3]);
-            vec_push(context->compiler->op_codes, i.bytes[2]);
-            vec_push(context->compiler->op_codes, i.bytes[1]);
-            vec_push(context->compiler->op_codes, i.bytes[0]);
+        case PRIMATIVE_INTEGER: {
+            vec_push(context->compiler->constants, numberToValue(ast->primative_ptr->int_));
+        }
             break;
 
-        case PRIMATIVE_DOUBLE:
-            vec_push(context->compiler->op_codes, VM_OPT_CONST_DOUBLE);
-            t_brama_double d;
-            d.double_ = ast->primative_ptr->double_;
-            vec_push(context->compiler->op_codes, d.bytes[7]);
-            vec_push(context->compiler->op_codes, d.bytes[6]);
-            vec_push(context->compiler->op_codes, d.bytes[5]);
-            vec_push(context->compiler->op_codes, d.bytes[4]);
-            vec_push(context->compiler->op_codes, d.bytes[3]);
-            vec_push(context->compiler->op_codes, d.bytes[2]);
-            vec_push(context->compiler->op_codes, d.bytes[1]);
-            vec_push(context->compiler->op_codes, d.bytes[0]);
+        case PRIMATIVE_DOUBLE: {
+            t_vm_const_item_ptr item = BRAMA_MALLOC(sizeof(t_vm_const_item));
+            item->double_            = ast->primative_ptr->double_;
+            item->type               = CONST_DOUBLE;
+            vec_push(context->compiler->constants, item);
+        }
             break;
 
-        case PRIMATIVE_BOOL:
-            vec_push(context->compiler->op_codes, VM_OPT_CONST_BOOL);
-            vec_push(context->compiler->op_codes, (t_brama_byte)ast->primative_ptr->bool_);
+        case PRIMATIVE_BOOL: {
+            t_vm_const_item_ptr item = BRAMA_MALLOC(sizeof(t_vm_const_item));
+            item->bool_              = ast->primative_ptr->bool_;
+            item->type               = CONST_BOOL;
+            vec_push(context->compiler->constants, item);
+        }
             break;
     }
 }
@@ -2439,13 +2449,52 @@ void compile(t_context_ptr context) {
     }
 }
 
+bool isBool(t_brama_data value) {
+    return value == TRUE_VAL || value == FALSE_VAL;
+}
+
+t_brama_data numberToValue(double num) {
+    DoubleBits data;
+    data.num = num;
+    return data.bits64;
+}
+
+double valueToNumber(t_brama_data num) {
+    DoubleBits data;
+    data.bits64 = num;
+    return data.num;
+}
+
+void run(t_context_ptr context) {
+    vec_t_byte_ptr bytes         = context->compiler->op_codes;
+    vec_const_item_ptr constants = context->compiler->constants;
+
+    size_t total_bytes  = bytes->length;
+    for (size_t i = 0; i < total_bytes; ++i) {
+        t_brama_vmdata vmdata;
+        vm_decode(bytes->data[i], &vmdata);
+
+        switch (vmdata.op) {
+            case VM_OPT_ADDITION: {
+                t_brama_data left  = constants->data[vmdata.reg1];
+                t_brama_data right = constants->data[vmdata.reg2];
+
+                if (IS_NUM(left) && IS_NUM(right)) {
+                    printf("%f\r\n", valueToNumber(left) + valueToNumber(right));
+                }
+
+                //printf("%d\r\n", constants->data[vmdata.reg2]->int_ + constants->data[vmdata.reg3]->int_);
+            }
+        }
+    }
+}
+
 /* Compile End */
 
 /* VM Begin */
 
 /* FOR FUTURE USAGE */
-void vm_decode(int instr, t_brama_vmdata_ptr t)
-{
+void vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t) {
     t->op   = (instr & 0xF000) >> 12;
     t->reg1 = (instr & 0x0F00) >> 8;
     t->reg2 = (instr & 0x00F0) >> 4;
@@ -2453,17 +2502,17 @@ void vm_decode(int instr, t_brama_vmdata_ptr t)
     t->scal = (instr & 0x00FF);
 }
 
-void vm_encode(int *instr, t_brama_vmdata_ptr t)
-{
-    *instr += 0;
-    *instr += t->op   << 12;
-    *instr += t->reg1 << 8;
+t_brama_byte vm_encode(t_brama_vmdata_ptr t) {
+    t_brama_byte instr = 0;
+    instr += t->op   << 12;
+    instr += t->reg1 << 8;
     if (t->scal != 0)
-        *instr += t->scal;
+        instr += t->scal;
     else {
-        *instr += t->reg2 << 4;
-        *instr += t->reg3;
+        instr += t->reg2 << 4;
+        instr += t->reg3;
     }
+    return instr;
 }
 
 /* VM End */

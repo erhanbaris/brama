@@ -202,9 +202,9 @@ typedef enum brama_ast_type {
 
 /* VM Operators */
 enum brama_vm_operator {
-    VM_OPT_HALT,
-    VM_OPT_ADDITION                ,
-    VM_OPT_SUBTRACTION             ,
+    VM_OPT_HALT = 0,
+    VM_OPT_ADDITION  = 1,
+    VM_OPT_SUBTRACTION  = 2,
     VM_OPT_MULTIPLICATION          ,
     VM_OPT_DIVISION                ,
     VM_OPT_MODULES                 ,
@@ -269,6 +269,16 @@ enum brama_vm_operator {
     VM_OPT_NOT_EQ,
     VM_OPT_APPEND
 };
+
+/* VM CONST TYPE */
+typedef enum _brama_vm_const_type {
+    CONST_NULL      = 0,
+    CONST_UNDEFINED = 1,
+    CONST_INTEGER   = 2,
+    CONST_DOUBLE    = 3,
+    CONST_STRING    = 4,
+    CONST_BOOL      = 5
+} brama_vm_const_type;
 
 typedef enum _brama_ast_extra_data_type {
     AST_IN_NONE     = 0,
@@ -431,27 +441,29 @@ static char* KEYWORDS[] = {
 };
 
 /* STRUCTS */
-typedef struct _t_token t_token;
-typedef struct _t_tokinizer t_tokinizer;
-typedef struct _t_parser t_parser;
-typedef struct _t_primative t_primative;
-typedef struct _t_unary t_unary;
-typedef struct _t_func_call t_func_call;
-typedef struct _t_ast t_ast;
-typedef struct _t_context t_context;
-typedef struct _t_binary t_binary;
-typedef struct _t_func_decl t_func_decl;
+typedef struct _t_token           t_token;
+typedef struct _t_tokinizer       t_tokinizer;
+typedef struct _t_parser          t_parser;
+typedef struct _t_primative       t_primative;
+typedef struct _t_unary           t_unary;
+typedef struct _t_func_call       t_func_call;
+typedef struct _t_ast             t_ast;
+typedef struct _t_context         t_context;
+typedef struct _t_binary          t_binary;
+typedef struct _t_func_decl       t_func_decl;
 typedef struct _t_object_creation t_object_creation;
-typedef struct _t_while_loop t_while_loop;
-typedef struct _t_if_stmt t_if_stmt;
-typedef struct _t_accessor t_accessor;
-typedef struct _t_compiler t_compiler;
-typedef struct _t_brama_vmdata t_brama_vmdata;
-typedef struct _t_tokinizer t_tokinizer;
-typedef struct _t_assign t_assign;
-typedef struct _t_control t_control;
+typedef struct _t_while_loop      t_while_loop;
+typedef struct _t_if_stmt         t_if_stmt;
+typedef struct _t_accessor        t_accessor;
+typedef struct _t_compiler        t_compiler;
+typedef struct _t_brama_vmdata    t_brama_vmdata;
+typedef struct _t_tokinizer       t_tokinizer;
+typedef struct _t_assign          t_assign;
+typedef struct _t_control         t_control;
+typedef struct _t_vm_const_item   t_vm_const_item;
 
 
+typedef t_vm_const_item*   t_vm_const_item_ptr;
 typedef t_tokinizer*       t_tokinizer_ptr;
 typedef t_token*           t_token_ptr;
 typedef t_parser*          t_parser_ptr;
@@ -475,8 +487,10 @@ typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
 
-typedef uint8_t            t_brama_opcode;
-typedef int8_t             t_brama_byte;
+
+typedef uint64_t           t_brama_data;
+typedef uint32_t           t_brama_opcode;
+typedef int32_t            t_brama_byte;
 typedef int8_t             t_brama_char;
 typedef union              _t_brama_double { t_brama_byte bytes[8];  double double_; } t_brama_double;
 typedef union              _t_brama_int    { t_brama_byte bytes[4];  int int_; } t_brama_int;
@@ -484,6 +498,8 @@ typedef bool               t_brama_bool;
 
 typedef map_t(struct _t_ast *) map_ast_t;
 typedef map_ast_t*             map_ast_t_ptr;
+typedef vec_t(t_brama_data)    vec_const_item;
+typedef vec_const_item*        vec_const_item_ptr;
 typedef t_brama_vmdata*        t_brama_vmdata_ptr;
 typedef vec_t(t_token_ptr)     vec_t_token_ptr_t;
 typedef vec_t(t_token_ptr)*    vec_t_token_ptr_t_ptr;
@@ -491,6 +507,8 @@ typedef vec_t(t_ast_ptr)       vec_t_ast_ptr_t;
 typedef vec_t(t_ast_ptr)*      vec_t_ast_ptr_t_ptr;
 typedef vec_t(t_brama_opcode)  vec_t_brama_opcode_t;
 typedef vec_t(t_brama_opcode)* vec_t_brama_opcode_t_ptr;
+typedef vec_t(t_brama_byte)    vec_t_byte;
+typedef vec_t(t_brama_byte)*   vec_t_byte_ptr;
 
 typedef struct _t_token {
     size_t           line;
@@ -523,8 +541,9 @@ typedef struct _t_parser {
 } t_parser;
 
 typedef struct _t_compiler {
-    size_t          index;
-    vec_t(uint8_t)* op_codes;
+    size_t             index;
+    vec_t_byte_ptr     op_codes;
+    vec_const_item_ptr constants;
 } t_compiler;
 
 typedef struct _t_primative {
@@ -633,14 +652,86 @@ typedef struct _t_context {
 } t_context;
 
 typedef struct _t_brama_vmdata {
+    int reg1;
+    int op;
     union {
-        int reg1;
-        int op;
+        struct {
+            int reg2;
+            int reg3;
+        };
+        int scal;
     };
-    int reg2;
-    int reg3;
-    int scal;
 } t_brama_vmdata;
+
+
+typedef struct _t_vm_const_item {
+    brama_vm_const_type type;
+    union {
+        int        int_;
+        double     double_;
+        bool       bool_;
+        char*      char_ptr;
+    };
+} t_vm_const_item;
+
+/* VM Defs */
+
+// A mask that selects the sign bit.
+#define SIGN_BIT ((uint64_t)1 << 63)
+
+// The bits that must be set to indicate a quiet NaN.
+#define QNAN ((uint64_t)0x7ffc000000000000)
+
+// If the NaN bits are set, it's not a number.
+#define IS_NUM(value) (((value) & QNAN) != QNAN)
+
+// An object pointer is a NaN with a set sign bit.
+#define IS_OBJ(value) (((value) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
+
+#define IS_STRING(value) (IS_OBJ(value) && AS_OBJ(value)->Type == vm_object::vm_object_type::STR)
+#define IS_ARRAY(value) (IS_OBJ(value) && AS_OBJ(value)->Type == vm_object::vm_object_type::ARRAY)
+
+#define IS_FALSE(value)     ((value) == FALSE_VAL)
+#define IS_BOOL(value)      (value == TRUE_VAL || value == FALSE_VAL)
+#define IS_NULL(value)      ((value) == NULL_VAL)
+#define IS_UNDEFINED(value) ((value) == UNDEFINED_VAL)
+
+// Masks out the tag bits used to identify the singleton value.
+#define MASK_TAG (7)
+
+// Tag values for the different singleton values.
+#define TAG_NAN       (0)
+#define TAG_NULL      (1)
+#define TAG_FALSE     (2)
+#define TAG_TRUE      (3)
+#define TAG_UNDEFINED (4)
+#define TAG_UNUSED2   (5)
+#define TAG_UNUSED3   (6)
+#define TAG_UNUSED4   (7)
+
+// Value -> 0 or 1.
+#define AS_BOOL(value) ((value) == TRUE_VAL)
+
+// Value -> Obj*.
+#define AS_OBJ(value) ((t_vm_const_item*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
+
+// Singleton values.
+#define NULL_VAL      ((t_brama_data)(uint64_t)(QNAN | TAG_NULL))
+#define FALSE_VAL     ((t_brama_data)(uint64_t)(QNAN | TAG_FALSE))
+#define TRUE_VAL      ((t_brama_data)(uint64_t)(QNAN | TAG_TRUE))
+#define UNDEFINED_VAL ((t_brama_data)(uint64_t)(QNAN | TAG_UNDEFINED))
+
+// Gets the singleton type tag for a Value (which must be a singleton).
+#define GET_TAG(value) ((int)((t_brama_data) & MASK_TAG))
+
+#define GET_VALUE_FROM_OBJ(obj) ((t_brama_data)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj)))
+
+typedef union
+{
+    uint64_t bits64;
+    uint32_t bits32[2];
+    double num;
+} DoubleBits;
 
 static KeywordPair KEYWORDS_PAIR[] = {
    { "do",  KEYWORD_DO },
