@@ -43,6 +43,7 @@ include_directories(tests/)
 add_executable(brama
         src/main.c
         src/map.c
+        src/vec.c
         include/map.h
         tests/munit.c
         tests/munit.h

@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <brama.h>
 
 
 /* TOKINIZER OPERATIONS START */
@@ -88,7 +89,7 @@ int getSymbol(t_tokinizer_ptr tokinizer) {
         token->line       = tokinizer->line;
         token->int_       = *keywordInfo;
 
-        vector_add(tokinizer->tokens, token);
+        vec_push(tokinizer->tokens, token);
         BRAMA_FREE(data);
     } else {
         t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
@@ -97,7 +98,7 @@ int getSymbol(t_tokinizer_ptr tokinizer) {
         token->line        = tokinizer->line;
         token->char_ptr    = data;
 
-        vector_add(tokinizer->tokens, token);
+        vec_push(tokinizer->tokens, token);
     }
 
     string_stream_destroy(stream);
@@ -142,7 +143,7 @@ int getText(t_tokinizer_ptr tokinizer, char symbol) {
     token->line        = tokinizer->line;
     token->char_ptr    = NULL;
     string_stream_get(stream, &token->char_ptr);
-    vector_add(tokinizer->tokens, token);
+    vec_push(tokinizer->tokens, token);
 
     if (stream->text_length == 0)
         increase(tokinizer);
@@ -219,10 +220,10 @@ int getNumber(t_tokinizer_ptr tokinizer) {
         token->line    = tokinizer->line;
         token->int_    = OPERATOR_SUBTRACTION;
 
-        vector_add(tokinizer->tokens, token);
+        vec_push(tokinizer->tokens, token);
     }
 
-    vector_add(tokinizer->tokens, token);
+    vec_push(tokinizer->tokens, token);
     return BRAMA_OK;
 }
 
@@ -296,7 +297,7 @@ brama_status getOperator(t_tokinizer_ptr tokinizer) {
     if (token->int_ == OPERATOR_NONE)
         return BRAMA_NOK;
 
-    vector_add(tokinizer->tokens, token);
+    vec_push(tokinizer->tokens, token);
     return BRAMA_OK;
 }
 
@@ -316,7 +317,7 @@ int brama_tokinize(t_context_ptr context, char_ptr data) {
             token->line    = tokinizer->line;
             token->int_    = OPERATOR_NEW_LINE;
 
-            vector_add(tokinizer->tokens, token);
+            vec_push(tokinizer->tokens, token);
             tokinizer->column = 0;
             ++tokinizer->line;
             increase(tokinizer);
@@ -407,13 +408,13 @@ GET_ITEM(text,     char_ptr, char_ptr)
 GET_ITEM(symbol,   char_ptr, char_ptr)
 GET_ITEM(operator, int_,     brama_operator_type)
 
-NEW_PRIMATIVE_DEF(int,    int,           PRIMATIVE_INTEGER,    int_)
-NEW_PRIMATIVE_DEF(double, double,        PRIMATIVE_DOUBLE,     double_)
-NEW_PRIMATIVE_DEF(text,   char_ptr,      PRIMATIVE_STRING,     char_ptr)
-NEW_PRIMATIVE_DEF(bool,   bool,          PRIMATIVE_BOOL,       bool_)
-NEW_PRIMATIVE_DEF(empty,  int,           PRIMATIVE_NULL,       int_)
-NEW_PRIMATIVE_DEF(array,  t_vector_ptr,  PRIMATIVE_ARRAY,      array)
-NEW_PRIMATIVE_DEF(dict,   map_ast_t_ptr, PRIMATIVE_DICTIONARY, dict)
+NEW_PRIMATIVE_DEF(int,    int,                 PRIMATIVE_INTEGER,    int_)
+NEW_PRIMATIVE_DEF(double, double,              PRIMATIVE_DOUBLE,     double_)
+NEW_PRIMATIVE_DEF(text,   char_ptr,            PRIMATIVE_STRING,     char_ptr)
+NEW_PRIMATIVE_DEF(bool,   bool,                PRIMATIVE_BOOL,       bool_)
+NEW_PRIMATIVE_DEF(empty,  int,                 PRIMATIVE_NULL,       int_)
+NEW_PRIMATIVE_DEF(array,  vec_t_ast_ptr_t_ptr, PRIMATIVE_ARRAY,      array)
+NEW_PRIMATIVE_DEF(dict,   map_ast_t_ptr,       PRIMATIVE_DICTIONARY, dict)
 
 NEW_AST_DEF(symbol,    char_ptr,              AST_SYMBOL,               char_ptr)
 NEW_AST_DEF(unary,     t_unary_ptr,           AST_UNARY,                unary_ptr)
@@ -422,7 +423,7 @@ NEW_AST_DEF(control,   t_control_ptr,         AST_CONTROL_OPERATION,    control_
 NEW_AST_DEF(assign,    t_assign_ptr,          AST_ASSIGNMENT,           assign_ptr)
 NEW_AST_DEF(func_call, t_func_call_ptr,       AST_FUNCTION_CALL,        func_call_ptr)
 NEW_AST_DEF(func_decl, t_func_decl_ptr,       AST_FUNCTION_DECLARATION, func_decl_ptr)
-NEW_AST_DEF(block,     t_vector_ptr,          AST_BLOCK,                vector_ptr)
+NEW_AST_DEF(block,     vec_t_ast_ptr_t_ptr ,  AST_BLOCK,                vector_ptr)
 NEW_AST_DEF(object,    t_object_creation_ptr, AST_OBJECT_CREATION,      object_creation_ptr)
 NEW_AST_DEF(while,     t_while_loop_ptr ,     AST_WHILE,                while_ptr)
 NEW_AST_DEF(if,        t_if_stmt_ptr,         AST_IF_STATEMENT,         if_stmt_ptr)
@@ -470,7 +471,7 @@ bool is_primative(t_token_ptr token) {
                              (is_keyword(token) && get_keyword_type(token) == KEYWORD_NULL));
 }
 
-brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     if (is_primative(ast_peek(context))) {
         ast_consume(context);
         return as_primative(ast_previous(context), ast);
@@ -531,25 +532,27 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extr
     }
 
     if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START)) {
-        t_vector_ptr args = vector_init();
+        vec_t_ast_ptr_t_ptr args = BRAMA_MALLOC(sizeof (vec_t_ast_ptr_t));
+        vec_init(args);
+
         if (!ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
             do {
                 t_ast_ptr item = NULL;
                 brama_status status = ast_expression(context, &item, extra_data);
                 if (status != BRAMA_OK) {
-                    vector_destroy(args);
+                    destroy_ast_vector(args);
                     BRAMA_FREE(args);
                     destroy_ast(item);
                     BRAMA_FREE(item);
                     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ARRAY_NOT_VALID);
                 }
 
-                vector_add(args, item);
+                vec_push(args, item);
             } while (ast_match_operator(context, 1, OPERATOR_COMMA));
         }
 
         if (ast_consume_operator(context, OPERATOR_SQUARE_BRACKET_END) == NULL) {
-            vector_destroy(args);
+            destroy_ast_vector(args);
             BRAMA_FREE(args);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
         }
@@ -561,7 +564,7 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extr
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
-brama_status ast_symbol_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_symbol_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     if (is_symbol(ast_peek(context))) {
         *ast = new_symbol_ast(get_symbol(ast_consume(context)));
         return BRAMA_OK;
@@ -570,7 +573,7 @@ brama_status ast_symbol_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
-brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     BACKUP_PARSER_INDEX();
 
     if (!is_symbol(ast_peek(context)) && (!is_keyword(ast_peek(context)) || get_keyword(ast_peek(context)) != KEYWORD_THIS))
@@ -638,7 +641,7 @@ brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int ext
     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 }
 
-brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status status = ast_assignment_expr(context, ast, extra_data);
     if (status == BRAMA_OK)
         return BRAMA_OK;
@@ -665,7 +668,8 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
 
     /* We are parsing function parameters */
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) {
-        t_vector_ptr args = vector_init();
+        vec_t_ast_ptr_t_ptr args = BRAMA_MALLOC(sizeof (vec_t_ast_ptr_t));
+        vec_init(args);
 
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
             do {
@@ -676,7 +680,7 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
                     RESTORE_PARSER_INDEX_AND_RETURN(inner_status);
                 }
 
-                vector_add(args, arg);
+                vec_push(args, arg);
             } while (ast_match_operator(context, 1, OPERATOR_COMMA));
         }
 
@@ -732,25 +736,27 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) 
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
-brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     BACKUP_PARSER_INDEX();
 
     if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_START)) { // Is it start with '{'
-        t_vector_ptr blocks = vector_init();
+        vec_t_ast_ptr_t_ptr blocks = BRAMA_MALLOC(sizeof (vec_t_ast_ptr_t));
+        vec_init(blocks);
+
         if (!ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_END)) {
             do {
                 t_ast_ptr block = NULL;
                 brama_status status = ast_declaration_stmt(context, &block, extra_data);
                 if (status != BRAMA_OK) {
                     CLEAR_AST(block);
-                    destroy_vector(blocks);
+                    destroy_ast_vector(blocks);
                     BRAMA_FREE(blocks);
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
                 }
 
                 if (!ast_match_operator(context, 1, OPERATOR_SEMICOLON) && !is_next_new_line(context)) { // Require semicolon or new line
                     if (!ast_is_at_end(context) && !ast_check_operator(context, OPERATOR_CURVE_BRACKET_END)) {
-                        destroy_vector(blocks);
+                        destroy_ast_vector(blocks);
                         BRAMA_FREE(blocks);
                         CLEAR_AST(block);
 
@@ -764,18 +770,18 @@ brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, 
                     if (!is_next_new_line(context) &&
                         !ast_check_operator(context, OPERATOR_CURVE_BRACKET_END) &&
                         !ast_check_operator(context, OPERATOR_SEMICOLON)) {
-                        destroy_vector(blocks);
+                        destroy_ast_vector(blocks);
                         BRAMA_FREE(blocks);
                         CLEAR_AST(block);
                         RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_BLOCK_NOT_VALID);
                     }
                 }
 
-                vector_add(blocks, block);
+                vec_push(blocks, block);
             } while (!ast_is_at_end(context) && !ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_END));
 
             if (!is_operator(ast_previous(context)) || ast_previous(context)->opt != OPERATOR_CURVE_BRACKET_END) {
-                destroy_vector(blocks);
+                destroy_ast_vector(blocks);
                 BRAMA_FREE(blocks);
                 DESTROY_AST_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND, *ast);
             }
@@ -788,7 +794,7 @@ brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, 
     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 }
 
-brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     BACKUP_PARSER_INDEX();
 
     bool anony_func = false;
@@ -807,23 +813,25 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
 
-        t_vector_ptr args = vector_init();
+        vec_t_ast_ptr_t_ptr args = BRAMA_MALLOC(sizeof(vec_t_ast_ptr_t));
+        vec_init(args);
+
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
             do {
                 t_ast_ptr arg = NULL;
                 brama_status status = ast_symbol_expr(context, &arg, extra_data);
                 if (status != BRAMA_OK) {
-                    vector_destroy(args);
+                    destroy_ast_vector(args);
                     BRAMA_FREE(args);
                     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ILLEGAL_FUNCTION_ARGUMENT);
                 }
 
-                vector_add(args, arg);
+                vec_push(args, arg);
             } while (ast_match_operator(context, 1, OPERATOR_COMMA));
         }
 
         if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL) {
-            vector_destroy(args);
+            destroy_ast_vector(args);
             BRAMA_FREE(args);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
         }
@@ -831,14 +839,14 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
         t_ast_ptr body = NULL;
         brama_status body_status = ast_block_multiline_stmt(context, &body, AST_IN_FUNCTION);
         if (body_status != BRAMA_OK) {
-            destroy_vector(args);
+            destroy_ast_vector(args);
             BRAMA_FREE(args);
             CLEAR_AST(body);
             RESTORE_PARSER_INDEX_AND_RETURN(body_status);
         }
 
         if (anony_func && ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES) == false) {
-            vector_destroy(args);
+            destroy_ast_vector(args);
             BRAMA_FREE(args);
             CLEAR_AST(body);
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
@@ -851,26 +859,27 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
         *ast = new_func_decl_ast(func_decl);
 
         if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) { // If anonymous function directly calling
-            t_vector_ptr call_args = vector_init();
+            vec_t_ast_ptr_t_ptr call_args = BRAMA_MALLOC(sizeof(vec_t_ast_ptr_t));
+            vec_init(args);
 
             if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
                 do {
                     t_ast_ptr arg = NULL;
                     brama_status status = ast_assignable(context, &arg, extra_data);
                     if (status != BRAMA_OK) {
-                        destroy_vector(call_args);
+                        destroy_ast_vector(call_args);
                         BRAMA_FREE(call_args);
                         CLEAR_AST(*ast);
                         CLEAR_AST(arg);
                         RESTORE_PARSER_INDEX_AND_RETURN(status);
                     }
 
-                    vector_add(call_args, arg);
+                    vec_push(call_args, arg);
                 } while (ast_match_operator(context, 1, OPERATOR_COMMA));
             }
 
             if (ast_consume_operator(context, OPERATOR_RIGHT_PARENTHESES) == NULL) {
-                destroy_vector(call_args);
+                destroy_ast_vector(call_args);
                 BRAMA_FREE(call_args);
                 CLEAR_AST(*ast);
                 RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
@@ -893,7 +902,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
 }
 
 
-brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     BACKUP_PARSER_INDEX();
 
     brama_operator_type operator_type   = OPERATOR_NONE;
@@ -959,7 +968,7 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_
     return status;
 }
 
-brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status status = BRAMA_NOK;
 
     status = ast_function_decleration(context, ast, extra_data);
@@ -1029,7 +1038,7 @@ brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int 
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
-brama_status ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status left_status = ast_bitwise_shift_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
@@ -1053,7 +1062,7 @@ brama_status ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extr
     return BRAMA_OK;
 }
 
-brama_status ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status left_status = ast_control_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
@@ -1078,7 +1087,7 @@ brama_status ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast, int ext
 }
 
 
-brama_status ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status left_status = ast_bitwise_or_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
@@ -1102,7 +1111,7 @@ brama_status ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_da
     return BRAMA_OK;
 }
 
-brama_status ast_bitwise_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_bitwise_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status left_status = ast_equality_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
@@ -1126,7 +1135,7 @@ brama_status ast_bitwise_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, int 
     return BRAMA_OK;
 }
 
-brama_status ast_bitwise_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_bitwise_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status left_status = ast_bitwise_xor_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
@@ -1150,7 +1159,7 @@ brama_status ast_bitwise_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, int e
     return BRAMA_OK;
 }
 
-brama_status ast_bitwise_xor_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_bitwise_xor_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status left_status = ast_bitwise_and_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
@@ -1174,7 +1183,7 @@ brama_status ast_bitwise_xor_expr(t_context_ptr context, t_ast_ptr_ptr ast, int 
     return BRAMA_OK;
 }
 
-brama_status ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status left_status = ast_and_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
@@ -1199,7 +1208,7 @@ brama_status ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_dat
 }
 
 
-brama_status ast_bitwise_shift_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_bitwise_shift_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status left_status = ast_addition_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
@@ -1223,7 +1232,7 @@ brama_status ast_bitwise_shift_expr(t_context_ptr context, t_ast_ptr_ptr ast, in
     return BRAMA_OK;
 }
 
-brama_status ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status left_status = ast_multiplication_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
@@ -1247,7 +1256,7 @@ brama_status ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, int ext
     return BRAMA_OK;
 }
 
-brama_status ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status left_status = ast_unary_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
@@ -1271,7 +1280,7 @@ brama_status ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, i
     return BRAMA_OK;
 }
 
-brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     BACKUP_PARSER_INDEX()
 
     bool new_def            = false;
@@ -1315,7 +1324,7 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, int e
     return BRAMA_OK;
 }
 
-brama_status ast_continue(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_continue(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     if (ast_match_keyword(context, 1, KEYWORD_CONTINUE)) {
         *ast = new_keyword_ast(KEYWORD_CONTINUE);
         return BRAMA_OK;
@@ -1324,7 +1333,7 @@ brama_status ast_continue(t_context_ptr context, t_ast_ptr_ptr ast, int extra_da
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
-brama_status ast_break(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_break(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     if (ast_match_keyword(context, 1, KEYWORD_BREAK)) {
         *ast = new_keyword_ast(KEYWORD_BREAK);
         return BRAMA_OK;
@@ -1333,7 +1342,7 @@ brama_status ast_break(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data)
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
-brama_status ast_return_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_return_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     BACKUP_PARSER_INDEX();
 
     if (ast_match_keyword(context, 1, KEYWORD_RETURN)) {
@@ -1354,7 +1363,7 @@ brama_status ast_return_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int extra
     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 }
 
-brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     BACKUP_PARSER_INDEX();
 
     if (ast_match_keyword(context, 1, KEYWORD_NEW)) {
@@ -1365,22 +1374,24 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, int extra_
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_NEW_CLASS_CREATION_NOT_VALID);
 
-        t_vector_ptr args = vector_init();
+        vec_t_ast_ptr_t_ptr args = BRAMA_MALLOC(sizeof (vec_t_ast_ptr_t));
+        vec_init(args);
+
         if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES)) {
             do {
                 t_ast_ptr arg = NULL;
                 brama_status status = ast_assignable(context, &arg, extra_data);
                 if (status != BRAMA_OK) {
-                    vector_destroy(args);
+                    destroy_ast_vector(args);
                     BRAMA_FREE(args);
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
                 }
 
-                vector_add(args, arg);
+                vec_push(args, arg);
             } while (ast_match_operator(context, 1, OPERATOR_COMMA));
 
             if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES)) {
-                vector_destroy(args);
+                vec_deinit(args);
                 BRAMA_FREE(args);
                 RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
             }
@@ -1396,7 +1407,7 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, int extra_
     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 }
 
-brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     BACKUP_PARSER_INDEX();
 
     if (ast_match_keyword(context, 1, KEYWORD_WHILE)) {
@@ -1443,7 +1454,7 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, int extra_
     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 }
 
-brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     BACKUP_PARSER_INDEX();
 
     if (ast_match_keyword(context, 1, KEYWORD_IF)) {
@@ -1510,7 +1521,7 @@ brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, int extra_dat
     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 }
 
-brama_status ast_assignable(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_assignable(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status status = BRAMA_NOK;
 
     status = ast_new_object(context, ast, extra_data);
@@ -1529,11 +1540,10 @@ brama_status ast_assignable(t_context_ptr context, t_ast_ptr_ptr ast, int extra_
 }
 
 brama_status check_end_of_line(t_context_ptr context, int operators) {
-    t_token_ptr token = vector_get(context->tokinizer->tokens, context->parser->index);
-
-    if (operators == 0)
+    if (operators == 0 || context->tokinizer->tokens->length <= context->parser->index)
         return BRAMA_OK;
 
+    t_token_ptr token = context->tokinizer->tokens->data[context->parser->index];
     int index = 0;
     brama_status status = BRAMA_SEMICOLON_REQUIRED;
     do {
@@ -1561,13 +1571,16 @@ brama_status check_end_of_line(t_context_ptr context, int operators) {
         }
         ++index;
 
-        token = vector_get(context->tokinizer->tokens, context->parser->index);
-    } while(true); /* Continue until next_token is null or operator not valid anymore*/
+        if (context->tokinizer->tokens->length <= context->parser->index)
+            return BRAMA_OK;
+
+        token = context->tokinizer->tokens->data[context->parser->index];
+    } while(true); /* Continue until next_token is null or operator not valid anymore */
 
     return status;
 }
 
-brama_status ast_block_body(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_block_body(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status status = BRAMA_NOK;
 
     status = ast_assignable(context, ast, extra_data);
@@ -1616,7 +1629,7 @@ brama_status ast_block_body(t_context_ptr context, t_ast_ptr_ptr ast, int extra_
     return BRAMA_OK;
 }
 
-brama_status ast_expression(t_context_ptr context, t_ast_ptr_ptr ast, int extra_data) {
+brama_status ast_expression(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     BACKUP_PARSER_INDEX();
 
     brama_status status = ast_or_expr(context, ast, extra_data);
@@ -1645,15 +1658,18 @@ bool ast_is_at_end(t_context_ptr context) {
 }
 
 t_token_ptr ast_previous(t_context_ptr context) {
-    return vector_get(context->tokinizer->tokens, context->parser->index - 1);
+    if (context->tokinizer->tokens->length <= (context->parser->index - 1))
+        return NULL;
+
+    return context->tokinizer->tokens->data[context->parser->index - 1];
 }
 
 bool is_next_new_line(t_context_ptr context) {
-    t_token_ptr token = vector_get(context->tokinizer->tokens, context->parser->index);
+    t_token_ptr token = ast_peek(context);
     if (token != NULL && is_operator(token) && token->opt == OPERATOR_NEW_LINE)
         return true;
 
-    token = vector_get(context->tokinizer->tokens, context->parser->index - 1);
+    token = context->tokinizer->tokens->data[context->parser->index - 1];
     if (token != NULL && is_operator(token) && token->opt == OPERATOR_NEW_LINE)
         return true;
 
@@ -1662,11 +1678,13 @@ bool is_next_new_line(t_context_ptr context) {
 
 t_token_ptr ast_peek(t_context_ptr context) {
     check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
-    return vector_get(context->tokinizer->tokens, context->parser->index);
+    if (context->tokinizer->tokens->length <= context->parser->index)
+        return NULL;
+    return context->tokinizer->tokens->data[context->parser->index];
 }
 
 t_token_ptr ast_next(t_context_ptr context) {
-    return vector_get(context->tokinizer->tokens, context->parser->index + 1);
+    return context->tokinizer->tokens->data[context->parser->index + 1];
 }
 
 bool ast_check_token(t_context_ptr context, brama_token_type token_type) {
@@ -1745,14 +1763,14 @@ brama_status validate_ast(t_context_ptr context, t_ast_ptr_ptr ast) {
     if (ast == NULL || *ast == NULL)
         return BRAMA_NOK;
 
-    if (((*ast)->type == AST_PRIMATIVE || 
+    if (((*ast)->type == AST_PRIMATIVE ||
         (*ast)->type == AST_FUNCTION_CALL ||
         (*ast)->type == AST_BINARY_OPERATION ||
         (*ast)->type == AST_CONTROL_OPERATION ||
         (*ast)->type == AST_UNARY ||
-        (*ast)->type == AST_FUNCTION_DECLARATION) && 
+        (*ast)->type == AST_FUNCTION_DECLARATION) &&
         (!is_next_new_line(context) &&
-         !ast_is_at_end(context) && 
+         !ast_is_at_end(context) &&
          !ast_check_operator(context, OPERATOR_SEMICOLON)))
             return BRAMA_BLOCK_NOT_VALID;
     return BRAMA_OK;
@@ -1772,7 +1790,7 @@ brama_status ast_parser(t_context_ptr context) {
         if (status == BRAMA_OK) {
             status = validate_ast(context, &ast);
             if (status == BRAMA_OK)
-                vector_add(context->parser->asts, ast);
+                vec_push(context->parser->asts, ast);
             else {
                 CLEAR_AST(ast);
                 return status;
@@ -1799,13 +1817,15 @@ t_context_ptr brama_init() {
     context->tokinizer->column = 0;
     context->tokinizer->index  = 0;
     context->tokinizer->line   = 1;
-    context->tokinizer->tokens = vector_init();
+    context->tokinizer->tokens = BRAMA_MALLOC(sizeof (vec_t_token_ptr_t));
+    vec_init(context->tokinizer->tokens);
 
     /* parser */
     context->parser            = (t_parser_ptr)BRAMA_MALLOC(sizeof (t_parser));
     context->parser->index     = 0;
     context->parser->line      = 0;
-    context->parser->asts      = vector_init();
+    context->parser->asts      = BRAMA_MALLOC(sizeof (vec_t_ast_ptr_t));
+    vec_init(context->parser->asts);
 
     /* keywords */
     map_init(&context->tokinizer->keywords);
@@ -1813,6 +1833,12 @@ t_context_ptr brama_init() {
     size_t keywordCount = sizeof (KEYWORDS_PAIR) / sizeof(KeywordPair);
     for (size_t i = 0; i < keywordCount; ++i)
         map_set(&context->tokinizer->keywords, KEYWORDS_PAIR[i].name,  KEYWORDS_PAIR[i].keyword);
+
+    /* Compiler */
+    context->compiler           = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
+    context->compiler->index    = 0;
+    context->compiler->op_codes = BRAMA_MALLOC(sizeof (vec_t_brama_opcode_t));
+    vec_init(context->compiler->op_codes);
 
     return context;
 }
@@ -1852,15 +1878,17 @@ void brama_execute(t_context_ptr context, char_ptr data) {
         context->error_message = brama_set_error(context, ast_status);
         return;
     }
+
+    compile(context);
     context->status = BRAMA_OK;
 }
 
 void brama_dump(t_context_ptr context) {
     t_context_ptr _context = (t_context_ptr)context;
     int i;
-    int totalToken = _context->tokinizer->tokens->count;
+    int totalToken = _context->tokinizer->tokens->length;
     for (i = 0; i < totalToken; ++i) {
-        t_token_ptr token = (t_token_ptr)vector_get(_context->tokinizer->tokens, i);
+        t_token_ptr token = _context->tokinizer->tokens->data[i];
         if (token->type == TOKEN_TEXT)
             printf("TEXT     = '%s'\r\n", token->char_ptr);
         else if (token->type == TOKEN_OPERATOR)
@@ -1886,12 +1914,12 @@ void brama_dump(t_context_ptr context) {
 #define AST_PRINT_SECTION(PROPERTY)                printf("\r\n%*s%s : ", (level + 1) * LEVEL_PADDING, "", PROPERTY)
 #define AST_PRINT_SIMPLE(PROPERTY)                 printf("%s", PROPERTY)
 
-void brama_dump_vector_internal(t_vector_ptr vector, size_t level) {
+void brama_dump_vector_internal(vec_t_ast_ptr_t_ptr vector, size_t level) {
     int i     = 0;
-    int total = vector->count;
+    int total = vector->length;
     AST_PRINT_SIMPLE("[");
     for (i = 0; i < total; ++i) {
-        t_ast_ptr ast = (t_ast_ptr)vector_get(vector, i);
+        t_ast_ptr ast = vector->data[i];
         AST_DUMP_AST(ast);
     }
     AST_PRINT_SIMPLE("]");
@@ -1945,7 +1973,7 @@ void brama_dump_ast_internal(t_ast_ptr ast, size_t level) {
         AST_DUMP_START();
         AST_PRINT_PROPERTY("type", "SYMBOL");
         AST_PRINT_PROPERTY("data", ast->char_ptr);
-        AST_DUMP_END();  
+        AST_DUMP_END();
         break;
 
     case AST_PRIMATIVE:
@@ -1986,12 +2014,12 @@ void brama_dump_ast_internal(t_ast_ptr ast, size_t level) {
 
 void brama_dump_ast(t_context_ptr context) {
     t_context_ptr _context = (t_context_ptr)context;
-    int i             = 0;
-    int totalAst      = _context->parser->asts->count;
-    t_vector_ptr asts = _context->parser->asts;
+    int i                    = 0;
+    int totalAst             = _context->parser->asts->length;
+    vec_t_ast_ptr_t_ptr asts = _context->parser->asts;
 
     for (i = 0; i < totalAst; ++i) {
-        t_ast_ptr ast = (t_ast_ptr)vector_get(asts, i);
+        t_ast_ptr ast = asts->data[i];
         brama_dump_ast_internal(ast, 0);
     }
 }
@@ -2032,7 +2060,7 @@ bool destroy_ast(t_ast_ptr ast) {
    }
 
    else if (ast->type == AST_BLOCK) {
-       destroy_vector(ast->vector_ptr);
+       destroy_ast_vector(ast->vector_ptr);
        BRAMA_FREE(ast->vector_ptr);
        ast->vector_ptr = NULL;
    }
@@ -2124,7 +2152,7 @@ bool destroy_ast_if_stmt(t_if_stmt_ptr if_stmt_ptr) {
 
 bool destroy_ast_object_creation(t_object_creation_ptr object_creation_ptr) {
     if (object_creation_ptr->args != NULL) {
-        destroy_vector(object_creation_ptr->args);
+        destroy_ast_vector(object_creation_ptr->args);
         BRAMA_FREE(object_creation_ptr->args);
     }
 
@@ -2133,7 +2161,7 @@ bool destroy_ast_object_creation(t_object_creation_ptr object_creation_ptr) {
 
 bool destroy_ast_func_call(t_func_call_ptr func_call_ptr) {
     if (func_call_ptr->args != NULL) {
-        destroy_vector(func_call_ptr->args);
+        destroy_ast_vector(func_call_ptr->args);
         BRAMA_FREE(func_call_ptr->args);
     }
 
@@ -2154,7 +2182,7 @@ bool destroy_ast_func_call(t_func_call_ptr func_call_ptr) {
 
 bool destroy_ast_func_decl(t_func_decl_ptr func_decl_ptr) {
     if (func_decl_ptr->args != NULL) {
-        destroy_vector(func_decl_ptr->args);
+        destroy_ast_vector(func_decl_ptr->args);
         BRAMA_FREE(func_decl_ptr->args);
     }
     if (func_decl_ptr->body != NULL) {
@@ -2238,16 +2266,28 @@ bool destroy_ast_assignment(t_assign_ptr assignment) {
     return true;
 }
 
-bool destroy_vector(t_vector_ptr vector) {
+bool destroy_ast_vector(vec_t_ast_ptr_t_ptr vector) {
     size_t i;
-    size_t total = vector->count;
+    size_t total = vector->length;
     for (i = 0; i < total; ++i) {
-        t_ast_ptr item = vector_get(vector, i);
+        t_ast_ptr item = vector->data[i];
         destroy_ast(item);
         BRAMA_FREE(item);
         item = NULL;
     }
-    vector_destroy(vector);
+    //destroy_ast_vector(vector);
+    return true;
+}
+
+bool destroy_token_vector(vec_t_token_ptr_t_ptr vector) {
+    size_t i;
+    size_t total = vector->length;
+    for (i = 0; i < total; ++i) {
+        t_token_ptr item = vector->data[i];
+        BRAMA_FREE(item);
+        item = NULL;
+    }
+    destroy_ast_vector(vector);
     return true;
 }
 
@@ -2262,7 +2302,7 @@ bool destroy_ast_primative(t_primative_ptr primative) {
             break;
 
         case PRIMATIVE_ARRAY:
-            destroy_vector(primative->array);
+            destroy_ast_vector(primative->array);
             BRAMA_FREE(primative->array);
             primative->array = NULL;
             break;
@@ -2292,21 +2332,157 @@ bool destroy_ast_primative(t_primative_ptr primative) {
     return true;
 }
 
+
+/* Compile Begin */
+
+/* Binary Operation
+ * Example : 10 + 20 - 10 * 5.5 */
+void compile_binary(t_context_ptr context, t_ast_ptr const ast) {
+    compile_internal(context, ast->binary_ptr->left);
+    compile_internal(context, ast->binary_ptr->right);
+
+    switch (ast->binary_ptr->opt) {
+        case OPERATOR_ADDITION:
+            vec_push(context->compiler->op_codes, VM_OPT_ADDITION);
+            break;
+
+        case OPERATOR_SUBTRACTION:
+            vec_push(context->compiler->op_codes, VM_OPT_SUBTRACTION);
+            break;
+
+        case OPERATOR_BITWISE_AND:
+            vec_push(context->compiler->op_codes, VM_OPT_SUBTRACTION);
+            break;
+
+        case OPERATOR_BITWISE_OR:
+            vec_push(context->compiler->op_codes, VM_OPT_BITWISE_OR);
+            break;
+
+        case OPERATOR_BITWISE_XOR:
+            vec_push(context->compiler->op_codes, VM_OPT_BITWISE_XOR);
+            break;
+
+        case OPERATOR_DIVISION:
+            vec_push(context->compiler->op_codes, VM_OPT_DIVISION);
+            break;
+
+        case OPERATOR_MULTIPLICATION:
+            vec_push(context->compiler->op_codes, VM_OPT_MULTIPLICATION);
+            break;
+
+        case OPERATOR_BITWISE_LEFT_SHIFT:
+            vec_push(context->compiler->op_codes, VM_OPT_BITWISE_LEFT_SHIFT);
+            break;
+
+        case OPERATOR_BITWISE_RIGHT_SHIFT:
+            vec_push(context->compiler->op_codes, VM_OPT_BITWISE_RIGHT_SHIFT);
+            break;
+
+        case OPERATOR_BITWISE_UNSIGNED_RIGHT_SHIFT:
+            vec_push(context->compiler->op_codes, VM_OPT_BITWISE_UNSIGNED_RIGHT_SHIFT);
+            break;
+    }
+}
+
+void compile_primative(t_context_ptr context, t_ast_ptr const ast) {
+    switch (ast->primative_ptr->type) {
+        case PRIMATIVE_INTEGER:
+            vec_push(context->compiler->op_codes, VM_OPT_CONST_INT);
+            t_brama_int i;
+            i.int_ = ast->primative_ptr->int_;
+            vec_push(context->compiler->op_codes, i.bytes[3]);
+            vec_push(context->compiler->op_codes, i.bytes[2]);
+            vec_push(context->compiler->op_codes, i.bytes[1]);
+            vec_push(context->compiler->op_codes, i.bytes[0]);
+            break;
+
+        case PRIMATIVE_DOUBLE:
+            vec_push(context->compiler->op_codes, VM_OPT_CONST_DOUBLE);
+            t_brama_double d;
+            d.double_ = ast->primative_ptr->double_;
+            vec_push(context->compiler->op_codes, d.bytes[7]);
+            vec_push(context->compiler->op_codes, d.bytes[6]);
+            vec_push(context->compiler->op_codes, d.bytes[5]);
+            vec_push(context->compiler->op_codes, d.bytes[4]);
+            vec_push(context->compiler->op_codes, d.bytes[3]);
+            vec_push(context->compiler->op_codes, d.bytes[2]);
+            vec_push(context->compiler->op_codes, d.bytes[1]);
+            vec_push(context->compiler->op_codes, d.bytes[0]);
+            break;
+
+        case PRIMATIVE_BOOL:
+            vec_push(context->compiler->op_codes, VM_OPT_CONST_BOOL);
+            vec_push(context->compiler->op_codes, (t_brama_byte)ast->primative_ptr->bool_);
+            break;
+    }
+}
+
+
+void compile_internal(t_context_ptr context, t_ast_ptr const ast) {
+    switch (ast->type) {
+        case AST_PRIMATIVE:
+            compile_primative(context, ast);
+            break;
+
+        case AST_BINARY_OPERATION:
+            compile_binary(context, ast);
+            break;
+    }
+}
+
+void compile(t_context_ptr context) {
+    vec_t_ast_ptr_t_ptr asts = context->parser->asts;
+    size_t total_ast  = asts->length;
+    for (size_t i = 0; i < total_ast; ++i) {
+        t_ast_ptr ast = asts->data[i];
+        compile_internal(context, ast);
+    }
+}
+
+/* Compile End */
+
+/* VM Begin */
+
+/* FOR FUTURE USAGE */
+void vm_decode(int instr, t_brama_vmdata_ptr t)
+{
+    t->op   = (instr & 0xF000) >> 12;
+    t->reg1 = (instr & 0x0F00) >> 8;
+    t->reg2 = (instr & 0x00F0) >> 4;
+    t->reg3 = (instr & 0x000F);
+    t->scal = (instr & 0x00FF);
+}
+
+void vm_encode(int *instr, t_brama_vmdata_ptr t)
+{
+    *instr += 0;
+    *instr += t->op   << 12;
+    *instr += t->reg1 << 8;
+    if (t->scal != 0)
+        *instr += t->scal;
+    else {
+        *instr += t->reg2 << 4;
+        *instr += t->reg3;
+    }
+}
+
+/* VM End */
+
 void brama_destroy(t_context_ptr context) {
     t_context_ptr _context = (t_context_ptr)context;
     size_t i;
-    size_t totalToken = _context->tokinizer->tokens->count;
+    size_t totalToken = _context->tokinizer->tokens->length;
     for (i = 0; i < totalToken; i++) {
-        t_token_ptr token = (t_token_ptr)vector_get(_context->tokinizer->tokens, i);
+        t_token_ptr token = _context->tokinizer->tokens->data[i];
         if (token->type == TOKEN_TEXT ||
             token->type == TOKEN_SYMBOL)
             BRAMA_FREE((char_ptr)token->char_ptr);
         BRAMA_FREE(token);
     }
 
-    size_t totalAst = _context->parser->asts->count;
+    size_t totalAst = _context->parser->asts->length;
     for (i = 0; i < totalAst; ++i) {
-        t_ast_ptr ast = (t_ast_ptr)vector_get(_context->parser->asts, i);
+        t_ast_ptr ast = _context->parser->asts->data[i];
         destroy_ast(ast);
         BRAMA_FREE(ast);
     }
@@ -2314,13 +2490,17 @@ void brama_destroy(t_context_ptr context) {
     if (context->error_message != NULL)
         BRAMA_FREE(context->error_message);
 
+    vec_deinit(_context->tokinizer->tokens);
+    vec_deinit(_context->parser->asts);
+    vec_deinit(_context->compiler->op_codes);
+
     map_deinit(&_context->tokinizer->keywords);
-    vector_destroy(_context->tokinizer->tokens);
     BRAMA_FREE(_context->tokinizer->tokens);
     BRAMA_FREE(_context->tokinizer);
 
-    vector_destroy(_context->parser->asts);
     BRAMA_FREE(_context->parser->asts);
     BRAMA_FREE(_context->parser);
+
+    BRAMA_FREE(_context->compiler);
     BRAMA_FREE(_context);
 }

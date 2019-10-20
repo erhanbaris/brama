@@ -6,6 +6,7 @@
 #include <stdbool.h>
 
 #include "map.h"
+#include "vec.h"
 #include "macros.h"
 #include "tools.h"
 
@@ -199,6 +200,75 @@ typedef enum brama_ast_type {
     AST_KEYWORD              = 22
 } brama_ast_type;
 
+/* VM Operators */
+enum brama_vm_operator {
+    VM_OPT_HALT,
+    VM_OPT_ADDITION                ,
+    VM_OPT_SUBTRACTION             ,
+    VM_OPT_MULTIPLICATION          ,
+    VM_OPT_DIVISION                ,
+    VM_OPT_MODULES                 ,
+    VM_OPT_BITWISE_AND             ,
+    VM_OPT_BITWISE_OR              ,
+    VM_OPT_BITWISE_NOT             ,
+    VM_OPT_BITWISE_XOR             ,
+    VM_OPT_BITWISE_LEFT_SHIFT      ,
+    VM_OPT_BITWISE_RIGHT_SHIFT     ,
+    VM_OPT_BITWISE_UNSIGNED_RIGHT_SHIFT,
+    VM_OPT_EQ,
+    VM_OPT_LT,
+    VM_OPT_LTE,
+    VM_OPT_GT,
+    VM_OPT_GTE,
+    VM_OPT_AND,
+    VM_OPT_OR,
+    VM_OPT_DUP,
+    VM_OPT_POP,
+    VM_OPT_CONST_STR,
+    VM_OPT_CONST_INT,
+    VM_OPT_CONST_BOOL,
+    VM_OPT_CONST_DOUBLE,
+    VM_OPT_NULL,
+    VM_OPT_UNDEFINED,
+    VM_OPT_DELETE,
+    VM_OPT_JMP,
+    VM_OPT_IF_EQ,
+    VM_OPT_JIF,
+    VM_OPT_JNIF,
+    VM_OPT_INC,
+    VM_OPT_DINC,
+    VM_OPT_LOAD,
+    VM_OPT_LOAD_0,
+    VM_OPT_LOAD_1,
+    VM_OPT_LOAD_2,
+    VM_OPT_LOAD_3,
+    VM_OPT_STORE,
+    VM_OPT_STORE_0,
+    VM_OPT_STORE_1,
+    VM_OPT_STORE_2,
+    VM_OPT_STORE_3,
+    VM_OPT_GLOAD,
+    VM_OPT_GLOAD_0,
+    VM_OPT_GLOAD_1,
+    VM_OPT_GLOAD_2,
+    VM_OPT_GLOAD_3,
+    VM_OPT_GSTORE,
+    VM_OPT_GSTORE_0,
+    VM_OPT_GSTORE_1,
+    VM_OPT_GSTORE_2,
+    VM_OPT_GSTORE_3,
+    VM_OPT_CALL,
+    VM_OPT_RETURN,
+    VM_OPT_PUSH,
+    VM_OPT_PRINT,
+    VM_OPT_NEG,
+    VM_OPT_CALL_NATIVE,
+    VM_OPT_METHOD_DEF,
+    VM_OPT_INITARRAY,
+    VM_OPT_INITDICT,
+    VM_OPT_NOT_EQ,
+    VM_OPT_APPEND
+};
 
 typedef enum _brama_ast_extra_data_type {
     AST_IN_NONE     = 0,
@@ -361,24 +431,66 @@ static char* KEYWORDS[] = {
 };
 
 /* STRUCTS */
-struct _t_token;
-struct _t_tokinizer;
-struct _t_parser;
-struct _t_primative;
-struct _t_unary;
-struct _t_func_call;
-struct _t_ast;
-struct _t_context;
-struct _t_binary;
-struct _t_func_decl;
-struct _t_object_creation;
-struct _t_while_loop;
-struct _t_if_stmt;
-struct _t_accessor;
-
+typedef struct _t_token t_token;
+typedef struct _t_tokinizer t_tokinizer;
+typedef struct _t_parser t_parser;
+typedef struct _t_primative t_primative;
+typedef struct _t_unary t_unary;
+typedef struct _t_func_call t_func_call;
 typedef struct _t_ast t_ast;
+typedef struct _t_context t_context;
+typedef struct _t_binary t_binary;
+typedef struct _t_func_decl t_func_decl;
+typedef struct _t_object_creation t_object_creation;
+typedef struct _t_while_loop t_while_loop;
+typedef struct _t_if_stmt t_if_stmt;
+typedef struct _t_accessor t_accessor;
+typedef struct _t_compiler t_compiler;
+typedef struct _t_brama_vmdata t_brama_vmdata;
+typedef struct _t_tokinizer t_tokinizer;
+typedef struct _t_assign t_assign;
+typedef struct _t_control t_control;
+
+
+typedef t_tokinizer*       t_tokinizer_ptr;
+typedef t_token*           t_token_ptr;
+typedef t_parser*          t_parser_ptr;
+typedef t_primative*       t_primative_ptr;
+typedef t_unary*           t_unary_ptr;
+typedef t_binary*          t_binary_ptr;
+typedef t_assign*          t_assign_ptr;
+typedef t_control*         t_control_ptr;
+typedef t_func_call*       t_func_call_ptr;
+typedef t_func_decl*       t_func_decl_ptr;
+typedef t_ast*             t_ast_ptr;
+typedef t_ast**            t_ast_ptr_ptr;
+typedef t_context*         t_context_ptr;
+typedef t_string_stream*   t_string_stream_ptr;
+typedef t_object_creation* t_object_creation_ptr;
+typedef t_while_loop*      t_while_loop_ptr;
+typedef t_if_stmt*         t_if_stmt_ptr;
+typedef t_accessor*        t_accessor_ptr;
+typedef t_compiler*        t_compiler_ptr;
+typedef char*              char_ptr;
+typedef void*              void_ptr;
+typedef int*               int_ptr;
+
+typedef uint8_t            t_brama_opcode;
+typedef int8_t             t_brama_byte;
+typedef int8_t             t_brama_char;
+typedef union              _t_brama_double { t_brama_byte bytes[8];  double double_; } t_brama_double;
+typedef union              _t_brama_int    { t_brama_byte bytes[4];  int int_; } t_brama_int;
+typedef bool               t_brama_bool;
 
 typedef map_t(struct _t_ast *) map_ast_t;
+typedef map_ast_t*             map_ast_t_ptr;
+typedef t_brama_vmdata*        t_brama_vmdata_ptr;
+typedef vec_t(t_token_ptr)     vec_t_token_ptr_t;
+typedef vec_t(t_token_ptr)*    vec_t_token_ptr_t_ptr;
+typedef vec_t(t_ast_ptr)       vec_t_ast_ptr_t;
+typedef vec_t(t_ast_ptr)*      vec_t_ast_ptr_t_ptr;
+typedef vec_t(t_brama_opcode)  vec_t_brama_opcode_t;
+typedef vec_t(t_brama_opcode)* vec_t_brama_opcode_t_ptr;
 
 typedef struct _t_token {
     size_t           line;
@@ -400,15 +512,20 @@ typedef struct _t_tokinizer {
     size_t    index;
     size_t    contentLength;
     char*     content;
-    t_vector* tokens;
+    vec_t(t_token*)* tokens;
     map_int_t keywords;
 } t_tokinizer;
 
 typedef struct _t_parser {
-    size_t    index;
-    size_t    line;
-    t_vector* asts;
+    size_t              index;
+    size_t              line;
+    vec_t_ast_ptr_t_ptr asts;
 } t_parser;
+
+typedef struct _t_compiler {
+    size_t          index;
+    vec_t(uint8_t)* op_codes;
+} t_compiler;
 
 typedef struct _t_primative {
     brama_primative_type type;
@@ -417,7 +534,7 @@ typedef struct _t_primative {
         double     double_;
         bool       bool_;
         char*      char_ptr;
-        t_vector*  array;
+        vec_t(struct _t_ast*)*  array;
         map_ast_t* dict;
     };
 } t_primative;
@@ -454,18 +571,18 @@ typedef struct _t_func_call {
         struct _t_func_decl* func_decl_ptr;
     };
     brama_func_call_type     type;
-    t_vector*                args;
+    vec_t(struct _t_ast*)*   args;
 } t_func_call;
 
 typedef struct _t_func_decl {
     char*          name;
-    t_vector*      args;
+    vec_t(struct _t_ast*)* args;
     struct _t_ast* body;
 } t_func_decl;
 
 typedef struct _t_object_creation {
     char*     object_name;
-    t_vector* args;
+    vec_t(struct _t_ast*)* args;
 } t_object_creation;
 
 typedef struct _t_accessor{
@@ -487,33 +604,43 @@ typedef struct _t_if_stmt {
 typedef struct _t_ast {
     brama_ast_type type;
     union {
-        t_func_call*       func_call_ptr;
-        t_func_decl*       func_decl_ptr;
-        t_unary*           unary_ptr;
-        t_binary*          binary_ptr;
-        t_control*         control_ptr;
-        t_primative*       primative_ptr;
-        t_assign*          assign_ptr;
-        t_vector*          vector_ptr;
-        t_object_creation* object_creation_ptr;
-        t_while_loop*      while_ptr;
-        t_if_stmt*         if_stmt_ptr;
-        t_accessor*        accessor_ptr;
-        struct _t_ast*     ast_ptr;
-        char*              char_ptr;
-        int                int_;
-        brama_keyword_type keyword;
+        t_func_call*           func_call_ptr;
+        t_func_decl*           func_decl_ptr;
+        t_unary*               unary_ptr;
+        t_binary*              binary_ptr;
+        t_control*             control_ptr;
+        t_primative*           primative_ptr;
+        t_assign*              assign_ptr;
+        vec_t(struct _t_ast*)* vector_ptr;
+        t_object_creation*     object_creation_ptr;
+        t_while_loop*          while_ptr;
+        t_if_stmt*             if_stmt_ptr;
+        t_accessor*            accessor_ptr;
+        struct _t_ast*         ast_ptr;
+        char*                  char_ptr;
+        int                    int_;
+        brama_keyword_type     keyword;
     };
 } t_ast;
 
 typedef struct _t_context {
     t_tokinizer* tokinizer;
     t_parser*    parser;
+    t_compiler*  compiler;
 
     char*        error_message;
     brama_status status;
 } t_context;
 
+typedef struct _t_brama_vmdata {
+    union {
+        int reg1;
+        int op;
+    };
+    int reg2;
+    int reg3;
+    int scal;
+} t_brama_vmdata;
 
 static KeywordPair KEYWORDS_PAIR[] = {
    { "do",  KEYWORD_DO },
@@ -564,30 +691,6 @@ static KeywordPair KEYWORDS_PAIR[] = {
    { "implements",  KEYWORD_IMPLEMENTS },
    { "instanceof",  KEYWORD_INSTANCEOF }
  };
-
-typedef t_tokinizer*       t_tokinizer_ptr;
-typedef t_token*           t_token_ptr;
-typedef t_parser*          t_parser_ptr;
-typedef t_primative*       t_primative_ptr;
-typedef t_unary*           t_unary_ptr;
-typedef t_binary*          t_binary_ptr;
-typedef t_assign*          t_assign_ptr;
-typedef t_control*         t_control_ptr;
-typedef t_func_call*       t_func_call_ptr;
-typedef t_func_decl*       t_func_decl_ptr;
-typedef t_ast*             t_ast_ptr;
-typedef t_ast**            t_ast_ptr_ptr;
-typedef t_context*         t_context_ptr;
-typedef t_string_stream*   t_string_stream_ptr;
-typedef t_object_creation* t_object_creation_ptr;
-typedef t_while_loop*      t_while_loop_ptr;
-typedef t_vector*          t_vector_ptr;
-typedef t_if_stmt*         t_if_stmt_ptr;
-typedef t_accessor*        t_accessor_ptr;
-typedef char*              char_ptr;
-typedef void*              void_ptr;
-typedef int*               int_ptr;
-typedef map_ast_t*         map_ast_t_ptr;
 
 t_context_ptr brama_init       ();
 void          brama_execute    (t_context_ptr context, char_ptr data);

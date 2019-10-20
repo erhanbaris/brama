@@ -91,27 +91,27 @@ case OPERATOR_1_SYMBOL :                     \
 
 
 #define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE)       \
-    t_ast_ptr new_##NAME##_ast_internal(INPUT variable, int FILE__ , char_ptr LINE__ ) {       \
+    t_ast* new_##NAME##_ast_internal(INPUT variable, int FILE__ , char_ptr LINE__ ) {       \
         t_ast_ptr ast = BRAMA_MALLOC_LINE(sizeof (t_ast), FILE__ , LINE__ );  \
         ast->type     = STR_TYPE;                      \
         ast-> TYPE    = variable;                      \
         return ast;                                    \
     }
 
-#define new_symbol_ast(DATA)       new_symbol_ast_internal( DATA , __FILE__, __LINE__ )
-#define new_unary_ast(DATA)        new_unary_ast_internal( DATA , __FILE__, __LINE__ )
-#define new_binary_ast(DATA)       new_binary_ast_internal( DATA , __FILE__, __LINE__ )
-#define new_control_ast(DATA)      new_control_ast_internal( DATA , __FILE__, __LINE__ )
-#define new_assign_ast(DATA)       new_assign_ast_internal( DATA , __FILE__, __LINE__ )
+#define new_symbol_ast(DATA)       new_symbol_ast_internal   ( DATA , __FILE__, __LINE__ )
+#define new_unary_ast(DATA)        new_unary_ast_internal    ( DATA , __FILE__, __LINE__ )
+#define new_binary_ast(DATA)       new_binary_ast_internal   ( DATA , __FILE__, __LINE__ )
+#define new_control_ast(DATA)      new_control_ast_internal  ( DATA , __FILE__, __LINE__ )
+#define new_assign_ast(DATA)       new_assign_ast_internal   ( DATA , __FILE__, __LINE__ )
 #define new_func_call_ast(DATA)    new_func_call_ast_internal( DATA , __FILE__, __LINE__ )
 #define new_func_decl_ast(DATA)    new_func_decl_ast_internal( DATA , __FILE__, __LINE__ )
-#define new_block_ast(DATA)        new_block_ast_internal( DATA , __FILE__, __LINE__ )
-#define new_object_ast(DATA)       new_object_ast_internal( DATA , __FILE__, __LINE__ )
-#define new_while_ast(DATA)        new_while_ast_internal( DATA , __FILE__, __LINE__ )
-#define new_if_ast(DATA)           new_if_ast_internal( DATA , __FILE__, __LINE__ )
-#define new_return_ast(DATA)       new_return_ast_internal( DATA , __FILE__, __LINE__ )
-#define new_accessor_ast(DATA)     new_accessor_ast_internal( DATA , __FILE__, __LINE__ )
-#define new_keyword_ast(DATA)      new_keyword_ast_internal( DATA , __FILE__, __LINE__ )
+#define new_block_ast(DATA)        new_block_ast_internal    ( DATA , __FILE__, __LINE__ )
+#define new_object_ast(DATA)       new_object_ast_internal   ( DATA , __FILE__, __LINE__ )
+#define new_while_ast(DATA)        new_while_ast_internal    ( DATA , __FILE__, __LINE__ )
+#define new_if_ast(DATA)           new_if_ast_internal       ( DATA , __FILE__, __LINE__ )
+#define new_return_ast(DATA)       new_return_ast_internal   ( DATA , __FILE__, __LINE__ )
+#define new_accessor_ast(DATA)     new_accessor_ast_internal ( DATA , __FILE__, __LINE__ )
+#define new_keyword_ast(DATA)      new_keyword_ast_internal  ( DATA , __FILE__, __LINE__ )
 
 
 #define BACKUP_PARSER_INDEX()                        size_t parser_index = context->parser->index;
@@ -125,11 +125,11 @@ case OPERATOR_1_SYMBOL :                     \
 }
 
 #define CLEAR_AST(AST)       if ( AST    != NULL ) { destroy_ast   ( AST );    BRAMA_FREE( AST );    AST    = NULL; }
-#define CLEAR_VECTOR(VECTOR) if ( VECTOR != NULL ) { vector_destroy( VECTOR ); BRAMA_FREE( VECTOR ); VECTOR = NULL; }
+#define CLEAR_VECTOR(VECTOR) if ( VECTOR != NULL ) { destroy_ast_vector( VECTOR ); BRAMA_FREE( VECTOR ); VECTOR = NULL; }
 
+#define vector_get(VECTOR, INDEX) VECTOR ->data[ INDEX ]
 
 #if defined(_WIN32)
-
 #    define _CRTDBG_MAP_ALLOC
 #    include <stdlib.h>
 #    include <crtdbg.h>

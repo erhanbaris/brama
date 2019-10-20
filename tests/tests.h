@@ -6,13 +6,15 @@
 #include "tests_ast.h"
 #include "tests_ast_2.h"
 #include "tests_bitwise.h"
+#include "tests_compile.h"
 
 static MunitSuite other_suites[] = {
-   { "/token-tests",  TOKEN_TESTS,   NULL, 1, MUNIT_SUITE_OPTION_NONE },
-   { "/tools-tests",  TOOLS_TESTS,   NULL, 1, MUNIT_SUITE_OPTION_NONE },
-   { "/ast-tests",    AST_TESTS,     NULL, 1, MUNIT_SUITE_OPTION_NONE },
-   { "/ast-tests-2",  AST_TESTS_2,   NULL, 1, MUNIT_SUITE_OPTION_NONE },
-   { "/bitwise-tests",BITWISE_TESTS, NULL, 1, MUNIT_SUITE_OPTION_NONE },
+   { "/token-tests",   TOKEN_TESTS,   NULL, 1, MUNIT_SUITE_OPTION_NONE },
+   { "/tools-tests",   TOOLS_TESTS,   NULL, 1, MUNIT_SUITE_OPTION_NONE },
+   { "/ast-tests",     AST_TESTS,     NULL, 1, MUNIT_SUITE_OPTION_NONE },
+   { "/ast-tests-2",   AST_TESTS_2,   NULL, 1, MUNIT_SUITE_OPTION_NONE },
+   { "/bitwise-tests", BITWISE_TESTS, NULL, 1, MUNIT_SUITE_OPTION_NONE },
+   { "/compile-tests", COMPILE_TESTS, NULL, 1, MUNIT_SUITE_OPTION_NONE },
    { NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE }
  };
 

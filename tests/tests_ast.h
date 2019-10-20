@@ -1,6 +1,7 @@
 ﻿#ifndef TESTS_AST_H
 #define TESTS_AST_H
 
+#include <brama.h>
 #include "tests_core.h"
 #include "brama.h"
 #include "brama_internal.h"
@@ -41,7 +42,7 @@ MunitResult ast_consume_test(const MunitParameter params[], void* user_data_or_f
     munit_assert_ptr_null(ast_consume(context));
 
     brama_execute(context, "var rows = prompt('How many rows for your multiplication table?');");
-    munit_assert_int(context->tokinizer->tokens->count, ==, 8);
+    munit_assert_int(context->tokinizer->tokens->length, ==, 8);
 
     context->parser->index = 0;
     t_token* token1        = ast_consume(context);
@@ -401,10 +402,10 @@ MunitResult ast_primary_expr_test_2(const MunitParameter params[], void* user_da
 
     t_ast_ptr ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, NULL),  ==, BRAMA_OK);
-    munit_assert_int(ast->primative_ptr->array->count, ==, 7);
+    munit_assert_int(ast->primative_ptr->array->length, ==, 7);
     munit_assert_int(ast->primative_ptr->type,         ==, PRIMATIVE_ARRAY);
 
-    t_vector_ptr vector = ast->primative_ptr->array;
+    vec_t_ast_ptr_t_ptr vector = ast->primative_ptr->array;
     munit_assert_int(((t_ast_ptr)vector_get(vector, 0))->primative_ptr->type, ==, PRIMATIVE_INTEGER);
     munit_assert_int(((t_ast_ptr)vector_get(vector, 0))->primative_ptr->int_, ==, 1);
 
@@ -417,7 +418,7 @@ MunitResult ast_primary_expr_test_2(const MunitParameter params[], void* user_da
     munit_assert_double(((t_ast_ptr)vector_get(vector, 3))->primative_ptr->double_, ==, 1.1);
 
     munit_assert_int(((t_ast_ptr)vector_get(vector, 4))->primative_ptr->type,         ==, PRIMATIVE_ARRAY);
-    munit_assert_int(((t_ast_ptr)vector_get(vector, 4))->primative_ptr->array->count, ==, 0);
+    munit_assert_int(((t_ast_ptr)vector_get(vector, 4))->primative_ptr->array->length, ==, 0);
 
     munit_assert_int         (((t_ast_ptr)vector_get(vector, 5))->primative_ptr->type, ==, PRIMATIVE_STRING);
     munit_assert_string_equal(((t_ast_ptr)vector_get(vector, 5))->primative_ptr->char_ptr, "hello");
@@ -504,7 +505,7 @@ MunitResult ast_primary_expr_test_5(const MunitParameter params[], void* user_da
     /* Array */
     munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "array"))->type,                 ==, AST_PRIMATIVE);
     munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "array"))->primative_ptr->type,  ==, PRIMATIVE_ARRAY);
-    t_vector_ptr array = ((t_ast_ptr)*map_get(main_dict, "array"))->primative_ptr->array;
+    vec_t_ast_ptr_t_ptr array = ((t_ast_ptr)*map_get(main_dict, "array"))->primative_ptr->array;
     munit_assert_int         (((t_ast_ptr)vector_get(array, 0))->primative_ptr->type, ==, PRIMATIVE_INTEGER);
     munit_assert_int         (((t_ast_ptr)vector_get(array, 0))->primative_ptr->int_, ==, 1);
     munit_assert_int         (((t_ast_ptr)vector_get(array, 1))->primative_ptr->type, ==, PRIMATIVE_INTEGER);
@@ -656,7 +657,7 @@ MunitResult ast_call_expr_test_1(const MunitParameter params[], void* user_data_
     munit_assert_ptr_not_null(ast->func_call_ptr);
     munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_SYMBOL);
     munit_assert_string_equal(ast->func_call_ptr->function->char_ptr, "test");
-    munit_assert_int         (ast->func_call_ptr->args->count, ==, 1);
+    munit_assert_int         (ast->func_call_ptr->args->length, ==, 1);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -676,7 +677,7 @@ MunitResult ast_call_expr_test_2(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_ACCESSOR);
     munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->object->char_ptr, "test_2");
     munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->property->char_ptr, "print");
-    munit_assert_int         (ast->func_call_ptr->args->count, ==, 1);
+    munit_assert_int         (ast->func_call_ptr->args->length, ==, 1);
     munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->type,                ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->primative_ptr);
     munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->primative_ptr->type, == , PRIMATIVE_DICTIONARY);
@@ -699,7 +700,7 @@ MunitResult ast_call_expr_test_3(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_ACCESSOR);
     munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->object->char_ptr, "test_2");
     munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->property->char_ptr, "print");
-    munit_assert_int         (ast->func_call_ptr->args->count, ==, 1);
+    munit_assert_int         (ast->func_call_ptr->args->length, ==, 1);
     munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->type, ==, AST_FUNCTION_DECLARATION);
     munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->func_decl_ptr);
     destroy_ast(ast);
@@ -735,13 +736,13 @@ MunitResult ast_call_expr_test_5(const MunitParameter params[], void* user_data_
     t_context* context = brama_init();
     brama_execute(context,  "this.call.func('erhan', true, 1)");
     munit_assert_int(context->status, == , BRAMA_OK);
-    munit_assert_int(context->parser->asts->count, == , 1);
+    munit_assert_int(context->parser->asts->length, == , 1);
 
     t_ast_ptr ast = vector_get(context->parser->asts, 0);
     munit_assert_ptr_not_null(ast);
     munit_assert_int         (ast->type, ==, AST_FUNCTION_CALL);
     munit_assert_int         (ast->func_call_ptr->type, ==, FUNC_CALL_NORMAL);
-    munit_assert_int         (ast->func_call_ptr->args->count, ==, 3);
+    munit_assert_int         (ast->func_call_ptr->args->length, ==, 3);
     munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_ACCESSOR);
     munit_assert_int         (ast->func_call_ptr->function->accessor_ptr->object->type, ==, AST_ACCESSOR);
     munit_assert_int         (ast->func_call_ptr->function->accessor_ptr->object->accessor_ptr->object->type,    ==, AST_KEYWORD);
@@ -1253,7 +1254,7 @@ MunitResult ast_assignment_expr_test_6(const MunitParameter params[], void* user
                             "console.log(person['lastname']);\n"
                             "// expected output: \"Doe\"");
     munit_assert_int(context->status, == , BRAMA_OK);
-    munit_assert_int(context->parser->asts->count, == , 6);
+    munit_assert_int(context->parser->asts->length, == , 6);
 
     t_ast_ptr ast = vector_get(context->parser->asts, 0);
     munit_assert_ptr_not_null(ast);
@@ -1425,11 +1426,11 @@ MunitResult ast_func_decl_test_1(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->type, == , AST_FUNCTION_DECLARATION);
     munit_assert_ptr_not_null(ast->func_decl_ptr);
     munit_assert_string_equal(ast->func_decl_ptr->name, "test");
-    munit_assert_int         (ast->func_decl_ptr->args->count, == , 1);
+    munit_assert_int         (ast->func_decl_ptr->args->length, == , 1);
     munit_assert_ptr_not_null(ast->func_decl_ptr->body);
     munit_assert_int         (ast->func_decl_ptr->body->type, ==, AST_BLOCK);
     munit_assert_ptr_not_null(ast->func_decl_ptr->body->vector_ptr);
-    munit_assert_int         (ast->func_decl_ptr->body->vector_ptr->count, ==, 2);
+    munit_assert_int         (ast->func_decl_ptr->body->vector_ptr->length, ==, 2);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -1528,7 +1529,7 @@ MunitResult ast_block_stmt_test_1(const MunitParameter params[], void* user_data
     munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_BLOCK);
     munit_assert_ptr_not_null(ast->vector_ptr);
-    munit_assert_int         (ast->vector_ptr->count, ==, 1);
+    munit_assert_int         (ast->vector_ptr->length, ==, 1);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -1551,7 +1552,7 @@ MunitResult ast_block_stmt_test_2(const MunitParameter params[], void* user_data
     munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_BLOCK);
     munit_assert_ptr_not_null(ast->vector_ptr);
-    munit_assert_int         (ast->vector_ptr->count, ==, 5);
+    munit_assert_int         (ast->vector_ptr->length, ==, 5);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -1582,7 +1583,7 @@ MunitResult ast_new_object_1(const MunitParameter params[], void* user_data_or_f
     munit_assert_ptr_not_null(ast->object_creation_ptr);
     munit_assert_string_equal(ast->object_creation_ptr->object_name, "test");
     munit_assert_ptr_not_null(ast->object_creation_ptr->args);
-    munit_assert_int         (ast->object_creation_ptr->args->count, ==, 0);
+    munit_assert_int         (ast->object_creation_ptr->args->length, ==, 0);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -1603,7 +1604,7 @@ MunitResult ast_new_object_2(const MunitParameter params[], void* user_data_or_f
     munit_assert_ptr_not_null(ast->assign_ptr->assignment);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
-    munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->count, ==, 0);
+    munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->length, ==, 0);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -1624,7 +1625,7 @@ MunitResult ast_new_object_3(const MunitParameter params[], void* user_data_or_f
     munit_assert_ptr_not_null(ast->assign_ptr->assignment);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
-    munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->count, ==, 0);
+    munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->length, ==, 0);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -1645,7 +1646,7 @@ MunitResult ast_new_object_4(const MunitParameter params[], void* user_data_or_f
     munit_assert_ptr_not_null(ast->assign_ptr->assignment);
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
-    munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->count, ==, 4);
+    munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->length, ==, 4);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 

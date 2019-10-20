@@ -61,13 +61,13 @@ MunitResult ast_while_loop_3(const MunitParameter params[], void* user_data_or_f
     munit_assert_int         (ast->type,                               ==, AST_WHILE);
     munit_assert_ptr_not_null(ast->while_ptr->body);
     munit_assert_int         (ast->while_ptr->body->type,              ==, AST_BLOCK);
-    munit_assert_int         (ast->while_ptr->body->vector_ptr->count, ==, 1);
-    munit_assert_int         (((t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 0))->type,                    ==, AST_UNARY);
-    munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 0))->unary_ptr);
-    munit_assert_int         (((t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 0))->unary_ptr->opt,          ==, OPERATOR_INCREMENT);
-    munit_assert_int         (((t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 0))->unary_ptr->operand_type, ==, UNARY_OPERAND_AFTER);
-    munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 0))->unary_ptr->content);
-    munit_assert_string_equal(((t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 0))->unary_ptr->content->char_ptr, "a");
+    munit_assert_int         (ast->while_ptr->body->vector_ptr->length, ==, 1);
+    munit_assert_int         (((t_ast_ptr)ast->while_ptr->body->vector_ptr->data[0])->type,                    ==, AST_UNARY);
+    munit_assert_ptr_not_null(((t_ast_ptr)ast->while_ptr->body->vector_ptr->data[0])->unary_ptr);
+    munit_assert_int         (((t_ast_ptr)ast->while_ptr->body->vector_ptr->data[0])->unary_ptr->opt,          ==, OPERATOR_INCREMENT);
+    munit_assert_int         (((t_ast_ptr)ast->while_ptr->body->vector_ptr->data[0])->unary_ptr->operand_type, ==, UNARY_OPERAND_AFTER);
+    munit_assert_ptr_not_null(((t_ast_ptr)ast->while_ptr->body->vector_ptr->data[0])->unary_ptr->content);
+    munit_assert_string_equal(((t_ast_ptr)ast->while_ptr->body->vector_ptr->data[0])->unary_ptr->content->char_ptr, "a");
     munit_assert_ptr_not_null(ast->while_ptr->condition);
     munit_assert_int         (ast->while_ptr->condition->type,                    ==, AST_CONTROL_OPERATION);
     munit_assert_int         (ast->while_ptr->condition->control_ptr->opt,        ==, OPERATOR_NOT_EQUAL_VALUE);
@@ -95,9 +95,9 @@ MunitResult ast_while_loop_4(const MunitParameter params[], void* user_data_or_f
     munit_assert_int         (ast->type,                               ==, AST_WHILE);
     munit_assert_ptr_not_null(ast->while_ptr->body);
     munit_assert_int         (ast->while_ptr->body->type,              ==, AST_BLOCK);
-    munit_assert_int         (ast->while_ptr->body->vector_ptr->count, ==, 2);
-    munit_assert_int         (((t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 0))->type,                    ==, AST_FUNCTION_CALL);
-    munit_assert_int         (((t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 1))->type,                    ==, AST_UNARY);
+    munit_assert_int         (ast->while_ptr->body->vector_ptr->length, ==, 2);
+    munit_assert_int         (((t_ast_ptr)ast->while_ptr->body->vector_ptr->data[0])->type,                    ==, AST_FUNCTION_CALL);
+    munit_assert_int         (((t_ast_ptr)ast->while_ptr->body->vector_ptr->data[1])->type,                    ==, AST_UNARY);
     munit_assert_ptr_not_null(ast->while_ptr->condition);
     munit_assert_int         (ast->while_ptr->condition->type,                    ==, AST_CONTROL_OPERATION);
     munit_assert_int         (ast->while_ptr->condition->control_ptr->opt,        ==, OPERATOR_LESS_THAN);
@@ -119,9 +119,9 @@ MunitResult ast_while_loop_5(const MunitParameter params[], void* user_data_or_f
     munit_assert_int         (ast->type,                               ==, AST_WHILE);
     munit_assert_ptr_not_null(ast->while_ptr->body);
     munit_assert_int         (ast->while_ptr->body->type,              ==, AST_BLOCK);
-    munit_assert_int         (ast->while_ptr->body->vector_ptr->count, ==, 1);
-    munit_assert_int         (((t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 0))->type,    ==, AST_KEYWORD);
-    munit_assert_int         (((t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 0))->keyword, ==, KEYWORD_BREAK);
+    munit_assert_int         (ast->while_ptr->body->vector_ptr->length, ==, 1);
+    munit_assert_int         (((t_ast_ptr)ast->while_ptr->body->vector_ptr->data[0])->type,    ==, AST_KEYWORD);
+    munit_assert_int         (((t_ast_ptr)ast->while_ptr->body->vector_ptr->data[0])->keyword, ==, KEYWORD_BREAK);
     munit_assert_ptr_not_null(ast->while_ptr->condition);
     munit_assert_int         (ast->while_ptr->condition->type,                    ==, AST_CONTROL_OPERATION);
     munit_assert_int         (ast->while_ptr->condition->control_ptr->opt,        ==, OPERATOR_LESS_THAN);
@@ -213,12 +213,12 @@ MunitResult ast_if_stmt_4(const MunitParameter params[], void* user_data_or_fixt
                             "    console.log(\"Test is 0\");\n"
                             "else\n"
                             "    console.log(\"Test is 1\");");
-    munit_assert_int         (context->parser->asts->count, ==, 2);
+    munit_assert_int         (context->parser->asts->length, ==, 2);
 
-    t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
+    t_ast_ptr ast = context->parser->asts->data[0];
     munit_assert_int         (ast->type,                                 ==, AST_ASSIGNMENT);
 
-    ast = (t_ast_ptr)vector_get(context->parser->asts, 1);
+    ast = context->parser->asts->data[1];
     munit_assert_int         (ast->if_stmt_ptr->condition->control_ptr->left->type,  ==, AST_SYMBOL);
     munit_assert_int         (ast->if_stmt_ptr->condition->control_ptr->right->type, ==, AST_UNARY);
 
@@ -270,7 +270,7 @@ MunitResult ast_return_2(const MunitParameter params[], void* user_data_or_fixtu
     t_ast_ptr ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
     munit_assert_int(ast->type, ==, AST_ASSIGNMENT);
-    munit_assert_int(((t_ast_ptr)vector_get(ast->assign_ptr->assignment->func_decl_ptr->body->vector_ptr, 0))->type, ==, AST_RETURN);
+    munit_assert_int(((t_ast_ptr)ast->assign_ptr->assignment->func_decl_ptr->body->vector_ptr->data[0])->type, ==, AST_RETURN);
     CLEAR_AST(ast);
 
     brama_destroy(context);
@@ -342,8 +342,8 @@ MunitResult ast_return_8(const MunitParameter params[], void* user_data_or_fixtu
     t_ast_ptr ast = NULL;
     munit_assert_int     (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
     munit_assert_int     (ast->type, ==, AST_ASSIGNMENT);
-    munit_assert_int     (((t_ast_ptr)vector_get(ast->assign_ptr->assignment->func_decl_ptr->body->vector_ptr, 0))->type, ==, AST_RETURN);
-    munit_assert_ptr_null(((t_ast_ptr)vector_get(ast->assign_ptr->assignment->func_decl_ptr->body->vector_ptr, 0))->ast_ptr);
+    munit_assert_int     (((t_ast_ptr)ast->assign_ptr->assignment->func_decl_ptr->body->vector_ptr->data[0])->type, ==, AST_RETURN);
+    munit_assert_ptr_null(((t_ast_ptr)ast->assign_ptr->assignment->func_decl_ptr->body->vector_ptr->data[0])->ast_ptr);
     CLEAR_AST(ast);
 
     brama_destroy(context);
@@ -358,7 +358,7 @@ MunitResult ast_return_9(const MunitParameter params[], void* user_data_or_fixtu
     t_ast_ptr ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
     munit_assert_int(ast->type, ==, AST_ASSIGNMENT);
-    munit_assert_int(((t_ast_ptr)vector_get(ast->assign_ptr->assignment->func_decl_ptr->body->vector_ptr, 0))->type, ==, AST_RETURN);
+    munit_assert_int(((t_ast_ptr)ast->assign_ptr->assignment->func_decl_ptr->body->vector_ptr->data[0])->type, ==, AST_RETURN);
     CLEAR_AST(ast);
 
     brama_destroy(context);
@@ -418,12 +418,12 @@ MunitResult ast_break_5(const MunitParameter params[], void* user_data_or_fixtur
                             "        ++data;\n"
                             "}");
     munit_assert_int(context->status, == , BRAMA_OK);
-    munit_assert_int         (context->parser->asts->count, ==, 2);
+    munit_assert_int         (context->parser->asts->length, ==, 2);
 
-    t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
+    t_ast_ptr ast = context->parser->asts->data[0];
     munit_assert_int         (ast->type,  ==, AST_ASSIGNMENT);
 
-    ast = (t_ast_ptr)vector_get(context->parser->asts, 1);
+    ast = context->parser->asts->data[1];
     munit_assert_int         (ast->type,  ==, AST_WHILE);
     munit_assert_int         (ast->while_ptr->condition->type, ==, AST_PRIMATIVE);
     munit_assert_int         (ast->while_ptr->body->type,      ==, AST_BLOCK);
@@ -439,18 +439,18 @@ MunitResult ast_continue_1(const MunitParameter params[], void* user_data_or_fix
                             "    continue\n"
                             "}");
     munit_assert_int(context->status, == , BRAMA_OK);
-    munit_assert_int         (context->parser->asts->count, ==, 2);
+    munit_assert_int         (context->parser->asts->length, ==, 2);
 
-    t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
+    t_ast_ptr ast = context->parser->asts->data[0];
     munit_assert_int         (ast->type,  ==, AST_ASSIGNMENT);
 
-    ast = (t_ast_ptr)vector_get(context->parser->asts, 1);
+    ast = context->parser->asts->data[1];
     munit_assert_int         (ast->type,  ==, AST_WHILE);
     munit_assert_int         (ast->while_ptr->condition->type, ==, AST_PRIMATIVE);
     munit_assert_int         (ast->while_ptr->body->type,      ==, AST_BLOCK);
-    munit_assert_int         (ast->while_ptr->body->vector_ptr->count, ==, 1);
+    munit_assert_int         (ast->while_ptr->body->vector_ptr->length, ==, 1);
 
-    ast = (t_ast_ptr)vector_get(ast->while_ptr->body->vector_ptr, 0);
+    ast = ast->while_ptr->body->vector_ptr->data[0];
     munit_assert_int         (ast->type,    ==, AST_KEYWORD);
     munit_assert_int         (ast->keyword, ==, KEYWORD_CONTINUE);
 
@@ -480,9 +480,9 @@ MunitResult ast_accessor_1(const MunitParameter params[], void* user_data_or_fix
     t_context* context = brama_init();
     brama_execute(context,  "e.data[0]");
     munit_assert_int(context->status, == , BRAMA_OK);
-    munit_assert_int         (context->parser->asts->count, ==, 1);
+    munit_assert_int         (context->parser->asts->length, ==, 1);
 
-    t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
+    t_ast_ptr ast = context->parser->asts->data[0];
     munit_assert_int         (ast->type,  ==, AST_ACCESSOR);
     munit_assert_ptr_not_null(ast->accessor_ptr);
     munit_assert_ptr_not_null(ast->accessor_ptr->property);
@@ -510,9 +510,9 @@ MunitResult ast_accessor_2(const MunitParameter params[], void* user_data_or_fix
     t_context* context = brama_init();
     brama_execute(context,  "this.data[0]");
     munit_assert_int(context->status, == , BRAMA_OK);
-    munit_assert_int         (context->parser->asts->count, ==, 1);
+    munit_assert_int         (context->parser->asts->length, ==, 1);
 
-    t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
+    t_ast_ptr ast = context->parser->asts->data[0];
     munit_assert_int         (ast->type,  ==, AST_ACCESSOR);
     munit_assert_ptr_not_null(ast->accessor_ptr);
     munit_assert_ptr_not_null(ast->accessor_ptr->property);

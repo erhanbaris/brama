@@ -29,21 +29,4 @@ int string_stream_add_char   (t_string_stream* stream, char data);
 int string_stream_get        (t_string_stream* stream, char** data);
 int string_stream_destroy    (t_string_stream* stream);
 
-/* VECTOR START --> */
-
-typedef struct {
-    size_t length;
-    size_t count;
-    void** data;
-} t_vector;
-
-t_vector* vector_init   ();
-
-int   vector_add    (t_vector* vector, void* data);
-void* vector_get    (t_vector* vector, size_t index);
-int   vector_destroy(t_vector* vector);
-
-
-/* <-- VECTOR END */
-
 #endif // STRING_STREAM_H
