@@ -80,9 +80,9 @@ void compile_internal           (t_context_ptr context, t_ast_ptr const ast);
 void compile_primative          (t_context_ptr context, t_ast_ptr const ast);
 void compile_binary             (t_context_ptr context, t_ast_ptr const ast);
 
-void         vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t);
-t_brama_byte vm_encode(t_brama_vmdata_ptr t);
-t_brama_data numberToValue(double num);
-double       valueToNumber(t_brama_data num);
+void          vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t);
+t_brama_byte  vm_encode(t_brama_vmdata_ptr t);
+t_brama_value numberToValue(double num);
+double        valueToNumber(t_brama_value num);
 
 #endif // BRAMA_INTERNAL_H

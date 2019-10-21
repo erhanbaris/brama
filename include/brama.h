@@ -489,7 +489,7 @@ typedef void*              void_ptr;
 typedef int*               int_ptr;
 
 
-typedef uint64_t           t_brama_data;
+typedef uint64_t           t_brama_value;
 typedef uint32_t           t_brama_opcode;
 typedef int32_t            t_brama_byte;
 typedef int8_t             t_brama_char;
@@ -499,8 +499,8 @@ typedef bool               t_brama_bool;
 
 typedef map_t(struct _t_ast *) map_ast_t;
 typedef map_ast_t*             map_ast_t_ptr;
-typedef vec_t(t_brama_data)    vec_const_item;
-typedef vec_const_item*        vec_const_item_ptr;
+typedef vec_t(t_brama_value)   vec_value;
+typedef vec_value*             vec_value_ptr;
 typedef t_brama_vmdata*        t_brama_vmdata_ptr;
 typedef vec_t(t_token_ptr)     vec_t_token_ptr_t;
 typedef vec_t(t_token_ptr)*    vec_t_token_ptr_t_ptr;
@@ -542,10 +542,14 @@ typedef struct _t_parser {
 } t_parser;
 
 typedef struct _t_compiler {
-    size_t             index;
-    vec_t_byte_ptr     op_codes;
-    vec_const_item_ptr constants;
+    size_t         index;
+    vec_t_byte_ptr op_codes;
+    vec_value_ptr  constants;
 } t_compiler;
+
+typedef struct _t_stroge {
+    
+} t_strage;
 
 typedef struct _t_primative {
     brama_primative_type type;
@@ -708,7 +712,7 @@ typedef struct _t_vm_const_item {
 #define TAG_UNDEFINED (4)
 #define TAG_UNUSED2   (5)
 #define TAG_UNUSED3   (6)
-#define TAG_UNUSED4   (7)
+#define TAG_HALT      (7)
 
 // Value -> 0 or 1.
 #define AS_BOOL(value) ((value) == TRUE_VAL)
@@ -717,15 +721,16 @@ typedef struct _t_vm_const_item {
 #define AS_OBJ(value) ((t_vm_const_item*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
 
 // Singleton values.
-#define NULL_VAL      ((t_brama_data)(uint64_t)(QNAN | TAG_NULL))
-#define FALSE_VAL     ((t_brama_data)(uint64_t)(QNAN | TAG_FALSE))
-#define TRUE_VAL      ((t_brama_data)(uint64_t)(QNAN | TAG_TRUE))
-#define UNDEFINED_VAL ((t_brama_data)(uint64_t)(QNAN | TAG_UNDEFINED))
+#define NULL_VAL      ((t_brama_value)(uint64_t)(QNAN | TAG_NULL))
+#define FALSE_VAL     ((t_brama_value)(uint64_t)(QNAN | TAG_FALSE))
+#define TRUE_VAL      ((t_brama_value)(uint64_t)(QNAN | TAG_TRUE))
+#define UNDEFINED_VAL ((t_brama_value)(uint64_t)(QNAN | TAG_UNDEFINED))
+#define HALT_VAL      ((t_brama_value)(uint64_t)(QNAN | TAG_HALT))
 
 // Gets the singleton type tag for a Value (which must be a singleton).
-#define GET_TAG(value) ((int)((t_brama_data) & MASK_TAG))
+#define GET_TAG(value) ((int)((t_brama_value) & MASK_TAG))
 
-#define GET_VALUE_FROM_OBJ(obj) ((t_brama_data)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj)))
+#define GET_VALUE_FROM_OBJ(obj) ((t_brama_value)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj)))
 
 typedef union
 {

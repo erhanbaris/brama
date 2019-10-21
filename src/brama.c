@@ -1838,7 +1838,7 @@ t_context_ptr brama_init() {
     context->compiler            = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
     context->compiler->index     = 0;
     context->compiler->op_codes  = BRAMA_MALLOC(sizeof (vec_t_brama_opcode_t));
-    context->compiler->constants = BRAMA_MALLOC(sizeof (vec_const_item));
+    context->compiler->constants = BRAMA_MALLOC(sizeof (vec_value));
     vec_init(context->compiler->op_codes);
     vec_init(context->compiler->constants);
 
@@ -2438,49 +2438,72 @@ void compile(t_context_ptr context) {
         t_ast_ptr ast = asts->data[i];
         compile_internal(context, ast);
     }
+
+    vec_push(context->compiler->op_codes, NULL);
 }
 
-bool isBool(t_brama_data value) {
+bool isBool(t_brama_value value) {
     return value == TRUE_VAL || value == FALSE_VAL;
 }
 
-t_brama_data numberToValue(double num) {
+t_brama_value numberToValue(double num) {
     DoubleBits data;
     data.num = num;
     return data.bits64;
 }
 
-double valueToNumber(t_brama_data num) {
+double valueToNumber(t_brama_value num) {
     DoubleBits data;
     data.bits64 = num;
     return data.num;
 }
 
 void run(t_context_ptr context) {
-    vec_t_byte_ptr bytes         = context->compiler->op_codes;
-    vec_const_item_ptr constants = context->compiler->constants;
+    vec_t_byte_ptr bytes    = context->compiler->op_codes;
+    vec_value_ptr constants = context->compiler->constants;
 
-    size_t total_bytes  = bytes->length;
-    for (size_t i = 0; i < total_bytes; ++i) {
+    size_t total_bytes = bytes->length;
+    t_brama_byte* ipc  = &bytes->data[0];
+
+    while (*ipc != NULL) {
         t_brama_vmdata vmdata;
-        vm_decode(bytes->data[i], &vmdata);
+        vm_decode(*ipc, &vmdata);
 
         switch (vmdata.op) {
             case VM_OPT_ADDITION: {
-                t_brama_data left  = constants->data[vmdata.reg1];
-                t_brama_data right = constants->data[vmdata.reg2];
+                t_brama_value left  = constants->data[vmdata.reg1];
+                t_brama_value right = constants->data[vmdata.reg2];
 
                 if (IS_NUM(left) && IS_NUM(right)) {
                     printf("%f\r\n", valueToNumber(left) + valueToNumber(right));
                 }
-
-                //printf("%d\r\n", constants->data[vmdata.reg2]->int_ + constants->data[vmdata.reg3]->int_);
             }
+                break;
+
+            case VM_OPT_SUBTRACTION: {
+                t_brama_value left  = constants->data[vmdata.reg1];
+                t_brama_value right = constants->data[vmdata.reg2];
+
+                if (IS_NUM(left) && IS_NUM(right)) {
+                    printf("%f\r\n", valueToNumber(left) - valueToNumber(right));
+                }
+            }
+                break;
         }
+
+        ++ipc;
     }
 }
 
-/* Compile End */
+/* Compile End
+ *
+ *
+function d(a, b, c)
+    local d;
+    d = (a + b) - c
+    return d
+end
+ */
 
 /* VM Begin */
 
