@@ -11,7 +11,7 @@
         brama_execute(context,  TEXT );                                            \
         context->parser->index = 0;                                                \
         t_ast_ptr ast = NULL;                                                      \
-        munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);\
+        munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);\
         brama_destroy(context); CLEAR_AST(ast);                                    \
         return MUNIT_OK;                                                           \
     }
@@ -22,7 +22,7 @@
         brama_execute(context,  TEXT );                                            \
         context->parser->index = 0;                                                \
         t_ast_ptr ast = NULL;                                                      \
-        munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , STATUS  );\
+        munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , STATUS  );\
         brama_destroy(context);  CLEAR_AST(ast);                                   \
         return MUNIT_OK;                                                           \
     }
@@ -38,8 +38,13 @@ _CrtMemState *s1 = NULL;
 
 void setUp(const MunitParameter params[], void* user_data) {
     #if defined(_WIN32)
+    #pragma push_macro("malloc")
+    #undef malloc
+
     s1 = (_CrtMemState*)malloc(sizeof(_CrtMemState));
     _CrtMemCheckpoint(s1);
+
+    #pragma pop_macro("malloc")
     #endif
 }
 
@@ -64,7 +69,10 @@ void tearDown(void* fixture) {
         exit(1);
 	}
 
+    #pragma push_macro("free")
+    #undef free
     free(s1);
+    #pragma pop_macro("free")
     s1 = NULL;
     
     #endif

@@ -339,55 +339,55 @@ MunitResult ast_primary_expr_test_1(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->primative_ptr->int_, ==, 10);
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_INTEGER);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_double(ast->primative_ptr->double_, ==, 10.1);
     munit_assert_int(ast->primative_ptr->type,    ==, PRIMATIVE_DOUBLE);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->primative_ptr->bool_, ==, true);
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_BOOL);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->primative_ptr->bool_, ==, false);
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_BOOL);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_NULL);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_string_equal(ast->primative_ptr->char_ptr, "hello");
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_STRING);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_string_equal(ast->primative_ptr->char_ptr, "world");
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_STRING);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_DOES_NOT_MATCH_AST);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_DOES_NOT_MATCH_AST);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -401,7 +401,7 @@ MunitResult ast_primary_expr_test_2(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL),  ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_OK);
     munit_assert_int(ast->primative_ptr->array->length, ==, 7);
     munit_assert_int(ast->primative_ptr->type,         ==, PRIMATIVE_ARRAY);
 
@@ -438,7 +438,7 @@ MunitResult ast_primary_expr_test_3(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int     (ast_declaration_stmt(context, &ast, NULL),  ==, BRAMA_OK);
+    munit_assert_int     (ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_OK);
     munit_assert_int     (ast->type,                                  ==, AST_BLOCK);
     munit_assert_ptr_null(ast->ast_ptr->vector_ptr);
     destroy_ast(ast);
@@ -454,7 +454,7 @@ MunitResult ast_primary_expr_test_4(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL),  ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_OK);
     munit_assert_int(ast->primative_ptr->type,         ==, PRIMATIVE_DICTIONARY);
 
     map_ast_t_ptr dictionary = ast->primative_ptr->dict;
@@ -475,7 +475,7 @@ MunitResult ast_primary_expr_test_5(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL),  ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_OK);
     munit_assert_int(ast->primative_ptr->type,         ==, PRIMATIVE_DICTIONARY);
 
     map_ast_t_ptr main_dict = ast->primative_ptr->dict;
@@ -523,7 +523,7 @@ MunitResult ast_primary_expr_test_6(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL),  ==, BRAMA_SEMICOLON_REQUIRED);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_SEMICOLON_REQUIRED);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -534,7 +534,7 @@ MunitResult ast_primary_expr_test_7(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL),  ==, BRAMA_DICTIONARY_NOT_VALID);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_DICTIONARY_NOT_VALID);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -545,7 +545,7 @@ MunitResult ast_primary_expr_test_8(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL),  ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_OK);
     destroy_ast(ast);
     BRAMA_FREE(ast);
     brama_destroy(context);
@@ -558,7 +558,7 @@ MunitResult ast_primary_expr_test_9(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL),  ==, BRAMA_DICTIONARY_NOT_VALID);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_DICTIONARY_NOT_VALID);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -569,7 +569,7 @@ MunitResult ast_primary_expr_test_10(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL),  ==, BRAMA_DICTIONARY_NOT_VALID);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_DICTIONARY_NOT_VALID);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -580,7 +580,7 @@ MunitResult ast_primary_expr_test_11(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL),  ==, BRAMA_ARRAY_NOT_VALID);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_ARRAY_NOT_VALID);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -623,7 +623,7 @@ MunitResult ast_symbol_expr_test_1(const MunitParameter params[], void* user_dat
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int         (ast->type,                      ==, AST_SYMBOL);
     munit_assert_string_equal(ast->char_ptr,                  "hello_world");
     destroy_ast(ast);
@@ -638,7 +638,7 @@ MunitResult ast_symbol_expr_test_2(const MunitParameter params[], void* user_dat
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->type, ==, AST_PRIMATIVE);
     destroy_ast(ast);
     BRAMA_FREE(ast);
@@ -652,7 +652,7 @@ MunitResult ast_call_expr_test_1(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_FUNCTION_CALL);
     munit_assert_ptr_not_null(ast->func_call_ptr);
     munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_SYMBOL);
@@ -671,7 +671,7 @@ MunitResult ast_call_expr_test_2(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int         (ast->type,               ==, AST_FUNCTION_CALL);
     munit_assert_ptr_not_null(ast->func_call_ptr);
     munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_ACCESSOR);
@@ -694,7 +694,7 @@ MunitResult ast_call_expr_test_3(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int         (ast->type,                                 ==, AST_FUNCTION_CALL);
     munit_assert_ptr_not_null(ast->func_call_ptr);
     munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_ACCESSOR);
@@ -716,7 +716,7 @@ MunitResult ast_call_expr_test_4(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int         (ast->type,                                 ==, AST_FUNCTION_CALL);
     munit_assert_ptr_not_null(ast->func_call_ptr);
     munit_assert_ptr_not_null(ast->func_call_ptr->func_decl_ptr);
@@ -761,7 +761,7 @@ MunitResult ast_mult_expr_test_1(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
     munit_assert_ptr_not_null(ast->binary_ptr);
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_MULTIPLICATION);
@@ -780,7 +780,7 @@ MunitResult ast_mult_expr_test_2(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
     munit_assert_ptr_not_null(ast->binary_ptr);
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_DIVISION);
@@ -799,7 +799,7 @@ MunitResult ast_mult_expr_test_3(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
     munit_assert_ptr_not_null(ast->binary_ptr);
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_DIVISION);
@@ -822,7 +822,7 @@ MunitResult ast_mult_expr_test_4(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
     munit_assert_ptr_not_null(ast->binary_ptr);
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_DIVISION);
@@ -846,7 +846,7 @@ MunitResult ast_addition_expr_test_1(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int          (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int          (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int          (ast->type, == , AST_BINARY_OPERATION);
     munit_assert_ptr_not_null(ast->binary_ptr);
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_SUBTRACTION);
@@ -865,7 +865,7 @@ MunitResult ast_addition_expr_test_2(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
     munit_assert_ptr_not_null(ast->binary_ptr);
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_ADDITION);
@@ -884,7 +884,7 @@ MunitResult ast_addition_expr_test_3(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
     munit_assert_ptr_not_null(ast->binary_ptr);
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_SUBTRACTION);
@@ -907,7 +907,7 @@ MunitResult ast_addition_expr_test_4(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
     munit_assert_ptr_not_null(ast->binary_ptr);
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_ADDITION);
@@ -930,7 +930,7 @@ MunitResult ast_addition_expr_test_5(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
     munit_assert_ptr_not_null(ast->binary_ptr);
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_SUBTRACTION);
@@ -957,7 +957,7 @@ MunitResult ast_addition_expr_test_6(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_BINARY_OPERATION);
     munit_assert_ptr_not_null(ast->binary_ptr);
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_SUBTRACTION);
@@ -986,7 +986,7 @@ MunitResult ast_control_expr_test_1(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_CONTROL_OPERATION);
     munit_assert_ptr_not_null(ast->control_ptr);
     munit_assert_int         (ast->control_ptr->opt, == , OPERATOR_GREATER_EQUAL_THAN);
@@ -1011,7 +1011,7 @@ MunitResult ast_control_expr_test_2(const MunitParameter params[], void* user_da
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_CONTROL_OPERATION);
     munit_assert_ptr_not_null(ast->control_ptr);
     munit_assert_int         (ast->control_ptr->opt, == , OPERATOR_GREATER_EQUAL_THAN);
@@ -1044,7 +1044,7 @@ MunitResult ast_equality_expr_test_1(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_CONTROL_OPERATION);
     munit_assert_ptr_not_null(ast->control_ptr);
     munit_assert_int         (ast->control_ptr->opt, == , OPERATOR_EQUAL_VALUE);
@@ -1069,7 +1069,7 @@ MunitResult ast_equality_expr_test_2(const MunitParameter params[], void* user_d
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_CONTROL_OPERATION);
     munit_assert_ptr_not_null(ast->control_ptr);
     munit_assert_int         (ast->control_ptr->opt, == , OPERATOR_NOT_EQUAL_VALUE);
@@ -1094,7 +1094,7 @@ MunitResult ast_and_expr_test(const MunitParameter params[], void* user_data_or_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_CONTROL_OPERATION);
     munit_assert_ptr_not_null(ast->control_ptr);
     munit_assert_int         (ast->control_ptr->opt, == , OPERATOR_AND);
@@ -1119,7 +1119,7 @@ MunitResult ast_or_expr_test(const MunitParameter params[], void* user_data_or_f
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_CONTROL_OPERATION);
     munit_assert_ptr_not_null(ast->control_ptr);
     munit_assert_int         (ast->control_ptr->opt, == , OPERATOR_OR);
@@ -1144,7 +1144,7 @@ MunitResult ast_assignment_expr_test_1(const MunitParameter params[], void* user
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_int         (ast->assign_ptr->opt, == , OPERATOR_ASSIGN);
@@ -1168,7 +1168,7 @@ MunitResult ast_assignment_expr_test_2(const MunitParameter params[], void* user
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_int         (ast->assign_ptr->opt, == , OPERATOR_ASSIGN);
@@ -1192,7 +1192,7 @@ MunitResult ast_assignment_expr_test_3(const MunitParameter params[], void* user
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->type,                           ==, AST_ASSIGNMENT);
     munit_assert_int(ast->assign_ptr->assignment->type,   ==, AST_PRIMATIVE);
     destroy_ast(ast);
@@ -1208,7 +1208,7 @@ MunitResult ast_assignment_expr_test_4(const MunitParameter params[], void* user
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->type,                           ==, AST_ASSIGNMENT);
     munit_assert_int(ast->assign_ptr->assignment->type,   ==, AST_CONTROL_OPERATION);
     munit_assert_int(ast->assign_ptr->opt,                ==, OPERATOR_ASSIGN);
@@ -1228,7 +1228,7 @@ MunitResult ast_assignment_expr_test_5(const MunitParameter params[], void* user
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), ==, BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->type,                     ==, AST_CONTROL_OPERATION);
     munit_assert_int(ast->control_ptr->opt,         ==, OPERATOR_EQUAL_VALUE);
     munit_assert_int(ast->control_ptr->left->type,  ==, AST_ASSIGNMENT);
@@ -1310,7 +1310,7 @@ MunitResult ast_unary_expr_test_1(const MunitParameter params[], void* user_data
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type,                      == , AST_UNARY);
     munit_assert_ptr_not_null(ast->unary_ptr);
     munit_assert_int         (ast->unary_ptr->operand_type,   == , UNARY_OPERAND_BEFORE);
@@ -1329,7 +1329,7 @@ MunitResult ast_unary_expr_test_2(const MunitParameter params[], void* user_data
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type,                     == , AST_UNARY);
     munit_assert_ptr_not_null(ast->unary_ptr);
     munit_assert_int         (ast->unary_ptr->opt,           == , OPERATOR_INCREMENT);
@@ -1349,7 +1349,7 @@ MunitResult ast_unary_expr_test_3(const MunitParameter params[], void* user_data
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type,                     == , AST_UNARY);
     munit_assert_ptr_not_null(ast->unary_ptr);
     munit_assert_int         (ast->unary_ptr->opt,           == , OPERATOR_NOT);
@@ -1367,7 +1367,7 @@ MunitResult ast_unary_expr_test_4(const MunitParameter params[], void* user_data
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_EXPRESSION_NOT_VALID);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_EXPRESSION_NOT_VALID);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -1379,7 +1379,7 @@ MunitResult ast_unary_expr_test_5(const MunitParameter params[], void* user_data
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type,                           == , AST_UNARY);
     munit_assert_int         (ast->unary_ptr->operand_type,        == , UNARY_OPERAND_AFTER);
     munit_assert_int         (ast->unary_ptr->opt,                 == , OPERATOR_INCREMENT);
@@ -1398,7 +1398,7 @@ MunitResult ast_unary_expr_test_6(const MunitParameter params[], void* user_data
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_INVALID_UNARY_EXPRESSION);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_INVALID_UNARY_EXPRESSION);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -1410,7 +1410,7 @@ MunitResult ast_unary_expr_test_7(const MunitParameter params[], void* user_data
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_INVALID_UNARY_EXPRESSION);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_INVALID_UNARY_EXPRESSION);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -1422,7 +1422,7 @@ MunitResult ast_func_decl_test_1(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, == , AST_FUNCTION_DECLARATION);
     munit_assert_ptr_not_null(ast->func_decl_ptr);
     munit_assert_string_equal(ast->func_decl_ptr->name, "test");
@@ -1444,7 +1444,7 @@ MunitResult ast_func_decl_test_2(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_ILLEGAL_FUNCTION_ARGUMENT);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_ILLEGAL_FUNCTION_ARGUMENT);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -1455,7 +1455,7 @@ MunitResult ast_func_decl_test_3(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_FUNCTION_NAME_REQUIRED);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_FUNCTION_NAME_REQUIRED);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -1467,7 +1467,7 @@ MunitResult ast_func_decl_test_4(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -1481,7 +1481,7 @@ MunitResult ast_func_decl_test_5(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -1495,7 +1495,7 @@ MunitResult ast_func_decl_test_6(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -1509,7 +1509,7 @@ MunitResult ast_func_decl_test_7(const MunitParameter params[], void* user_data_
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     destroy_ast(ast);
     BRAMA_FREE(ast);
 
@@ -1526,7 +1526,7 @@ MunitResult ast_block_stmt_test_1(const MunitParameter params[], void* user_data
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_BLOCK);
     munit_assert_ptr_not_null(ast->vector_ptr);
     munit_assert_int         (ast->vector_ptr->length, ==, 1);
@@ -1549,7 +1549,7 @@ MunitResult ast_block_stmt_test_2(const MunitParameter params[], void* user_data
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_BLOCK);
     munit_assert_ptr_not_null(ast->vector_ptr);
     munit_assert_int         (ast->vector_ptr->length, ==, 5);
@@ -1566,7 +1566,7 @@ MunitResult ast_block_stmt_test_3(const MunitParameter params[], void* user_data
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int(ast_declaration_stmt(context, &ast, NULL), == , BRAMA_CLOSE_OPERATOR_NOT_FOUND);
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_CLOSE_OPERATOR_NOT_FOUND);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -1578,7 +1578,7 @@ MunitResult ast_new_object_1(const MunitParameter params[], void* user_data_or_f
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_OBJECT_CREATION);
     munit_assert_ptr_not_null(ast->object_creation_ptr);
     munit_assert_string_equal(ast->object_creation_ptr->object_name, "test");
@@ -1597,7 +1597,7 @@ MunitResult ast_new_object_2(const MunitParameter params[], void* user_data_or_f
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_string_equal(ast->assign_ptr->object->char_ptr, "obj");
@@ -1618,7 +1618,7 @@ MunitResult ast_new_object_3(const MunitParameter params[], void* user_data_or_f
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_string_equal(ast->assign_ptr->object->char_ptr, "obj");
@@ -1639,7 +1639,7 @@ MunitResult ast_new_object_4(const MunitParameter params[], void* user_data_or_f
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, NULL), == , BRAMA_OK);
+    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
     munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
     munit_assert_ptr_not_null(ast->assign_ptr);
     munit_assert_string_equal(ast->assign_ptr->object->char_ptr, "obj");

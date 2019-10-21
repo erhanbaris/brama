@@ -646,7 +646,7 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_
     if (status == BRAMA_OK)
         return BRAMA_OK;
 
-    status = ast_function_decleration(context, ast, (void*)FUNC_DEF_ASSIGNMENT);
+    status = ast_function_decleration(context, ast, FUNC_DEF_ASSIGNMENT);
     if (status == BRAMA_OK)
         return BRAMA_OK;
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
@@ -664,7 +664,7 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_
         RESTORE_PARSER_INDEX_AND_RETURN(status);
 
     if (status != BRAMA_OK)
-        *ast = ast_symbol_expr(context, ast, extra_data);
+        status = ast_symbol_expr(context, ast, extra_data);
 
     /* We are parsing function parameters */
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) {
@@ -1638,7 +1638,7 @@ brama_status ast_expression(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
         return status;
 
-    status = ast_function_decleration(context, ast, (void*)FUNC_DEF_ASSIGNMENT);
+    status = ast_function_decleration(context, ast, FUNC_DEF_ASSIGNMENT);
     if (status == BRAMA_OK && (*ast)->type == AST_FUNCTION_CALL)
         return BRAMA_OK;
 
@@ -2404,25 +2404,16 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast) {
 
 void compile_primative(t_context_ptr context, t_ast_ptr const ast) {
     switch (ast->primative_ptr->type) {
-        case PRIMATIVE_INTEGER: {
+        case PRIMATIVE_INTEGER:
             vec_push(context->compiler->constants, numberToValue(ast->primative_ptr->int_));
-        }
             break;
 
-        case PRIMATIVE_DOUBLE: {
-            t_vm_const_item_ptr item = BRAMA_MALLOC(sizeof(t_vm_const_item));
-            item->double_            = ast->primative_ptr->double_;
-            item->type               = CONST_DOUBLE;
-            vec_push(context->compiler->constants, item);
-        }
+        case PRIMATIVE_DOUBLE:
+            vec_push(context->compiler->constants, numberToValue(ast->primative_ptr->double_));
             break;
 
-        case PRIMATIVE_BOOL: {
-            t_vm_const_item_ptr item = BRAMA_MALLOC(sizeof(t_vm_const_item));
-            item->bool_              = ast->primative_ptr->bool_;
-            item->type               = CONST_BOOL;
-            vec_push(context->compiler->constants, item);
-        }
+        case PRIMATIVE_BOOL: 
+            vec_push(context->compiler->constants, numberToValue(ast->primative_ptr->bool_));
             break;
     }
 }
@@ -2539,17 +2530,22 @@ void brama_destroy(t_context_ptr context) {
     if (context->error_message != NULL)
         BRAMA_FREE(context->error_message);
 
+    vec_deinit(context->compiler->op_codes);
+    BRAMA_FREE(context->compiler->op_codes);
+
+    vec_deinit(context->compiler->constants);
+    BRAMA_FREE(context->compiler->constants);
+
     vec_deinit(_context->tokinizer->tokens);
+    BRAMA_FREE(_context->tokinizer->tokens);
+
     vec_deinit(_context->parser->asts);
-    vec_deinit(_context->compiler->op_codes);
+    BRAMA_FREE(_context->parser->asts);
 
     map_deinit(&_context->tokinizer->keywords);
-    BRAMA_FREE(_context->tokinizer->tokens);
+
     BRAMA_FREE(_context->tokinizer);
-
-    BRAMA_FREE(_context->parser->asts);
     BRAMA_FREE(_context->parser);
-
     BRAMA_FREE(_context->compiler);
     BRAMA_FREE(_context);
 }
