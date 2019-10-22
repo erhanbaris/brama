@@ -413,7 +413,7 @@ NEW_PRIMATIVE_DEF(double, double,              PRIMATIVE_DOUBLE,     double_)
 NEW_PRIMATIVE_DEF(text,   char_ptr,            PRIMATIVE_STRING,     char_ptr)
 NEW_PRIMATIVE_DEF(bool,   bool,                PRIMATIVE_BOOL,       bool_)
 NEW_PRIMATIVE_DEF(empty,  int,                 PRIMATIVE_NULL,       int_)
-NEW_PRIMATIVE_DEF(array,  vec_t_ast_ptr_t_ptr, PRIMATIVE_ARRAY,      array)
+NEW_PRIMATIVE_DEF(array,  vec_ast_ptr, PRIMATIVE_ARRAY,      array)
 NEW_PRIMATIVE_DEF(dict,   map_ast_t_ptr,       PRIMATIVE_DICTIONARY, dict)
 
 NEW_AST_DEF(symbol,    char_ptr,              AST_SYMBOL,               char_ptr)
@@ -423,7 +423,7 @@ NEW_AST_DEF(control,   t_control_ptr,         AST_CONTROL_OPERATION,    control_
 NEW_AST_DEF(assign,    t_assign_ptr,          AST_ASSIGNMENT,           assign_ptr)
 NEW_AST_DEF(func_call, t_func_call_ptr,       AST_FUNCTION_CALL,        func_call_ptr)
 NEW_AST_DEF(func_decl, t_func_decl_ptr,       AST_FUNCTION_DECLARATION, func_decl_ptr)
-NEW_AST_DEF(block,     vec_t_ast_ptr_t_ptr ,  AST_BLOCK,                vector_ptr)
+NEW_AST_DEF(block,     vec_ast_ptr ,  AST_BLOCK,                vector_ptr)
 NEW_AST_DEF(object,    t_object_creation_ptr, AST_OBJECT_CREATION,      object_creation_ptr)
 NEW_AST_DEF(while,     t_while_loop_ptr ,     AST_WHILE,                while_ptr)
 NEW_AST_DEF(if,        t_if_stmt_ptr,         AST_IF_STATEMENT,         if_stmt_ptr)
@@ -532,7 +532,7 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_as
     }
 
     if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START)) {
-        vec_t_ast_ptr_t_ptr args = BRAMA_MALLOC(sizeof (vec_t_ast_ptr_t));
+        vec_ast_ptr args = BRAMA_MALLOC(sizeof (vec_ast));
         vec_init(args);
 
         if (!ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
@@ -668,7 +668,7 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_
 
     /* We are parsing function parameters */
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) {
-        vec_t_ast_ptr_t_ptr args = BRAMA_MALLOC(sizeof (vec_t_ast_ptr_t));
+        vec_ast_ptr args = BRAMA_MALLOC(sizeof (vec_ast));
         vec_init(args);
 
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
@@ -740,7 +740,7 @@ brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, 
     BACKUP_PARSER_INDEX();
 
     if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_START)) { // Is it start with '{'
-        vec_t_ast_ptr_t_ptr blocks = BRAMA_MALLOC(sizeof (vec_t_ast_ptr_t));
+        vec_ast_ptr blocks = BRAMA_MALLOC(sizeof (vec_ast));
         vec_init(blocks);
 
         if (!ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_END)) {
@@ -813,7 +813,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
 
-        vec_t_ast_ptr_t_ptr args = BRAMA_MALLOC(sizeof(vec_t_ast_ptr_t));
+        vec_ast_ptr args = BRAMA_MALLOC(sizeof(vec_ast));
         vec_init(args);
 
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
@@ -859,8 +859,8 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
         *ast = new_func_decl_ast(func_decl);
 
         if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) { // If anonymous function directly calling
-            vec_t_ast_ptr_t_ptr call_args = BRAMA_MALLOC(sizeof(vec_t_ast_ptr_t));
-            vec_init(args);
+            vec_ast_ptr call_args = BRAMA_MALLOC(sizeof(vec_ast));
+            vec_init(call_args);
 
             if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
                 do {
@@ -1374,7 +1374,7 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_NEW_CLASS_CREATION_NOT_VALID);
 
-        vec_t_ast_ptr_t_ptr args = BRAMA_MALLOC(sizeof (vec_t_ast_ptr_t));
+        vec_ast_ptr args = BRAMA_MALLOC(sizeof (vec_ast));
         vec_init(args);
 
         if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES)) {
@@ -1817,14 +1817,14 @@ t_context_ptr brama_init() {
     context->tokinizer->column = 0;
     context->tokinizer->index  = 0;
     context->tokinizer->line   = 1;
-    context->tokinizer->tokens = BRAMA_MALLOC(sizeof (vec_t_token_ptr_t));
+    context->tokinizer->tokens = BRAMA_MALLOC(sizeof (vec_token));
     vec_init(context->tokinizer->tokens);
 
     /* parser */
     context->parser            = (t_parser_ptr)BRAMA_MALLOC(sizeof (t_parser));
     context->parser->index     = 0;
     context->parser->line      = 0;
-    context->parser->asts      = BRAMA_MALLOC(sizeof (vec_t_ast_ptr_t));
+    context->parser->asts      = BRAMA_MALLOC(sizeof (vec_ast));
     vec_init(context->parser->asts);
 
     /* keywords */
@@ -1837,7 +1837,7 @@ t_context_ptr brama_init() {
     /* Compiler */
     context->compiler            = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
     context->compiler->index     = 0;
-    context->compiler->op_codes  = BRAMA_MALLOC(sizeof (vec_t_brama_opcode_t));
+    context->compiler->op_codes  = BRAMA_MALLOC(sizeof (vec_opcode));
     context->compiler->constants = BRAMA_MALLOC(sizeof (vec_value));
     vec_init(context->compiler->op_codes);
     vec_init(context->compiler->constants);
@@ -1917,7 +1917,7 @@ void brama_dump(t_context_ptr context) {
 #define AST_PRINT_SECTION(PROPERTY)                printf("\r\n%*s%s : ", (level + 1) * LEVEL_PADDING, "", PROPERTY)
 #define AST_PRINT_SIMPLE(PROPERTY)                 printf("%s", PROPERTY)
 
-void brama_dump_vector_internal(vec_t_ast_ptr_t_ptr vector, size_t level) {
+void brama_dump_vector_internal(vec_ast_ptr vector, size_t level) {
     int i     = 0;
     int total = vector->length;
     AST_PRINT_SIMPLE("[");
@@ -2019,7 +2019,7 @@ void brama_dump_ast(t_context_ptr context) {
     t_context_ptr _context = (t_context_ptr)context;
     int i                    = 0;
     int totalAst             = _context->parser->asts->length;
-    vec_t_ast_ptr_t_ptr asts = _context->parser->asts;
+    vec_ast_ptr asts = _context->parser->asts;
 
     for (i = 0; i < totalAst; ++i) {
         t_ast_ptr ast = asts->data[i];
@@ -2117,6 +2117,9 @@ bool destroy_ast(t_ast_ptr ast) {
        return true;
 
    else if (ast->type == AST_SYMBOL)
+       return true;
+
+   else if (ast->type == AST_KEYWORD)
        return true;
 
    else
@@ -2269,7 +2272,7 @@ bool destroy_ast_assignment(t_assign_ptr assignment) {
     return true;
 }
 
-bool destroy_ast_vector(vec_t_ast_ptr_t_ptr vector) {
+bool destroy_ast_vector(vec_ast_ptr vector) {
     size_t i;
     size_t total = vector->length;
     for (i = 0; i < total; ++i) {
@@ -2278,11 +2281,12 @@ bool destroy_ast_vector(vec_t_ast_ptr_t_ptr vector) {
         BRAMA_FREE(item);
         item = NULL;
     }
+    vec_deinit(vector);
     //destroy_ast_vector(vector);
     return true;
 }
 
-bool destroy_token_vector(vec_t_token_ptr_t_ptr vector) {
+bool destroy_token_vector(vec_token_ptr vector) {
     size_t i;
     size_t total = vector->length;
     for (i = 0; i < total; ++i) {
@@ -2290,7 +2294,7 @@ bool destroy_token_vector(vec_t_token_ptr_t_ptr vector) {
         BRAMA_FREE(item);
         item = NULL;
     }
-    destroy_ast_vector(vector);
+    vec_deinit(vector);
     return true;
 }
 
@@ -2340,14 +2344,13 @@ bool destroy_ast_primative(t_primative_ptr primative) {
 
 /* Binary Operation
  * Example : 10 + 20 - 10 * 5.5 */
-void compile_binary(t_context_ptr context, t_ast_ptr const ast) {
-    compile_internal(context, ast->binary_ptr->left);
+void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage) {
+    compile_internal(context, ast->binary_ptr->left, storage);
     size_t left_index = context->compiler->constants->length - 1;
 
-    compile_internal(context, ast->binary_ptr->right);
+    compile_internal(context, ast->binary_ptr->right, storage);
     size_t right_index = context->compiler->constants->length - 1;
 
-    t_brama_byte opcode;
     t_brama_vmdata code;
     code.op   = 0;
     code.reg1 = 0;
@@ -2402,7 +2405,24 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast) {
     vec_push(context->compiler->op_codes, vm_encode(&code));
 }
 
-void compile_primative(t_context_ptr context, t_ast_ptr const ast) {
+
+void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage) {
+    /* add undefined variable to constants for new symbol */
+    t_assign_ptr assign = ast->assign_ptr;
+    
+    vec_push(context->compiler->constants, UNDEFINED_VAL);
+
+    vec_push(&storage->variables,  ast->char_ptr);
+    t_brama_vmdata code;
+    code.reg1 = context->compiler->constants->length - 1;
+    code.reg2 = 0;
+    code.reg3 = 0;
+    code.op   = VM_OPT_INIT_VAR;
+
+    vec_push(context->compiler->op_codes, vm_encode(&code));
+}
+
+void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage) {
     switch (ast->primative_ptr->type) {
         case PRIMATIVE_INTEGER:
             vec_push(context->compiler->constants, numberToValue(ast->primative_ptr->int_));
@@ -2419,24 +2439,32 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast) {
 }
 
 
-void compile_internal(t_context_ptr context, t_ast_ptr const ast) {
+void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage) {
     switch (ast->type) {
         case AST_PRIMATIVE:
-            compile_primative(context, ast);
+            compile_primative(context, ast, storage);
             break;
 
         case AST_BINARY_OPERATION:
-            compile_binary(context, ast);
+            compile_binary(context, ast, storage);
+            break;
+
+        case AST_ASSIGNMENT:
+            compile_assignment(context, ast, storage);
             break;
     }
 }
 
 void compile(t_context_ptr context) {
-    vec_t_ast_ptr_t_ptr asts = context->parser->asts;
-    size_t total_ast  = asts->length;
+    t_storage_ptr global_storage = BRAMA_MALLOC(sizeof(t_storage));
+    vec_init(&global_storage->constants);
+    vec_init(&global_storage->variables);
+
+    vec_ast_ptr asts             = context->parser->asts;
+    size_t total_ast             = asts->length;
     for (size_t i = 0; i < total_ast; ++i) {
         t_ast_ptr ast = asts->data[i];
-        compile_internal(context, ast);
+        compile_internal(context, ast, global_storage);
     }
 
     vec_push(context->compiler->op_codes, NULL);
@@ -2459,7 +2487,7 @@ double valueToNumber(t_brama_value num) {
 }
 
 void run(t_context_ptr context) {
-    vec_t_byte_ptr bytes    = context->compiler->op_codes;
+    vec_byte_ptr bytes    = context->compiler->op_codes;
     vec_value_ptr constants = context->compiler->constants;
 
     size_t total_bytes = bytes->length;
@@ -2484,9 +2512,10 @@ void run(t_context_ptr context) {
                 t_brama_value left  = constants->data[vmdata.reg1];
                 t_brama_value right = constants->data[vmdata.reg2];
 
-                if (IS_NUM(left) && IS_NUM(right)) {
+                if (IS_NUM(left) && IS_NUM(right))
                     printf("%f\r\n", valueToNumber(left) - valueToNumber(right));
-                }
+                else if (IS_UNDEFINED(left) || IS_UNDEFINED(right))
+                    printf("undefined\r\n");
             }
                 break;
         }

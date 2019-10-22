@@ -405,7 +405,7 @@ MunitResult ast_primary_expr_test_2(const MunitParameter params[], void* user_da
     munit_assert_int(ast->primative_ptr->array->length, ==, 7);
     munit_assert_int(ast->primative_ptr->type,         ==, PRIMATIVE_ARRAY);
 
-    vec_t_ast_ptr_t_ptr vector = ast->primative_ptr->array;
+    vec_ast_ptr vector = ast->primative_ptr->array;
     munit_assert_int(((t_ast_ptr)vector_get(vector, 0))->primative_ptr->type, ==, PRIMATIVE_INTEGER);
     munit_assert_int(((t_ast_ptr)vector_get(vector, 0))->primative_ptr->int_, ==, 1);
 
@@ -505,7 +505,7 @@ MunitResult ast_primary_expr_test_5(const MunitParameter params[], void* user_da
     /* Array */
     munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "array"))->type,                 ==, AST_PRIMATIVE);
     munit_assert_int         (((t_ast_ptr)*map_get(main_dict, "array"))->primative_ptr->type,  ==, PRIMATIVE_ARRAY);
-    vec_t_ast_ptr_t_ptr array = ((t_ast_ptr)*map_get(main_dict, "array"))->primative_ptr->array;
+    vec_ast_ptr array = ((t_ast_ptr)*map_get(main_dict, "array"))->primative_ptr->array;
     munit_assert_int         (((t_ast_ptr)vector_get(array, 0))->primative_ptr->type, ==, PRIMATIVE_INTEGER);
     munit_assert_int         (((t_ast_ptr)vector_get(array, 0))->primative_ptr->int_, ==, 1);
     munit_assert_int         (((t_ast_ptr)vector_get(array, 1))->primative_ptr->type, ==, PRIMATIVE_INTEGER);
@@ -715,16 +715,13 @@ MunitResult ast_call_expr_test_4(const MunitParameter params[], void* user_data_
     brama_execute(context, "(function() { test = true; })()");
     context->parser->index = 0;
 
-    t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
+    t_ast_ptr ast = context->parser->asts->data[0];
     munit_assert_int         (ast->type,                                 ==, AST_FUNCTION_CALL);
     munit_assert_ptr_not_null(ast->func_call_ptr);
     munit_assert_ptr_not_null(ast->func_call_ptr->func_decl_ptr);
     munit_assert_int         (ast->func_call_ptr->type, ==, FUNC_CALL_ANONY);
     munit_assert_ptr_not_null(ast->func_call_ptr->func_decl_ptr->body);
     munit_assert_int         (ast->func_call_ptr->func_decl_ptr->body->type, ==, AST_BLOCK);
-    destroy_ast(ast);
-    BRAMA_FREE(ast);
 
     brama_destroy(context);
     return MUNIT_OK;

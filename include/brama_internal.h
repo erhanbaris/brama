@@ -57,8 +57,8 @@ brama_status ast_continue_stmt       (t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_accessor_stmt       (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 
 bool destroy_ast                (t_ast_ptr ast);
-bool destroy_ast_vector         (vec_t_ast_ptr_t_ptr vector);
-bool destroy_token_vector       (vec_t_token_ptr_t_ptr vector);
+bool destroy_ast_vector         (vec_ast_ptr vector);
+bool destroy_token_vector       (vec_token_ptr vector);
 bool destroy_ast_primative      (t_primative_ptr primative);
 bool destroy_ast_assignment     (t_assign_ptr assignment);
 bool destroy_ast_binary         (t_binary_ptr binary);
@@ -71,14 +71,15 @@ bool destroy_ast_object_creation(t_object_creation_ptr object_creation_ptr);
 bool destroy_ast_if_stmt        (t_if_stmt_ptr if_stmt_ptr);
 bool destroy_ast_accessor       (t_accessor_ptr accessor_ptr);
 
-void brama_dump_vector_internal (vec_t_ast_ptr_t_ptr vector, size_t level);
+void brama_dump_vector_internal (vec_ast_ptr vector, size_t level);
 void brama_dump_ast_internal    (t_ast_ptr ast, size_t level);
 
 void run                        (t_context_ptr context);
 void compile                    (t_context_ptr context);
-void compile_internal           (t_context_ptr context, t_ast_ptr const ast);
-void compile_primative          (t_context_ptr context, t_ast_ptr const ast);
-void compile_binary             (t_context_ptr context, t_ast_ptr const ast);
+void compile_internal           (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage);
+void compile_primative          (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage);
+void compile_binary             (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage);
+void compile_assignment         (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage);
 
 void          vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t);
 t_brama_byte  vm_encode(t_brama_vmdata_ptr t);

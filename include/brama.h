@@ -238,26 +238,7 @@ enum brama_vm_operator {
     VM_OPT_JNIF,
     VM_OPT_INC,
     VM_OPT_DINC,
-    VM_OPT_LOAD,
-    VM_OPT_LOAD_0,
-    VM_OPT_LOAD_1,
-    VM_OPT_LOAD_2,
-    VM_OPT_LOAD_3,
-    VM_OPT_STORE,
-    VM_OPT_STORE_0,
-    VM_OPT_STORE_1,
-    VM_OPT_STORE_2,
-    VM_OPT_STORE_3,
-    VM_OPT_GLOAD,
-    VM_OPT_GLOAD_0,
-    VM_OPT_GLOAD_1,
-    VM_OPT_GLOAD_2,
-    VM_OPT_GLOAD_3,
-    VM_OPT_GSTORE,
-    VM_OPT_GSTORE_0,
-    VM_OPT_GSTORE_1,
-    VM_OPT_GSTORE_2,
-    VM_OPT_GSTORE_3,
+    VM_OPT_INIT_VAR,
     VM_OPT_CALL,
     VM_OPT_RETURN,
     VM_OPT_PUSH,
@@ -461,10 +442,11 @@ typedef struct _t_brama_vmdata    t_brama_vmdata;
 typedef struct _t_tokinizer       t_tokinizer;
 typedef struct _t_assign          t_assign;
 typedef struct _t_control         t_control;
-typedef struct _t_vm_const_item   t_vm_const_item;
+typedef struct _t_vm_object   t_vm_object;
+typedef struct _t_storage         t_storage;
 
 
-typedef t_vm_const_item*   t_vm_const_item_ptr;
+typedef t_vm_object*   t_vm_object_ptr;
 typedef t_tokinizer*       t_tokinizer_ptr;
 typedef t_token*           t_token_ptr;
 typedef t_parser*          t_parser_ptr;
@@ -484,6 +466,7 @@ typedef t_while_loop*      t_while_loop_ptr;
 typedef t_if_stmt*         t_if_stmt_ptr;
 typedef t_accessor*        t_accessor_ptr;
 typedef t_compiler*        t_compiler_ptr;
+typedef t_storage*         t_storage_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
@@ -499,17 +482,21 @@ typedef bool               t_brama_bool;
 
 typedef map_t(struct _t_ast *) map_ast_t;
 typedef map_ast_t*             map_ast_t_ptr;
+typedef map_t(t_brama_value)   map_value;
+typedef map_value*             map_value_ptr;
 typedef vec_t(t_brama_value)   vec_value;
 typedef vec_value*             vec_value_ptr;
 typedef t_brama_vmdata*        t_brama_vmdata_ptr;
-typedef vec_t(t_token_ptr)     vec_t_token_ptr_t;
-typedef vec_t(t_token_ptr)*    vec_t_token_ptr_t_ptr;
-typedef vec_t(t_ast_ptr)       vec_t_ast_ptr_t;
-typedef vec_t(t_ast_ptr)*      vec_t_ast_ptr_t_ptr;
-typedef vec_t(t_brama_opcode)  vec_t_brama_opcode_t;
-typedef vec_t(t_brama_opcode)* vec_t_brama_opcode_t_ptr;
-typedef vec_t(t_brama_byte)    vec_t_byte;
-typedef vec_t(t_brama_byte)*   vec_t_byte_ptr;
+typedef vec_t(t_token_ptr)     vec_token;
+typedef vec_t(t_token_ptr)*    vec_token_ptr;
+typedef vec_t(t_ast_ptr)       vec_ast;
+typedef vec_t(t_ast_ptr)*      vec_ast_ptr;
+typedef vec_t(t_brama_opcode)  vec_opcode;
+typedef vec_t(t_brama_opcode)* vec_opcode_ptr;
+typedef vec_t(t_brama_byte)    vec_byte;
+typedef vec_t(t_brama_byte)*   vec_byte_ptr;
+typedef vec_t(char_ptr)        vec_string;
+typedef vec_t(char_ptr)*       vec_string_ptr;
 
 typedef struct _t_token {
     size_t           line;
@@ -538,18 +525,19 @@ typedef struct _t_tokinizer {
 typedef struct _t_parser {
     size_t              index;
     size_t              line;
-    vec_t_ast_ptr_t_ptr asts;
+    vec_ast_ptr asts;
 } t_parser;
 
 typedef struct _t_compiler {
     size_t         index;
-    vec_t_byte_ptr op_codes;
+    vec_byte_ptr op_codes;
     vec_value_ptr  constants;
 } t_compiler;
 
-typedef struct _t_stroge {
-    
-} t_strage;
+typedef struct _t_storage {
+    vec_value  constants;
+    vec_string variables;
+} t_storage;
 
 typedef struct _t_primative {
     brama_primative_type type;
@@ -669,7 +657,7 @@ typedef struct _t_brama_vmdata {
 } t_brama_vmdata;
 
 
-typedef struct _t_vm_const_item {
+typedef struct _t_vm_object {
     brama_vm_const_type type;
     union {
         int        int_;
@@ -677,7 +665,7 @@ typedef struct _t_vm_const_item {
         bool       bool_;
         char*      char_ptr;
     };
-} t_vm_const_item;
+} t_vm_object;
 
 /* VM Defs */
 
@@ -718,7 +706,7 @@ typedef struct _t_vm_const_item {
 #define AS_BOOL(value) ((value) == TRUE_VAL)
 
 // Value -> Obj*.
-#define AS_OBJ(value) ((t_vm_const_item*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
+#define AS_OBJ(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
 
 // Singleton values.
 #define NULL_VAL      ((t_brama_value)(uint64_t)(QNAN | TAG_NULL))

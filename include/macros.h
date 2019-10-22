@@ -124,7 +124,7 @@ case OPERATOR_1_SYMBOL :                     \
     return RETURN_CODE ;   \
 }
 
-#define CLEAR_AST(AST)       if ( AST    != NULL ) { destroy_ast   ( AST );    BRAMA_FREE( AST );    AST    = NULL; }
+#define CLEAR_AST(AST)       if ( AST    != NULL ) { destroy_ast   ( AST );        BRAMA_FREE( AST );    AST    = NULL; }
 #define CLEAR_VECTOR(VECTOR) if ( VECTOR != NULL ) { destroy_ast_vector( VECTOR ); BRAMA_FREE( VECTOR ); VECTOR = NULL; }
 
 #define vector_get(VECTOR, INDEX) VECTOR ->data[ INDEX ]
