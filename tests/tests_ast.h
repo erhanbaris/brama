@@ -10,7 +10,7 @@ MunitResult ast_peek_test(const MunitParameter params[], void* user_data_or_fixt
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_peek(context));
 
-    brama_execute(context, "var rows = prompt('How many rows for your multiplication table?');");
+    brama_compile(context, "var rows = prompt('How many rows for your multiplication table?');");
     context->parser->index = 0;
     munit_assert_ptr_not_null(ast_peek(context));
     munit_assert_int(ast_peek(context)->type, ==, TOKEN_KEYWORD);
@@ -24,7 +24,7 @@ MunitResult ast_previous_test(const MunitParameter params[], void* user_data_or_
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_peek(context));
 
-    brama_execute(context, "var rows = prompt('How many rows for your multiplication table?');");
+    brama_compile(context, "var rows = prompt('How many rows for your multiplication table?');");
     context->parser->index = 0;
     munit_assert_ptr_null(ast_previous(context));
 
@@ -41,7 +41,7 @@ MunitResult ast_consume_test(const MunitParameter params[], void* user_data_or_f
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_consume(context));
 
-    brama_execute(context, "var rows = prompt('How many rows for your multiplication table?');");
+    brama_compile(context, "var rows = prompt('How many rows for your multiplication table?');");
     munit_assert_int(context->tokinizer->tokens->length, ==, 8);
 
     context->parser->index = 0;
@@ -76,7 +76,7 @@ MunitResult ast_consume_keyword_test(const MunitParameter params[], void* user_d
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_consume(context));
 
-    brama_execute(context, "var rows = prompt('How many rows for your multiplication table?');");
+    brama_compile(context, "var rows = prompt('How many rows for your multiplication table?');");
     context->parser->index = 0;
     t_token* token         = ast_consume_keyword(context, KEYWORD_VAR);
 
@@ -94,7 +94,7 @@ MunitResult ast_consume_token_test(const MunitParameter params[], void* user_dat
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_consume(context));
 
-    brama_execute(context, "var rows = prompt('How many rows for your multiplication table?');");
+    brama_compile(context, "var rows = prompt('How many rows for your multiplication table?');");
     context->parser->index = 0;
     t_token* token         = ast_consume_token(context, TOKEN_KEYWORD);
 
@@ -112,7 +112,7 @@ MunitResult ast_consume_operator_test(const MunitParameter params[], void* user_
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_consume(context));
 
-    brama_execute(context, "var rows = prompt('How many rows for your multiplication table?');");
+    brama_compile(context, "var rows = prompt('How many rows for your multiplication table?');");
     context->parser->index = 0;
     munit_assert_ptr_null(ast_consume_operator(context, OPERATOR_ASSIGN));
 
@@ -131,7 +131,7 @@ MunitResult ast_match_test_1(const MunitParameter params[], void* user_data_or_f
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_consume(context));
 
-    brama_execute(context, "var rows = prompt('How many rows for your multiplication table?');");
+    brama_compile(context, "var rows = prompt('How many rows for your multiplication table?');");
     context->parser->index = 0;
     munit_assert_int(ast_match_keyword(context, 1, KEYWORD_BREAK), ==, 0);
     munit_assert_int(ast_match_keyword(context, 1, KEYWORD_VAR), ==, 1);
@@ -155,7 +155,7 @@ MunitResult ast_match_test_2(const MunitParameter params[], void* user_data_or_f
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_consume(context));
 
-    brama_execute(context, "const array = [1, 2];");
+    brama_compile(context, "const array = [1, 2];");
     context->parser->index = 0;
 
     munit_assert_int(ast_is_at_end     (context),                    ==, 0);
@@ -188,7 +188,7 @@ MunitResult ast_check_test_1(const MunitParameter params[], void* user_data_or_f
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_consume(context));
 
-    brama_execute(context, "var companies = ['Spacex', \"Tesla\"];");
+    brama_compile(context, "var companies = ['Spacex', \"Tesla\"];");
     context->parser->index = 0;
 
     munit_assert_int(ast_is_at_end     (context),                 ==, 0);
@@ -235,7 +235,7 @@ MunitResult ast_check_test_1(const MunitParameter params[], void* user_data_or_f
 MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_consume(context));
-    brama_execute(context, "'hello world' \"hi all\" 1024 true null 3.14 =");
+    brama_compile(context, "'hello world' \"hi all\" 1024 true null 3.14 =");
     munit_assert_int(context->status, !=, BRAMA_OK);
     context->parser->index = 0;
     t_ast* ast = NULL;
@@ -309,7 +309,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
 MunitResult ast_is_primative_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     munit_assert_ptr_null(ast_consume(context));
-    brama_execute(context, "'hello world' \"hi all\" 1024 true null 3.14 {}");
+    brama_compile(context, "'hello world' \"hi all\" 1024 true null 3.14 {}");
     context->parser->index = 0;
     t_token_ptr item_1 = ast_consume(context);
     t_token_ptr item_2 = ast_consume(context);
@@ -335,7 +335,7 @@ MunitResult ast_is_primative_test_1(const MunitParameter params[], void* user_da
 
 MunitResult ast_primary_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "10 10.1 true false null 'hello' \"world\" var");
+    brama_compile(context, "10 10.1 true false null 'hello' \"world\" var");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -397,7 +397,7 @@ MunitResult ast_primary_expr_test_1(const MunitParameter params[], void* user_da
 
 MunitResult ast_primary_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "[1, true, null, 1.1, [], 'hello', \"world\"]");
+    brama_compile(context, "[1, true, null, 1.1, [], 'hello', \"world\"]");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -434,7 +434,7 @@ MunitResult ast_primary_expr_test_2(const MunitParameter params[], void* user_da
 
 MunitResult ast_primary_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "{}");
+    brama_compile(context, "{}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -450,7 +450,7 @@ MunitResult ast_primary_expr_test_3(const MunitParameter params[], void* user_da
 
 MunitResult ast_primary_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "{'hello': 'world'}");
+    brama_compile(context, "{'hello': 'world'}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -471,7 +471,7 @@ MunitResult ast_primary_expr_test_4(const MunitParameter params[], void* user_da
 
 MunitResult ast_primary_expr_test_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "{'hi': 'all', test: true, 'dict': {'empty': false}, 'array': [1,2,3]}");
+    brama_compile(context, "{'hi': 'all', test: true, 'dict': {'empty': false}, 'array': [1,2,3]}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -519,7 +519,7 @@ MunitResult ast_primary_expr_test_5(const MunitParameter params[], void* user_da
 
 MunitResult ast_primary_expr_test_6(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "{'hi' 'all'}");
+    brama_compile(context, "{'hi' 'all'}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -530,7 +530,7 @@ MunitResult ast_primary_expr_test_6(const MunitParameter params[], void* user_da
 
 MunitResult ast_primary_expr_test_7(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "{1+1: 'all'}");
+    brama_compile(context, "{1+1: 'all'}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -541,7 +541,7 @@ MunitResult ast_primary_expr_test_7(const MunitParameter params[], void* user_da
 
 MunitResult ast_primary_expr_test_8(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "{'hi': 1+1}");
+    brama_compile(context, "{'hi': 1+1}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -554,7 +554,7 @@ MunitResult ast_primary_expr_test_8(const MunitParameter params[], void* user_da
 
 MunitResult ast_primary_expr_test_9(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "{'hi': *}");
+    brama_compile(context, "{'hi': *}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -565,7 +565,7 @@ MunitResult ast_primary_expr_test_9(const MunitParameter params[], void* user_da
 
 MunitResult ast_primary_expr_test_10(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "{'hi': var}");
+    brama_compile(context, "{'hi': var}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -576,7 +576,7 @@ MunitResult ast_primary_expr_test_10(const MunitParameter params[], void* user_d
 
 MunitResult ast_primary_expr_test_11(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "[var]");
+    brama_compile(context, "[var]");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -587,7 +587,7 @@ MunitResult ast_primary_expr_test_11(const MunitParameter params[], void* user_d
 
 MunitResult ast_primary_expr_test_12(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "1, true, null, 1.1, [], 'hello', \"world\"");
+    brama_compile(context, "1, true, null, 1.1, [], 'hello', \"world\"");
     munit_assert_int(context->status, ==, BRAMA_BLOCK_NOT_VALID);
     brama_destroy(context);
     return MUNIT_OK;
@@ -595,7 +595,7 @@ MunitResult ast_primary_expr_test_12(const MunitParameter params[], void* user_d
 
 MunitResult ast_primary_expr_test_13(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "1 true null 1.1 [] 'hello' \"world\"");
+    brama_compile(context, "1 true null 1.1 [] 'hello' \"world\"");
     munit_assert_int(context->status, ==, BRAMA_BLOCK_NOT_VALID);
     brama_destroy(context);
     return MUNIT_OK;
@@ -603,7 +603,7 @@ MunitResult ast_primary_expr_test_13(const MunitParameter params[], void* user_d
 
 MunitResult ast_primary_expr_test_14(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "1\r\n true\r\n null\r\n 1.1\r\n []\r\n 'hello'\r\n \"world\"");
+    brama_compile(context, "1\r\n true\r\n null\r\n 1.1\r\n []\r\n 'hello'\r\n \"world\"");
     munit_assert_int(context->status, ==, BRAMA_OK);
     brama_destroy(context);
     return MUNIT_OK;
@@ -611,7 +611,7 @@ MunitResult ast_primary_expr_test_14(const MunitParameter params[], void* user_d
 
 MunitResult ast_primary_expr_test_15(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "{ 1\r\n true\r\n null\r\n 1.1\r\n []\r\n 'hello'\r\n \"world\" }");
+    brama_compile(context, "{ 1\r\n true\r\n null\r\n 1.1\r\n []\r\n 'hello'\r\n \"world\" }");
     munit_assert_int(context->status, ==, BRAMA_OK);
     brama_destroy(context);
     return MUNIT_OK;
@@ -619,7 +619,7 @@ MunitResult ast_primary_expr_test_15(const MunitParameter params[], void* user_d
 
 MunitResult ast_symbol_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "hello_world");
+    brama_compile(context, "hello_world");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -634,7 +634,7 @@ MunitResult ast_symbol_expr_test_1(const MunitParameter params[], void* user_dat
 
 MunitResult ast_symbol_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "10");
+    brama_compile(context, "10");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -648,7 +648,7 @@ MunitResult ast_symbol_expr_test_2(const MunitParameter params[], void* user_dat
 
 MunitResult ast_call_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "test(true)");
+    brama_compile(context, "test(true)");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -667,7 +667,7 @@ MunitResult ast_call_expr_test_1(const MunitParameter params[], void* user_data_
 
 MunitResult ast_call_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "test_2.print({data:1})");
+    brama_compile(context, "test_2.print({data:1})");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -690,7 +690,7 @@ MunitResult ast_call_expr_test_2(const MunitParameter params[], void* user_data_
 
 MunitResult ast_call_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "test_2.print(function() {})");
+    brama_compile(context, "test_2.print(function() {})");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -712,7 +712,7 @@ MunitResult ast_call_expr_test_3(const MunitParameter params[], void* user_data_
 
 MunitResult ast_call_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "(function() { test = true; })()");
+    brama_compile(context, "(function() { test = true; })()");
     context->parser->index = 0;
 
     t_ast_ptr ast = context->parser->asts->data[0];
@@ -731,7 +731,7 @@ MunitResult ast_call_expr_test_4(const MunitParameter params[], void* user_data_
 
 MunitResult ast_call_expr_test_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "this.call.func('erhan', true, 1)");
+    brama_compile(context,  "this.call.func('erhan', true, 1)");
     munit_assert_int(context->status, == , BRAMA_OK);
     munit_assert_int(context->parser->asts->length, == , 1);
 
@@ -754,7 +754,7 @@ MunitResult ast_call_expr_test_5(const MunitParameter params[], void* user_data_
 
 MunitResult ast_mult_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "10 * 20");
+    brama_compile(context, "10 * 20");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -773,7 +773,7 @@ MunitResult ast_mult_expr_test_1(const MunitParameter params[], void* user_data_
 
 MunitResult ast_mult_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "10 / 20");
+    brama_compile(context, "10 / 20");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -792,7 +792,7 @@ MunitResult ast_mult_expr_test_2(const MunitParameter params[], void* user_data_
 
 MunitResult ast_mult_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "_ten / _twelve");
+    brama_compile(context, "_ten / _twelve");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -815,7 +815,7 @@ MunitResult ast_mult_expr_test_3(const MunitParameter params[], void* user_data_
 
 MunitResult ast_mult_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "_ten / 124");
+    brama_compile(context, "_ten / 124");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -839,7 +839,7 @@ MunitResult ast_mult_expr_test_4(const MunitParameter params[], void* user_data_
 
 MunitResult ast_addition_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "10 - 20");
+    brama_compile(context, "10 - 20");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -858,7 +858,7 @@ MunitResult ast_addition_expr_test_1(const MunitParameter params[], void* user_d
 
 MunitResult ast_addition_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "10 + 20");
+    brama_compile(context, "10 + 20");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -877,7 +877,7 @@ MunitResult ast_addition_expr_test_2(const MunitParameter params[], void* user_d
 
 MunitResult ast_addition_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "_ten - _twelve");
+    brama_compile(context, "_ten - _twelve");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -900,7 +900,7 @@ MunitResult ast_addition_expr_test_3(const MunitParameter params[], void* user_d
 
 MunitResult ast_addition_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "_ten + 124");
+    brama_compile(context, "_ten + 124");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -923,7 +923,7 @@ MunitResult ast_addition_expr_test_4(const MunitParameter params[], void* user_d
 
 MunitResult ast_addition_expr_test_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "1024 - 1000 * 2");
+    brama_compile(context, "1024 - 1000 * 2");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -950,7 +950,7 @@ MunitResult ast_addition_expr_test_5(const MunitParameter params[], void* user_d
 
 MunitResult ast_addition_expr_test_6(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "(2 * 1000) - (1024 + 2)");
+    brama_compile(context, "(2 * 1000) - (1024 + 2)");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -979,7 +979,7 @@ MunitResult ast_addition_expr_test_6(const MunitParameter params[], void* user_d
 
 MunitResult ast_control_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "true >= false");
+    brama_compile(context, "true >= false");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1004,7 +1004,7 @@ MunitResult ast_control_expr_test_1(const MunitParameter params[], void* user_da
 
 MunitResult ast_control_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "512 * 2 >= 256 * 4");
+    brama_compile(context, "512 * 2 >= 256 * 4");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1037,7 +1037,7 @@ MunitResult ast_control_expr_test_2(const MunitParameter params[], void* user_da
 
 MunitResult ast_equality_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "true === true");
+    brama_compile(context, "true === true");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1062,7 +1062,7 @@ MunitResult ast_equality_expr_test_1(const MunitParameter params[], void* user_d
 
 MunitResult ast_equality_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "true !== false");
+    brama_compile(context, "true !== false");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1087,7 +1087,7 @@ MunitResult ast_equality_expr_test_2(const MunitParameter params[], void* user_d
 
 MunitResult ast_and_expr_test(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "true && true");
+    brama_compile(context, "true && true");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1112,7 +1112,7 @@ MunitResult ast_and_expr_test(const MunitParameter params[], void* user_data_or_
 
 MunitResult ast_or_expr_test(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "true || true");
+    brama_compile(context, "true || true");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1137,7 +1137,7 @@ MunitResult ast_or_expr_test(const MunitParameter params[], void* user_data_or_f
 
 MunitResult ast_assignment_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "erhan = 1024");
+    brama_compile(context, "erhan = 1024");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1161,7 +1161,7 @@ MunitResult ast_assignment_expr_test_1(const MunitParameter params[], void* user
 
 MunitResult ast_assignment_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "let data_test = 'hello world'");
+    brama_compile(context, "let data_test = 'hello world'");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1185,7 +1185,7 @@ MunitResult ast_assignment_expr_test_2(const MunitParameter params[], void* user
 
 MunitResult ast_assignment_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "var test = {}");
+    brama_compile(context, "var test = {}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1201,7 +1201,7 @@ MunitResult ast_assignment_expr_test_3(const MunitParameter params[], void* user
 
 MunitResult ast_assignment_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "test = \"hello\" === \"world\"");
+    brama_compile(context, "test = \"hello\" === \"world\"");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1221,7 +1221,7 @@ MunitResult ast_assignment_expr_test_4(const MunitParameter params[], void* user
 
 MunitResult ast_assignment_expr_test_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "(test = \"hello\") === \"world\"");
+    brama_compile(context, "(test = \"hello\") === \"world\"");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1239,7 +1239,7 @@ MunitResult ast_assignment_expr_test_5(const MunitParameter params[], void* user
 
 MunitResult ast_assignment_expr_test_6(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var person = {};\n"
+    brama_compile(context,  "var person = {};\n"
                             "person['firstname'] = 'Mario';\n"
                             "person['lastname'] = 'Rossi';\n"
                             "\n"
@@ -1303,7 +1303,7 @@ MunitResult ast_assignment_expr_test_6(const MunitParameter params[], void* user
 
 MunitResult ast_unary_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "-test");
+    brama_compile(context, "-test");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1322,7 +1322,7 @@ MunitResult ast_unary_expr_test_1(const MunitParameter params[], void* user_data
 
 MunitResult ast_unary_expr_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "++test");
+    brama_compile(context, "++test");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1342,7 +1342,7 @@ MunitResult ast_unary_expr_test_2(const MunitParameter params[], void* user_data
 
 MunitResult ast_unary_expr_test_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "!test");
+    brama_compile(context, "!test");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1360,7 +1360,7 @@ MunitResult ast_unary_expr_test_3(const MunitParameter params[], void* user_data
 
 MunitResult ast_unary_expr_test_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "--10");
+    brama_compile(context, "--10");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1372,7 +1372,7 @@ MunitResult ast_unary_expr_test_4(const MunitParameter params[], void* user_data
 
 MunitResult ast_unary_expr_test_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "test++");
+    brama_compile(context, "test++");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1391,7 +1391,7 @@ MunitResult ast_unary_expr_test_5(const MunitParameter params[], void* user_data
 
 MunitResult ast_unary_expr_test_6(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "10++");
+    brama_compile(context, "10++");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1403,7 +1403,7 @@ MunitResult ast_unary_expr_test_6(const MunitParameter params[], void* user_data
 
 MunitResult ast_unary_expr_test_7(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "10--");
+    brama_compile(context, "10--");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1415,7 +1415,7 @@ MunitResult ast_unary_expr_test_7(const MunitParameter params[], void* user_data
 
 MunitResult ast_func_decl_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "function test(data) { var hello = 'world'; var test = 123 }");
+    brama_compile(context, "function test(data) { var hello = 'world'; var test = 123 }");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1437,7 +1437,7 @@ MunitResult ast_func_decl_test_1(const MunitParameter params[], void* user_data_
 
 MunitResult ast_func_decl_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "function test(true) {}");
+    brama_compile(context, "function test(true) {}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1448,7 +1448,7 @@ MunitResult ast_func_decl_test_2(const MunitParameter params[], void* user_data_
 
 MunitResult ast_func_decl_test_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "function() {}");
+    brama_compile(context,  "function() {}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1460,7 +1460,7 @@ MunitResult ast_func_decl_test_3(const MunitParameter params[], void* user_data_
 
 MunitResult ast_func_decl_test_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "function test() {}");
+    brama_compile(context,  "function test() {}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1474,7 +1474,7 @@ MunitResult ast_func_decl_test_4(const MunitParameter params[], void* user_data_
 
 MunitResult ast_func_decl_test_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "(function test() {})");
+    brama_compile(context,  "(function test() {})");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1488,7 +1488,7 @@ MunitResult ast_func_decl_test_5(const MunitParameter params[], void* user_data_
 
 MunitResult ast_func_decl_test_6(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "(function () {})");
+    brama_compile(context,  "(function () {})");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1502,7 +1502,7 @@ MunitResult ast_func_decl_test_6(const MunitParameter params[], void* user_data_
 
 MunitResult ast_func_decl_test_7(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var test = (function () {})");
+    brama_compile(context,  "var test = (function () {})");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1519,7 +1519,7 @@ CHECK_OK(ast_func_decl_test_9, "var test = {func: function () {}}");
 
 MunitResult ast_block_stmt_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "{{}}");
+    brama_compile(context, "{{}}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1536,7 +1536,7 @@ MunitResult ast_block_stmt_test_1(const MunitParameter params[], void* user_data
 
 MunitResult ast_block_stmt_test_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "{\n"
+    brama_compile(context,  "{\n"
                             "var test1 = 1;\n"
                             "var test2 = true;\n"
                             "var test3 = {};\n"
@@ -1559,7 +1559,7 @@ MunitResult ast_block_stmt_test_2(const MunitParameter params[], void* user_data
 
 MunitResult ast_block_stmt_test_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "{\nvar test1 = 1;\n");
+    brama_compile(context,  "{\nvar test1 = 1;\n");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1571,7 +1571,7 @@ MunitResult ast_block_stmt_test_3(const MunitParameter params[], void* user_data
 
 MunitResult ast_new_object_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "new test()");
+    brama_compile(context,  "new test()");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1590,7 +1590,7 @@ MunitResult ast_new_object_1(const MunitParameter params[], void* user_data_or_f
 
 MunitResult ast_new_object_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var obj = new test()");
+    brama_compile(context,  "var obj = new test()");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1611,7 +1611,7 @@ MunitResult ast_new_object_2(const MunitParameter params[], void* user_data_or_f
 
 MunitResult ast_new_object_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var obj = new test()");
+    brama_compile(context,  "var obj = new test()");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -1632,7 +1632,7 @@ MunitResult ast_new_object_3(const MunitParameter params[], void* user_data_or_f
 
 MunitResult ast_new_object_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var obj = new test({test:1}, 1, true, function() { })");
+    brama_compile(context,  "var obj = new test({test:1}, 1, true, function() { })");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;

@@ -8,7 +8,7 @@
 #define CHECK_OK(NAME, TEXT) \
     MunitResult NAME (const MunitParameter params[], void* user_data_or_fixture) { \
         t_context* context = brama_init();                                         \
-        brama_execute(context,  TEXT );                                            \
+        brama_compile(context,  TEXT );                                            \
         context->parser->index = 0;                                                \
         t_ast_ptr ast = NULL;                                                      \
         munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);\
@@ -19,7 +19,7 @@
 #define CHECK_STATUS(NAME, TEXT, STATUS) \
     MunitResult NAME (const MunitParameter params[], void* user_data_or_fixture) { \
         t_context* context = brama_init();                                         \
-        brama_execute(context,  TEXT );                                            \
+        brama_compile(context,  TEXT );                                            \
         context->parser->index = 0;                                                \
         t_ast_ptr ast = NULL;                                                      \
         munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , STATUS  );\

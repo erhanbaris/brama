@@ -23,7 +23,8 @@
 
 MunitResult ast_compile_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "10 + 20");
+    brama_compile(context, "10 + 20");
+    brama_run(context);
     size_t opcode_index = 0;
     munit_assert_int(context->compiler->op_codes->length, == , 11);
     munit_assert_int(context->status, == , BRAMA_OK);
@@ -44,7 +45,8 @@ MunitResult ast_compile_1(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "10.1 + 20.2");
+    brama_compile(context, "10.1 + 20.2");
+    brama_run(context);
     size_t opcode_index = 0;
     munit_assert_int(context->compiler->op_codes->length, == , 19);
     munit_assert_int(context->status, == , BRAMA_OK);
@@ -65,7 +67,8 @@ MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "1024 + (22.1 + 11)");
+    brama_compile(context, "1024 + (22.1 + 11)");
+    brama_run(context);
     size_t opcode_index = 0;
     munit_assert_int(context->compiler->op_codes->length, == , 19);
     munit_assert_int(context->status, == , BRAMA_OK);
@@ -73,11 +76,11 @@ MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_int(context->compiler->op_codes->data[opcode_index], ==, VM_OPT_CONST_DOUBLE);
     t_brama_double d;
     OPCODE_TO_DOUBLE(d);
-    munit_assert_int(d.double_, ==, 10.1);
+    munit_assert_double(d.double_, ==, 10.1);
 
     munit_assert_int(context->compiler->op_codes->data[++opcode_index], ==, VM_OPT_CONST_DOUBLE);
     OPCODE_TO_DOUBLE(d);
-    munit_assert_int(d.double_, ==, 20.2);
+    munit_assert_double(d.double_, ==, 20.2);
 
     munit_assert_int(context->compiler->op_codes->data[++opcode_index], ==, VM_OPT_ADDITION);
     brama_destroy(context);

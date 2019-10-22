@@ -442,8 +442,9 @@ typedef struct _t_brama_vmdata    t_brama_vmdata;
 typedef struct _t_tokinizer       t_tokinizer;
 typedef struct _t_assign          t_assign;
 typedef struct _t_control         t_control;
-typedef struct _t_vm_object   t_vm_object;
+typedef struct _t_vm_object       t_vm_object;
 typedef struct _t_storage         t_storage;
+typedef struct _t_compile_info    t_compile_info;
 
 
 typedef t_vm_object*   t_vm_object_ptr;
@@ -467,6 +468,7 @@ typedef t_if_stmt*         t_if_stmt_ptr;
 typedef t_accessor*        t_accessor_ptr;
 typedef t_compiler*        t_compiler_ptr;
 typedef t_storage*         t_storage_ptr;
+typedef t_compile_info*    t_compile_info_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
@@ -529,9 +531,9 @@ typedef struct _t_parser {
 } t_parser;
 
 typedef struct _t_compiler {
-    size_t         index;
-    vec_byte_ptr op_codes;
-    vec_value_ptr  constants;
+    size_t        index;
+    vec_byte_ptr  op_codes;
+    t_storage_ptr global_storage;
 } t_compiler;
 
 typedef struct _t_storage {
@@ -667,6 +669,12 @@ typedef struct _t_vm_object {
     };
 } t_vm_object;
 
+typedef struct _t_compile_info {
+    int          variable_index;
+    int          constant_index;
+    brama_status status;
+} t_compile_info;
+
 /* VM Defs */
 
 // A mask that selects the sign bit.
@@ -778,7 +786,8 @@ static KeywordPair KEYWORDS_PAIR[] = {
  };
 
 t_context_ptr brama_init       ();
-void          brama_execute    (t_context_ptr context, char_ptr data);
+void          brama_compile    (t_context_ptr context, char_ptr data);
+void          brama_run        (t_context_ptr context);
 void_ptr      brama_last_error (t_context_ptr context);
 void          brama_dump       (t_context_ptr context);
 void          brama_dump_ast   (t_context_ptr context);

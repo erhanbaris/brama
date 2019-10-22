@@ -1835,12 +1835,14 @@ t_context_ptr brama_init() {
         map_set(&context->tokinizer->keywords, KEYWORDS_PAIR[i].name,  KEYWORDS_PAIR[i].keyword);
 
     /* Compiler */
-    context->compiler            = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
-    context->compiler->index     = 0;
-    context->compiler->op_codes  = BRAMA_MALLOC(sizeof (vec_opcode));
-    context->compiler->constants = BRAMA_MALLOC(sizeof (vec_value));
+    context->compiler                 = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
+    context->compiler->index          = 0;
+    context->compiler->op_codes       = BRAMA_MALLOC(sizeof (vec_opcode));
+    context->compiler->global_storage = BRAMA_MALLOC(sizeof (t_storage));
+    vec_init(&context->compiler->global_storage->constants);
+    vec_init(&context->compiler->global_storage->variables);
+
     vec_init(context->compiler->op_codes);
-    vec_init(context->compiler->constants);
 
     return context;
 }
@@ -1863,7 +1865,7 @@ char_ptr brama_set_error(t_context_ptr context, int error) {
     return NULL;
 }
 
-void brama_execute(t_context_ptr context, char_ptr data) {
+void brama_compile(t_context_ptr context, char_ptr data) {
     brama_status tokinizer_status = brama_tokinize(context, data);
     if (tokinizer_status != BRAMA_OK) {
         context->status = tokinizer_status;
@@ -1881,9 +1883,15 @@ void brama_execute(t_context_ptr context, char_ptr data) {
         return;
     }
 
+    context->status = BRAMA_OK;
+}
+
+void brama_run(t_context_ptr context) {
+    if (context->status != BRAMA_OK)
+        return;
+
     compile(context);
     run(context);
-    context->status = BRAMA_OK;
 }
 
 void brama_dump(t_context_ptr context) {
@@ -2344,12 +2352,12 @@ bool destroy_ast_primative(t_primative_ptr primative) {
 
 /* Binary Operation
  * Example : 10 + 20 - 10 * 5.5 */
-void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage) {
-    compile_internal(context, ast->binary_ptr->left, storage);
-    size_t left_index = context->compiler->constants->length - 1;
+void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info) {
+    compile_internal(context, ast->binary_ptr->left, storage, compile_info);
+    size_t left_index = compile_info->constant_index;
 
-    compile_internal(context, ast->binary_ptr->right, storage);
-    size_t right_index = context->compiler->constants->length - 1;
+    compile_internal(context, ast->binary_ptr->right, storage, compile_info);
+    size_t right_index = compile_info->constant_index;
 
     t_brama_vmdata code;
     code.op   = 0;
@@ -2406,15 +2414,15 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
 }
 
 
-void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage) {
+void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info) {
     /* add undefined variable to constants for new symbol */
     t_assign_ptr assign = ast->assign_ptr;
-    
-    vec_push(context->compiler->constants, UNDEFINED_VAL);
+
+    vec_push(&storage->constants, UNDEFINED_VAL);
 
     vec_push(&storage->variables,  ast->char_ptr);
     t_brama_vmdata code;
-    code.reg1 = context->compiler->constants->length - 1;
+    code.reg1 = storage->constants.length - 1;
     code.reg2 = 0;
     code.reg3 = 0;
     code.op   = VM_OPT_INIT_VAR;
@@ -2422,49 +2430,73 @@ void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_pt
     vec_push(context->compiler->op_codes, vm_encode(&code));
 }
 
-void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage) {
+void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info) {
+    int index = -1;
+    compile_info->status = BRAMA_OK;
+
     switch (ast->primative_ptr->type) {
         case PRIMATIVE_INTEGER:
-            vec_push(context->compiler->constants, numberToValue(ast->primative_ptr->int_));
+            vec_find(&storage->constants, numberToValue(ast->primative_ptr->int_), index);
+            if (index == -1) {
+                vec_push(&storage->constants, numberToValue(ast->primative_ptr->int_));
+                compile_info->constant_index = storage->constants.length - 1;
+            }
+            else
+                compile_info->constant_index = index;
             break;
 
         case PRIMATIVE_DOUBLE:
-            vec_push(context->compiler->constants, numberToValue(ast->primative_ptr->double_));
+            vec_find(&storage->constants, numberToValue(ast->primative_ptr->double_), index);
+            if (index == -1) {
+                vec_push(&storage->constants, numberToValue(ast->primative_ptr->double_));
+                compile_info->constant_index = storage->constants.length - 1;
+            }
+            else
+                compile_info->constant_index = index;
+
             break;
 
-        case PRIMATIVE_BOOL: 
-            vec_push(context->compiler->constants, numberToValue(ast->primative_ptr->bool_));
+        case PRIMATIVE_BOOL:
+            vec_find(&storage->constants, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL), index);
+            if (index == -1) {
+                vec_push(&storage->constants, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL));
+                compile_info->constant_index = storage->constants.length - 1;
+            }
+            else
+                compile_info->constant_index = index;
+            break;
+
+        default:
+            compile_info->status = BRAMA_NOK;
             break;
     }
 }
 
 
-void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage) {
+void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info) {
     switch (ast->type) {
         case AST_PRIMATIVE:
-            compile_primative(context, ast, storage);
+            compile_primative(context, ast, storage, compile_info);
             break;
 
         case AST_BINARY_OPERATION:
-            compile_binary(context, ast, storage);
+            compile_binary(context, ast, storage, compile_info);
             break;
 
         case AST_ASSIGNMENT:
-            compile_assignment(context, ast, storage);
+            compile_assignment(context, ast, storage, compile_info);
             break;
     }
 }
 
 void compile(t_context_ptr context) {
-    t_storage_ptr global_storage = BRAMA_MALLOC(sizeof(t_storage));
-    vec_init(&global_storage->constants);
-    vec_init(&global_storage->variables);
+    t_compile_info_ptr compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
 
     vec_ast_ptr asts             = context->parser->asts;
     size_t total_ast             = asts->length;
     for (size_t i = 0; i < total_ast; ++i) {
         t_ast_ptr ast = asts->data[i];
-        compile_internal(context, ast, global_storage);
+        compile_internal(context, ast, context->compiler->global_storage, compile_info);
     }
 
     vec_push(context->compiler->op_codes, NULL);
@@ -2487,8 +2519,8 @@ double valueToNumber(t_brama_value num) {
 }
 
 void run(t_context_ptr context) {
-    vec_byte_ptr bytes    = context->compiler->op_codes;
-    vec_value_ptr constants = context->compiler->constants;
+    vec_byte_ptr bytes      = context->compiler->op_codes;
+    vec_value_ptr constants = &context->compiler->global_storage->constants;
 
     size_t total_bytes = bytes->length;
     t_brama_byte* ipc  = &bytes->data[0];
@@ -2585,8 +2617,9 @@ void brama_destroy(t_context_ptr context) {
     vec_deinit(context->compiler->op_codes);
     BRAMA_FREE(context->compiler->op_codes);
 
-    vec_deinit(context->compiler->constants);
-    BRAMA_FREE(context->compiler->constants);
+    vec_deinit(&context->compiler->global_storage->constants);
+    vec_deinit(&context->compiler->global_storage->variables);
+    BRAMA_FREE(context->compiler->global_storage);
 
     vec_deinit(_context->tokinizer->tokens);
     BRAMA_FREE(_context->tokinizer->tokens);

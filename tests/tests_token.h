@@ -39,7 +39,7 @@
 /* STRING TESTS BEGIN --> */
 MunitResult string_token_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "\"hello world\"");
+    brama_compile(context, "\"hello world\"");
     munit_assert_int(context->tokinizer->tokens->length, ==, 1);
 
     t_token* token = context->tokinizer->tokens->data[0];
@@ -55,7 +55,7 @@ MunitResult string_token_1(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult string_token_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "'hello world'");
+    brama_compile(context, "'hello world'");
     munit_assert_int(context->tokinizer->tokens->length, ==, 1);
 
     t_token* token = context->tokinizer->tokens->data[0];
@@ -71,7 +71,7 @@ MunitResult string_token_2(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult string_token_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "'hello world\\\''");
+    brama_compile(context, "'hello world\\\''");
     munit_assert_int(context->tokinizer->tokens->length, ==, 1);
 
     t_token* token = context->tokinizer->tokens->data[0];
@@ -87,7 +87,7 @@ MunitResult string_token_3(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult string_token_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "\"hello world\\\"\"");
+    brama_compile(context, "\"hello world\\\"\"");
     munit_assert_int(context->tokinizer->tokens->length, ==, 1);
 
     t_token* token = context->tokinizer->tokens->data[0];
@@ -106,7 +106,7 @@ MunitResult string_token_4(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult keyword_token_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "do if in for let new try var case else enum eval null this true void with break catch class const false super throw while yield delete export import public return static switch typeof default extends finally package private continue debugger function arguments interface protected implements instanceof");
+    brama_compile(context, "do if in for let new try var case else enum eval null this true void with break catch class const false super throw while yield delete export import public return static switch typeof default extends finally package private continue debugger function arguments interface protected implements instanceof");
     munit_assert_int (context->tokinizer->tokens->length, ==, 47);
     KEYWORD_EQUAL    (0,  KEYWORD_DO);
     KEYWORD_EQUAL    (1,  KEYWORD_IF);
@@ -166,7 +166,7 @@ MunitResult keyword_token_1(const MunitParameter params[], void* user_data_or_fi
 
 MunitResult number_token_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "1024");
+    brama_compile(context, "1024");
     munit_assert_int(context->tokinizer->tokens->length, ==, 1);
 
     t_token* token = context->tokinizer->tokens->data[0];
@@ -182,7 +182,7 @@ MunitResult number_token_1(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult number_token_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "1024.11");
+    brama_compile(context, "1024.11");
     munit_assert_int(context->tokinizer->tokens->length, ==, 1);
 
     t_token* token = context->tokinizer->tokens->data[0];
@@ -198,7 +198,7 @@ MunitResult number_token_2(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult number_token_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "        2048        ");
+    brama_compile(context, "        2048        ");
     munit_assert_int(context->tokinizer->tokens->length, ==, 1);
 
     t_token* token = context->tokinizer->tokens->data[0];
@@ -214,7 +214,7 @@ MunitResult number_token_3(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult number_token_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "      1024.1234567        ");
+    brama_compile(context, "      1024.1234567        ");
     munit_assert_int(context->tokinizer->tokens->length, ==, 1);
 
     t_token* token = context->tokinizer->tokens->data[0];
@@ -230,7 +230,7 @@ MunitResult number_token_4(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult number_token_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "      -1024.1234567     -1024   ");
+    brama_compile(context, "      -1024.1234567     -1024   ");
     munit_assert_int(context->tokinizer->tokens->length, ==, 4);
 
     t_token* token_1 = context->tokinizer->tokens->data[0];
@@ -261,7 +261,7 @@ MunitResult number_token_5(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult symbol_token_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "erhan baris");
+    brama_compile(context, "erhan baris");
     munit_assert_int(context->tokinizer->tokens->length, ==, 2);
 
     t_token* token = context->tokinizer->tokens->data[0];
@@ -284,7 +284,7 @@ MunitResult symbol_token_1(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult symbol_token_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "erhan baris test _test 2048 2048.1");
+    brama_compile(context, "erhan baris test _test 2048 2048.1");
     munit_assert_int(context->tokinizer->tokens->length, ==, 6);
 
     t_token* token = context->tokinizer->tokens->data[0];
@@ -335,7 +335,7 @@ MunitResult symbol_token_2(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult symbol_token_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "_1_ _ $ test$ $test test$test");
+    brama_compile(context, "_1_ _ $ test$ $test test$test");
     munit_assert_int(context->tokinizer->tokens->length, ==, 6);
 
     t_token* token = context->tokinizer->tokens->data[0];
@@ -390,7 +390,7 @@ MunitResult symbol_token_3(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult keyword_operator(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "+ - * / % ++ -- = += -= *= /= %= == === != !== ! && || & | ~ ^ << >>> >> > < >= <= ? : &= |= ^= () [],;. // /* */");
+    brama_compile(context, "+ - * / % ++ -- = += -= *= /= %= == === != !== ! && || & | ~ ^ << >>> >> > < >= <= ? : &= |= ^= () [],;. // /* */");
     munit_assert_int (context->tokinizer->tokens->length, ==, 43);
     OPERATOR_CHECK(0,  OPERATOR_ADDITION);
     OPERATOR_CHECK(1,  OPERATOR_SUBTRACTION);
@@ -448,7 +448,7 @@ MunitResult keyword_operator(const MunitParameter params[], void* user_data_or_f
 
 MunitResult keyword_general_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "var rows = prompt('How many rows for your multiplication table?');");
+    brama_compile(context, "var rows = prompt('How many rows for your multiplication table?');");
     munit_assert_int (context->tokinizer->tokens->length, ==, 8);
 
     brama_destroy(context);
@@ -457,7 +457,7 @@ MunitResult keyword_general_1(const MunitParameter params[], void* user_data_or_
 
 MunitResult keyword_general_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "var rows = 10;");
+    brama_compile(context, "var rows = 10;");
     munit_assert_int (context->tokinizer->tokens->length, ==, 5);
     KEYWORD_EQUAL (0, KEYWORD_VAR);
     SYMBOL_EQUAL  (1, "rows");
@@ -471,7 +471,7 @@ MunitResult keyword_general_2(const MunitParameter params[], void* user_data_or_
 
 MunitResult keyword_general_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "document.getElementById('msg').innerHTML = Math.random( 1, 100 );");
+    brama_compile(context, "document.getElementById('msg').innerHTML = Math.random( 1, 100 );");
     munit_assert_int (context->tokinizer->tokens->length, ==, 18);
     SYMBOL_EQUAL  (0, "document");
     OPERATOR_CHECK(1, OPERATOR_DOT);
@@ -498,7 +498,7 @@ MunitResult keyword_general_3(const MunitParameter params[], void* user_data_or_
 
 MunitResult keyword_general_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "'test");
+    brama_compile(context, "'test");
     munit_assert_int (context->tokinizer->tokens->length, ==, 0);
     munit_assert_string_equal("Missing Delimiter at Line: 1, Column: 5", context->error_message);
 
@@ -508,7 +508,7 @@ MunitResult keyword_general_4(const MunitParameter params[], void* user_data_or_
 
 MunitResult keyword_general_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "10..1");
+    brama_compile(context, "10..1");
     munit_assert_string_equal("Multiple dot used for double: 1, Column: 3", context->error_message);
 
     brama_destroy(context);
@@ -517,7 +517,7 @@ MunitResult keyword_general_5(const MunitParameter params[], void* user_data_or_
 
 MunitResult keyword_general_6(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "'hello world' \"hi all\" 1024 true false null 3.14 {} _test");
+    brama_compile(context, "'hello world' \"hi all\" 1024 true false null 3.14 {} _test");
     munit_assert_int (context->tokinizer->tokens->length, ==, 10);
     TEXT_EQUAL    (0, "hello world");
     TEXT_EQUAL    (1, "hi all");

@@ -8,7 +8,7 @@
 
 MunitResult ast_while_loop_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "while(true) console.log('forever');");
+    brama_compile(context,  "while(true) console.log('forever');");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -29,7 +29,7 @@ MunitResult ast_while_loop_1(const MunitParameter params[], void* user_data_or_f
 
 MunitResult ast_while_loop_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "while(true) {}");
+    brama_compile(context,  "while(true) {}");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -50,7 +50,7 @@ MunitResult ast_while_loop_2(const MunitParameter params[], void* user_data_or_f
 
 MunitResult ast_while_loop_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "while ((elem = document.getElementById('id-' + a)) !== null) {\n"
+    brama_compile(context,  "while ((elem = document.getElementById('id-' + a)) !== null) {\n"
                             "    //Some code\n"
                             "    a++;\n"
                             "}");
@@ -84,7 +84,7 @@ MunitResult ast_while_loop_3(const MunitParameter params[], void* user_data_or_f
 
 MunitResult ast_while_loop_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "while (count < 10) {\n"
+    brama_compile(context,  "while (count < 10) {\n"
                             "    document.write(\"Current Count : \" + count + \"<br />\");\n"
                             "    count++;\n"
                             "}");
@@ -109,7 +109,7 @@ MunitResult ast_while_loop_4(const MunitParameter params[], void* user_data_or_f
 
 MunitResult ast_while_loop_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "while (count < 10) {\n"
+    brama_compile(context,  "while (count < 10) {\n"
                             "break;\n"
                             "}");
     context->parser->index = 0;
@@ -133,7 +133,7 @@ MunitResult ast_while_loop_5(const MunitParameter params[], void* user_data_or_f
 
 MunitResult ast_if_stmt_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "if (true == true) { console.log(true) } else console.log(false)");
+    brama_compile(context,  "if (true == true) { console.log(true) } else console.log(false)");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -158,7 +158,7 @@ MunitResult ast_if_stmt_1(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_if_stmt_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "if (true == true) test = true");
+    brama_compile(context,  "if (true == true) test = true");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -182,7 +182,7 @@ MunitResult ast_if_stmt_2(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_if_stmt_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "if ((function() {test = true})() == true) test = true");
+    brama_compile(context,  "if ((function() {test = true})() == true) test = true");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -206,7 +206,7 @@ MunitResult ast_if_stmt_3(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_if_stmt_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var test = 1;\n"
+    brama_compile(context,  "var test = 1;\n"
                             "if (test == -1)\n"
                             "    console.log(\"Test is -1\");\n"
                             "else if (test == 0)\n"
@@ -239,7 +239,7 @@ MunitResult ast_if_stmt_4(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_if_stmt_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var test = 1;\n"
+    brama_compile(context,  "var test = 1;\n"
                             "if (test == -1)\n"
                             "    console.log(\"Test is -1\");\n"
                             "    console.log(\"Test is -1\");\n"
@@ -255,7 +255,7 @@ MunitResult ast_if_stmt_5(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_return_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "return true");
+    brama_compile(context,  "return true");
     munit_assert_int(context->status, == , BRAMA_ILLEGAL_RETURN_STATEMENT);
 
     brama_destroy(context);
@@ -264,7 +264,7 @@ MunitResult ast_return_1(const MunitParameter params[], void* user_data_or_fixtu
 
 MunitResult ast_return_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var func = (function() {return true})");
+    brama_compile(context,  "var func = (function() {return true})");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -279,7 +279,7 @@ MunitResult ast_return_2(const MunitParameter params[], void* user_data_or_fixtu
 
 MunitResult ast_return_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "if (true) return false");
+    brama_compile(context,  "if (true) return false");
     munit_assert_int(context->status, == , BRAMA_ILLEGAL_RETURN_STATEMENT);
 
     brama_destroy(context);
@@ -288,7 +288,7 @@ MunitResult ast_return_3(const MunitParameter params[], void* user_data_or_fixtu
 
 MunitResult ast_return_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "function test () {\n"
+    brama_compile(context,  "function test () {\n"
                             "    if (true) \n"
                             "        return false;\n"
                             "    return true;\n"
@@ -301,7 +301,7 @@ MunitResult ast_return_4(const MunitParameter params[], void* user_data_or_fixtu
 
 MunitResult ast_return_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "function test () {\n"
+    brama_compile(context,  "function test () {\n"
                             "    while(true) \n"
                             "        return false;\n"
                             "    return true;\n"
@@ -314,7 +314,7 @@ MunitResult ast_return_5(const MunitParameter params[], void* user_data_or_fixtu
 
 MunitResult ast_return_6(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "    while(true) \n"
+    brama_compile(context,  "    while(true) \n"
                             "        return false;\n"
                             "    return true;\n");
     munit_assert_int(context->status, == , BRAMA_ILLEGAL_RETURN_STATEMENT);
@@ -325,7 +325,7 @@ MunitResult ast_return_6(const MunitParameter params[], void* user_data_or_fixtu
 
 MunitResult ast_return_7(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "{ \n"
+    brama_compile(context,  "{ \n"
                             "return false;\n"
                             "}");
     munit_assert_int(context->status, == , BRAMA_ILLEGAL_RETURN_STATEMENT);
@@ -336,7 +336,7 @@ MunitResult ast_return_7(const MunitParameter params[], void* user_data_or_fixtu
 
 MunitResult ast_return_8(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var func = (function() {return })");
+    brama_compile(context,  "var func = (function() {return })");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -352,7 +352,7 @@ MunitResult ast_return_8(const MunitParameter params[], void* user_data_or_fixtu
 
 MunitResult ast_return_9(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var func = (function(data) { if (data == null) return; console.log('not null'); })");
+    brama_compile(context,  "var func = (function(data) { if (data == null) return; console.log('not null'); })");
     context->parser->index = 0;
 
     t_ast_ptr ast = NULL;
@@ -367,7 +367,7 @@ MunitResult ast_return_9(const MunitParameter params[], void* user_data_or_fixtu
 
 MunitResult ast_break_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "break");
+    brama_compile(context,  "break");
     munit_assert_int(context->status, == , BRAMA_ILLEGAL_BREAK_STATEMENT);
 
     brama_destroy(context);
@@ -376,7 +376,7 @@ MunitResult ast_break_1(const MunitParameter params[], void* user_data_or_fixtur
 
 MunitResult ast_break_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "{ \n"
+    brama_compile(context,  "{ \n"
                             "break\n"
                             "}");
     munit_assert_int(context->status, == , BRAMA_ILLEGAL_BREAK_STATEMENT);
@@ -387,7 +387,7 @@ MunitResult ast_break_2(const MunitParameter params[], void* user_data_or_fixtur
 
 MunitResult ast_break_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "if (true) break;");
+    brama_compile(context,  "if (true) break;");
     munit_assert_int(context->status, == , BRAMA_ILLEGAL_BREAK_STATEMENT);
 
     brama_destroy(context);
@@ -396,7 +396,7 @@ MunitResult ast_break_3(const MunitParameter params[], void* user_data_or_fixtur
 
 MunitResult ast_break_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "while (true) {\n"
+    brama_compile(context,  "while (true) {\n"
                             "    (function(){\n"
                             "        break;\n"
                             "    })();\n"
@@ -409,7 +409,7 @@ MunitResult ast_break_4(const MunitParameter params[], void* user_data_or_fixtur
 
 MunitResult ast_break_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var data = 1;\n"
+    brama_compile(context,  "var data = 1;\n"
                             "while (true) {\n"
                             "\n"
                             "    if (data != 10)\n"
@@ -434,7 +434,7 @@ MunitResult ast_break_5(const MunitParameter params[], void* user_data_or_fixtur
 
 MunitResult ast_continue_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "var data = 1;\n"
+    brama_compile(context,  "var data = 1;\n"
                             "while (true) {\n"
                             "    continue\n"
                             "}");
@@ -460,7 +460,7 @@ MunitResult ast_continue_1(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult ast_continue_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "continue");
+    brama_compile(context,  "continue");
     munit_assert_int(context->status, == , BRAMA_ILLEGAL_CONTINUE_STATEMENT);
 
     brama_destroy(context);
@@ -469,7 +469,7 @@ MunitResult ast_continue_2(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult ast_continue_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "if (true) continue");
+    brama_compile(context,  "if (true) continue");
     munit_assert_int(context->status, == , BRAMA_ILLEGAL_CONTINUE_STATEMENT);
 
     brama_destroy(context);
@@ -478,7 +478,7 @@ MunitResult ast_continue_3(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult ast_accessor_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "e.data[0]");
+    brama_compile(context,  "e.data[0]");
     munit_assert_int(context->status, == , BRAMA_OK);
     munit_assert_int         (context->parser->asts->length, ==, 1);
 
@@ -508,7 +508,7 @@ MunitResult ast_accessor_1(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult ast_accessor_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "this.data[0]");
+    brama_compile(context,  "this.data[0]");
     munit_assert_int(context->status, == , BRAMA_OK);
     munit_assert_int         (context->parser->asts->length, ==, 1);
 
@@ -536,7 +536,7 @@ MunitResult ast_accessor_2(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult ast_accessor_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context,  "this.this[0]");
+    brama_compile(context,  "this.this[0]");
     munit_assert_int(context->status, == , BRAMA_FUNCTION_CALL_NOT_VALID);
     return MUNIT_OK;
 }

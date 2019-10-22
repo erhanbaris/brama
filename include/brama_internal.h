@@ -76,10 +76,10 @@ void brama_dump_ast_internal    (t_ast_ptr ast, size_t level);
 
 void run                        (t_context_ptr context);
 void compile                    (t_context_ptr context);
-void compile_internal           (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage);
-void compile_primative          (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage);
-void compile_binary             (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage);
-void compile_assignment         (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage);
+void compile_internal           (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info);
+void compile_primative          (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info);
+void compile_binary             (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info);
+void compile_assignment         (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info);
 
 void          vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t);
 t_brama_byte  vm_encode(t_brama_vmdata_ptr t);

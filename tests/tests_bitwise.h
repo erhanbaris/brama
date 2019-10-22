@@ -7,7 +7,7 @@
 
 MunitResult ast_bitwise_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "~a");
+    brama_compile(context, "~a");
     munit_assert_int(context->status, == , BRAMA_OK);
     munit_assert_int(context->parser->asts->length, ==, 1);
 
@@ -23,7 +23,7 @@ MunitResult ast_bitwise_1(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_bitwise_2(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "(a & b)");
+    brama_compile(context, "(a & b)");
     munit_assert_int(context->status, == , BRAMA_OK);
     munit_assert_int(context->parser->asts->length, ==, 1);
 
@@ -42,7 +42,7 @@ MunitResult ast_bitwise_2(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_bitwise_3(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "(a | b)");
+    brama_compile(context, "(a | b)");
     munit_assert_int(context->status, == , BRAMA_OK);
     munit_assert_int(context->parser->asts->length, ==, 1);
 
@@ -61,7 +61,7 @@ MunitResult ast_bitwise_3(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_bitwise_4(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "(a ^ b)");
+    brama_compile(context, "(a ^ b)");
     munit_assert_int(context->status, == , BRAMA_OK);
     munit_assert_int(context->parser->asts->length, ==, 1);
 
@@ -80,7 +80,7 @@ MunitResult ast_bitwise_4(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_bitwise_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "(a << b)");
+    brama_compile(context, "(a << b)");
     munit_assert_int(context->status, == , BRAMA_OK);
     munit_assert_int(context->parser->asts->length, ==, 1);
 
@@ -99,7 +99,7 @@ MunitResult ast_bitwise_5(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_bitwise_6(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "(a >>> b)");
+    brama_compile(context, "(a >>> b)");
     munit_assert_int(context->status, == , BRAMA_OK);
     munit_assert_int(context->parser->asts->length, ==, 1);
 
@@ -118,7 +118,7 @@ MunitResult ast_bitwise_6(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_bitwise_7(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "(a >> b)");
+    brama_compile(context, "(a >> b)");
     munit_assert_int(context->status, == , BRAMA_OK);
     munit_assert_int(context->parser->asts->length, ==, 1);
 
@@ -137,7 +137,7 @@ MunitResult ast_bitwise_7(const MunitParameter params[], void* user_data_or_fixt
 
 MunitResult ast_bitwise_8(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_execute(context, "~(ld | cols | rd) & all;");
+    brama_compile(context, "~(ld | cols | rd) & all;");
 
     t_ast_ptr ast = (t_ast_ptr)vector_get(context->parser->asts, 0);
     munit_assert_int         (ast->type,                                 ==, AST_BINARY_OPERATION);
