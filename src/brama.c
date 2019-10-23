@@ -277,7 +277,7 @@ brama_status getOperator(t_tokinizer_ptr tokinizer) {
         OPERATOR_CASE_TRIBLE('=', '=', '=', OPERATOR_ASSIGN, OPERATOR_EQUAL,     OPERATOR_EQUAL_VALUE);
         OPERATOR_CASE_TRIBLE('!', '=', '=', OPERATOR_NOT,    OPERATOR_NOT_EQUAL, OPERATOR_NOT_EQUAL_VALUE);
 
-        OPERATOR_CASE_DOUBLE('%', '=', OPERATOR_MODULES,        OPERATOR_ASSIGN_MODULUS);
+        OPERATOR_CASE_DOUBLE('%', '=', OPERATOR_MODULO,         OPERATOR_ASSIGN_MODULUS);
         OPERATOR_CASE_DOUBLE('^', '=', OPERATOR_BITWISE_XOR,    OPERATOR_BITWISE_XOR_ASSIGN);
 
         OPERATOR_CASE_SINGLE('?', OPERATOR_QUESTION_MARK);
@@ -1233,11 +1233,35 @@ brama_status ast_bitwise_shift_expr(t_context_ptr context, t_ast_ptr_ptr ast, br
 }
 
 brama_status ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
-    brama_status left_status = ast_multiplication_expr(context, ast, extra_data);
+    brama_status left_status = ast_modulo_expr(context, ast, extra_data);
     if (left_status != BRAMA_OK)
         return left_status;
 
     while (ast_match_operator(context, 2, OPERATOR_ADDITION, OPERATOR_SUBTRACTION)) {
+        brama_operator_type opt = get_operator(ast_previous(context));
+        t_ast_ptr right         = NULL;
+        brama_status right_status = ast_modulo_expr(context, &right, extra_data);
+        if (right_status != BRAMA_OK) {
+            CLEAR_AST(right);
+            return right_status;
+        }
+
+        t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
+        binary->left        = *ast;
+        binary->opt         = opt;
+        binary->right       = right;
+        *ast = new_binary_ast(binary);
+    }
+
+    return BRAMA_OK;
+}
+
+brama_status ast_modulo_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
+    brama_status left_status = ast_multiplication_expr(context, ast, extra_data);
+    if (left_status != BRAMA_OK)
+        return left_status;
+
+    while (ast_match_operator(context, 1, OPERATOR_MODULO)) {
         brama_operator_type opt = get_operator(ast_previous(context));
         t_ast_ptr right         = NULL;
         brama_status right_status = ast_multiplication_expr(context, &right, extra_data);
@@ -2354,21 +2378,29 @@ bool destroy_ast_primative(t_primative_ptr primative) {
 
 /* Binary Operation
  * Example : 10 + 20 - 10 * 5.5 */
-void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info) {
-    compile_internal(context, ast->binary_ptr->left, storage, compile_info);
+void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    size_t dest_id = 0;
+    if (upper_ast == AST_ASSIGNMENT)
+        dest_id = compile_info->variable_index;
+    else {
+        vec_push(&storage->variables,  NULL);
+        dest_id = storage->variables.length - 1;
+    }
+
+    compile_internal(context, ast->binary_ptr->left, storage, compile_info, AST_NONE);
     size_t left_index = compile_info->constant_index;
 
-    compile_internal(context, ast->binary_ptr->right, storage, compile_info);
+    compile_internal(context, ast->binary_ptr->right, storage, compile_info, AST_NONE);
     size_t right_index = compile_info->constant_index;
 
     t_brama_vmdata code;
     code.op   = 0;
-    code.reg1 = 0;
+    code.reg1 = dest_id;
     code.reg2 = 0;
     code.reg3 = 0;
 
-    code.reg1 = left_index;
-    code.reg2 = right_index;
+    code.reg2 = left_index;
+    code.reg3 = right_index;
 
     switch (ast->binary_ptr->opt) {
         case OPERATOR_ADDITION:
@@ -2416,13 +2448,16 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
 }
 
 
-void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info) {
+void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     /* add undefined variable to constants for new symbol */
     t_assign_ptr assign = ast->assign_ptr;
 
     vec_push(&storage->constants, UNDEFINED_VAL);
-
     vec_push(&storage->variables,  ast->char_ptr);
+
+    compile_info->variable_index = storage->variables.length - 1;
+    compile_internal(context, ast->assign_ptr->assignment, storage, compile_info, AST_ASSIGNMENT);
+
     t_brama_vmdata code;
     code.reg1 = storage->constants.length - 1;
     code.reg2 = 0;
@@ -2432,7 +2467,7 @@ void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_pt
     vec_push(context->compiler->op_codes, vm_encode(&code));
 }
 
-void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info) {
+void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     int index = -1;
     compile_info->status = BRAMA_OK;
 
@@ -2475,7 +2510,7 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
 }
 
 
-void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info) {
+void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
 
     if (ast->create_new_storage) {
         t_storage_ptr new_storage = BRAMA_MALLOC(sizeof(t_storage));
@@ -2491,15 +2526,15 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
 
     switch (ast->type) {
         case AST_PRIMATIVE:
-            compile_primative(context, ast, storage, compile_info);
+            compile_primative(context, ast, storage, compile_info, upper_ast);
             break;
 
         case AST_BINARY_OPERATION:
-            compile_binary(context, ast, storage, compile_info);
+            compile_binary(context, ast, storage, compile_info, upper_ast);
             break;
 
         case AST_ASSIGNMENT:
-            compile_assignment(context, ast, storage, compile_info);
+            compile_assignment(context, ast, storage, compile_info, upper_ast);
             break;
     }
 }
@@ -2511,7 +2546,7 @@ void compile(t_context_ptr context) {
     size_t total_ast             = asts->length;
     for (size_t i = 0; i < total_ast; ++i) {
         t_ast_ptr ast = asts->data[i];
-        compile_internal(context, ast, context->compiler->global_storage, compile_info);
+        compile_internal(context, ast, context->compiler->global_storage, compile_info, AST_NONE);
     }
 
     vec_push(context->compiler->op_codes, NULL);
@@ -2546,8 +2581,9 @@ void run(t_context_ptr context) {
 
         switch (vmdata.op) {
             case VM_OPT_ADDITION: {
-                t_brama_value left  = constants->data[vmdata.reg1];
-                t_brama_value right = constants->data[vmdata.reg2];
+                t_brama_value left  = constants->data[vmdata.reg2];
+                t_brama_value right = constants->data[vmdata.reg3];
+                constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) + valueToNumber(right));
 
                 if (IS_NUM(left) && IS_NUM(right)) {
                     printf("%f\r\n", valueToNumber(left) + valueToNumber(right));
@@ -2556,11 +2592,36 @@ void run(t_context_ptr context) {
                 break;
 
             case VM_OPT_SUBTRACTION: {
-                t_brama_value left  = constants->data[vmdata.reg1];
-                t_brama_value right = constants->data[vmdata.reg2];
+                t_brama_value left  = constants->data[vmdata.reg2];
+                t_brama_value right = constants->data[vmdata.reg3];
+                constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) - valueToNumber(right));
 
                 if (IS_NUM(left) && IS_NUM(right))
                     printf("%f\r\n", valueToNumber(left) - valueToNumber(right));
+                else if (IS_UNDEFINED(left) || IS_UNDEFINED(right))
+                    printf("undefined\r\n");
+            }
+                break;
+
+            case VM_OPT_DIVISION: {
+                t_brama_value left  = constants->data[vmdata.reg2];
+                t_brama_value right = constants->data[vmdata.reg3];
+                constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) / valueToNumber(right));
+
+                if (IS_NUM(left) && IS_NUM(right))
+                    printf("%f\r\n", valueToNumber(left) / valueToNumber(right));
+                else if (IS_UNDEFINED(left) || IS_UNDEFINED(right))
+                    printf("undefined\r\n");
+            }
+                break;
+
+            case VM_OPT_MULTIPLICATION: {
+                t_brama_value left  = constants->data[vmdata.reg2];
+                t_brama_value right = constants->data[vmdata.reg3];
+                constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) * valueToNumber(right));
+
+                if (IS_NUM(left) && IS_NUM(right))
+                    printf("%f\r\n", valueToNumber(left) * valueToNumber(right));
                 else if (IS_UNDEFINED(left) || IS_UNDEFINED(right))
                     printf("undefined\r\n");
             }

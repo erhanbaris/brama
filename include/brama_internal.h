@@ -34,6 +34,7 @@ brama_status ast_call                (t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_symbol_expr         (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_primary_expr        (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_multiplication_expr (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
+brama_status ast_modulo_expr         (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_addition_expr       (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_bitwise_shift_expr  (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_control_expr        (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
@@ -76,10 +77,10 @@ void brama_dump_ast_internal    (t_ast_ptr ast, size_t level);
 
 void run                        (t_context_ptr context);
 void compile                    (t_context_ptr context);
-void compile_internal           (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info);
-void compile_primative          (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info);
-void compile_binary             (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info);
-void compile_assignment         (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info);
+void compile_internal           (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_primative          (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_binary             (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_assignment         (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 
 void          vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t);
 t_brama_byte  vm_encode(t_brama_vmdata_ptr t);

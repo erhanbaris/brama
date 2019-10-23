@@ -127,7 +127,7 @@ typedef enum brama_operator_type {
     OPERATOR_SUBTRACTION             ,
     OPERATOR_MULTIPLICATION          ,
     OPERATOR_DIVISION                ,
-    OPERATOR_MODULES                 ,
+    OPERATOR_MODULO                  ,
     OPERATOR_INCREMENT               ,
     OPERATOR_DECCREMENT              ,
     OPERATOR_ASSIGN                  ,
@@ -650,13 +650,9 @@ typedef struct _t_context {
 typedef struct _t_brama_vmdata {
     enum brama_vm_operator op;
     int reg1;
-    union {
-        struct {
-            int reg2;
-            int reg3;
-        };
-        int scal;
-    };
+    int reg2;
+    int reg3;
+    int scal;
 } t_brama_vmdata;
 
 

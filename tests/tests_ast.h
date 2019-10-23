@@ -588,7 +588,7 @@ MunitResult ast_primary_expr_test_11(const MunitParameter params[], void* user_d
 MunitResult ast_primary_expr_test_12(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_compile(context, "1, true, null, 1.1, [], 'hello', \"world\"");
-    munit_assert_int(context->status, ==, BRAMA_BLOCK_NOT_VALID);
+    munit_assert_int(context->status, ==, BRAMA_DOES_NOT_MATCH_AST);
     brama_destroy(context);
     return MUNIT_OK;
 }
