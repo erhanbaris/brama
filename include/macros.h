@@ -86,16 +86,18 @@ case OPERATOR_1_SYMBOL :                     \
         ast->type              = AST_PRIMATIVE ;               \
         primative-> STR_TYPE   = value;                        \
         primative->type        = PRI_TYPE ;                    \
+        ast->create_new_storage = false ;                      \
         return ast;                                            \
     }
 
 
-#define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE)       \
-    t_ast* new_##NAME##_ast_internal(INPUT variable, int FILE__ , char_ptr LINE__ ) {       \
-        t_ast_ptr ast = BRAMA_MALLOC_LINE(sizeof (t_ast), FILE__ , LINE__ );  \
-        ast->type     = STR_TYPE;                      \
-        ast-> TYPE    = variable;                      \
-        return ast;                                    \
+#define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE, NEWSTORAGE)       \
+    t_ast* new_##NAME##_ast_internal(INPUT variable, int FILE__ , char_ptr LINE__ ) {   \
+        t_ast_ptr ast           = BRAMA_MALLOC_LINE(sizeof (t_ast), FILE__ , LINE__ );  \
+        ast->type               = STR_TYPE;    \
+        ast-> TYPE              = variable;    \
+        ast->create_new_storage = NEWSTORAGE ; \
+        return ast;                            \
     }
 
 #define new_symbol_ast(DATA)       new_symbol_ast_internal   ( DATA , __FILE__, __LINE__ )

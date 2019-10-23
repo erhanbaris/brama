@@ -29,12 +29,12 @@ MunitResult ast_compile_1(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_int(context->compiler->op_codes->length, == , 11);
     munit_assert_int(context->status, == , BRAMA_OK);
 
-    munit_assert_int(context->compiler->op_codes->data[opcode_index], ==, VM_OPT_CONST_INT);
+    //munit_assert_int(context->compiler->op_codes->data[opcode_index], ==, VM_OPT_CONST_INT);
     t_brama_int i;
     OPCODE_TO_INT(i);
     munit_assert_int(i.int_, ==, 10);
 
-    munit_assert_int(context->compiler->op_codes->data[++opcode_index], ==, VM_OPT_CONST_INT);
+    //munit_assert_int(context->compiler->op_codes->data[++opcode_index], ==, VM_OPT_CONST_INT);
     OPCODE_TO_INT(i);
     munit_assert_int(i.int_, ==, 20);
 
@@ -51,12 +51,12 @@ MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_int(context->compiler->op_codes->length, == , 19);
     munit_assert_int(context->status, == , BRAMA_OK);
 
-    munit_assert_int(context->compiler->op_codes->data[opcode_index], ==, VM_OPT_CONST_DOUBLE);
+    //munit_assert_int(context->compiler->op_codes->data[opcode_index], ==, VM_OPT_CONST_DOUBLE);
     t_brama_double d;
     OPCODE_TO_DOUBLE(d);
     munit_assert_int(d.double_, ==, 10.1);
 
-    munit_assert_int(context->compiler->op_codes->data[++opcode_index], ==, VM_OPT_CONST_DOUBLE);
+    //munit_assert_int(context->compiler->op_codes->data[++opcode_index], ==, VM_OPT_CONST_DOUBLE);
     OPCODE_TO_DOUBLE(d);
     munit_assert_int(d.double_, ==, 20.2);
 
@@ -73,12 +73,12 @@ MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_int(context->compiler->op_codes->length, == , 19);
     munit_assert_int(context->status, == , BRAMA_OK);
 
-    munit_assert_int(context->compiler->op_codes->data[opcode_index], ==, VM_OPT_CONST_DOUBLE);
+    //munit_assert_int(context->compiler->op_codes->data[opcode_index], ==, VM_OPT_CONST_DOUBLE);
     t_brama_double d;
     OPCODE_TO_DOUBLE(d);
     munit_assert_double(d.double_, ==, 10.1);
 
-    munit_assert_int(context->compiler->op_codes->data[++opcode_index], ==, VM_OPT_CONST_DOUBLE);
+    //munit_assert_int(context->compiler->op_codes->data[++opcode_index], ==, VM_OPT_CONST_DOUBLE);
     OPCODE_TO_DOUBLE(d);
     munit_assert_double(d.double_, ==, 20.2);
 

@@ -19,16 +19,13 @@ int main(int argc, const char* argv[]) {
     munit_assert_int(context->compiler->op_codes->length, == , 2);
     munit_assert_int(context->status, == , BRAMA_OK);
 
-    munit_assert_int(context->compiler->op_codes->data[opcode_index], ==, VM_OPT_CONST_INT);
-    t_brama_int i;
-    OPCODE_TO_INT(i);
-    munit_assert_int(i.int_, ==, 10);
+    t_brama_vmdata data;
+    vm_decode(context->compiler->op_codes->data[opcode_index++], &data);
+    munit_assert_int(data.op, ==, VM_OPT_ADDITION);
+    munit_assert_int(data.op, ==, VM_OPT_ADDITION);
 
-    munit_assert_int(context->compiler->op_codes->data[++opcode_index], ==, VM_OPT_CONST_INT);
-    OPCODE_TO_INT(i);
-    munit_assert_int(i.int_, ==, 20);
+    vm_decode(context->compiler->op_codes->data[opcode_index++], &data);
 
-    munit_assert_int(context->compiler->op_codes->data[++opcode_index], ==, VM_OPT_ADDITION);
     brama_destroy(context);
 
 #ifdef _WIN32

@@ -416,20 +416,20 @@ NEW_PRIMATIVE_DEF(empty,  int,                 PRIMATIVE_NULL,       int_)
 NEW_PRIMATIVE_DEF(array,  vec_ast_ptr, PRIMATIVE_ARRAY,      array)
 NEW_PRIMATIVE_DEF(dict,   map_ast_t_ptr,       PRIMATIVE_DICTIONARY, dict)
 
-NEW_AST_DEF(symbol,    char_ptr,              AST_SYMBOL,               char_ptr)
-NEW_AST_DEF(unary,     t_unary_ptr,           AST_UNARY,                unary_ptr)
-NEW_AST_DEF(binary,    t_binary_ptr,          AST_BINARY_OPERATION,     binary_ptr)
-NEW_AST_DEF(control,   t_control_ptr,         AST_CONTROL_OPERATION,    control_ptr)
-NEW_AST_DEF(assign,    t_assign_ptr,          AST_ASSIGNMENT,           assign_ptr)
-NEW_AST_DEF(func_call, t_func_call_ptr,       AST_FUNCTION_CALL,        func_call_ptr)
-NEW_AST_DEF(func_decl, t_func_decl_ptr,       AST_FUNCTION_DECLARATION, func_decl_ptr)
-NEW_AST_DEF(block,     vec_ast_ptr ,  AST_BLOCK,                vector_ptr)
-NEW_AST_DEF(object,    t_object_creation_ptr, AST_OBJECT_CREATION,      object_creation_ptr)
-NEW_AST_DEF(while,     t_while_loop_ptr ,     AST_WHILE,                while_ptr)
-NEW_AST_DEF(if,        t_if_stmt_ptr,         AST_IF_STATEMENT,         if_stmt_ptr)
-NEW_AST_DEF(return,    t_ast_ptr,             AST_RETURN,               ast_ptr)
-NEW_AST_DEF(accessor,  t_accessor_ptr,        AST_ACCESSOR,             accessor_ptr)
-NEW_AST_DEF(keyword,   brama_keyword_type,    AST_KEYWORD,              keyword)
+NEW_AST_DEF(symbol,    char_ptr,              AST_SYMBOL,               char_ptr, false)
+NEW_AST_DEF(unary,     t_unary_ptr,           AST_UNARY,                unary_ptr, false)
+NEW_AST_DEF(binary,    t_binary_ptr,          AST_BINARY_OPERATION,     binary_ptr, false)
+NEW_AST_DEF(control,   t_control_ptr,         AST_CONTROL_OPERATION,    control_ptr, false)
+NEW_AST_DEF(assign,    t_assign_ptr,          AST_ASSIGNMENT,           assign_ptr, false)
+NEW_AST_DEF(func_call, t_func_call_ptr,       AST_FUNCTION_CALL,        func_call_ptr, false)
+NEW_AST_DEF(func_decl, t_func_decl_ptr,       AST_FUNCTION_DECLARATION, func_decl_ptr, true)
+NEW_AST_DEF(block,     vec_ast_ptr ,          AST_BLOCK,                vector_ptr, true)
+NEW_AST_DEF(object,    t_object_creation_ptr, AST_OBJECT_CREATION,      object_creation_ptr, false)
+NEW_AST_DEF(while,     t_while_loop_ptr ,     AST_WHILE,                while_ptr, true)
+NEW_AST_DEF(if,        t_if_stmt_ptr,         AST_IF_STATEMENT,         if_stmt_ptr, true)
+NEW_AST_DEF(return,    t_ast_ptr,             AST_RETURN,               ast_ptr, false)
+NEW_AST_DEF(accessor,  t_accessor_ptr,        AST_ACCESSOR,             accessor_ptr, false)
+NEW_AST_DEF(keyword,   brama_keyword_type,    AST_KEYWORD,              keyword, false)
 
 brama_status as_primative(t_token_ptr token, t_ast_ptr_ptr ast) {
     switch (token->type) {
@@ -1839,9 +1839,11 @@ t_context_ptr brama_init() {
     context->compiler->index          = 0;
     context->compiler->op_codes       = BRAMA_MALLOC(sizeof (vec_opcode));
     context->compiler->global_storage = BRAMA_MALLOC(sizeof (t_storage));
+    context->compiler->global_storage->id = 0;
     vec_init(&context->compiler->global_storage->constants);
     vec_init(&context->compiler->global_storage->variables);
 
+    vec_init(&context->compiler->storages);
     vec_init(context->compiler->op_codes);
 
     return context;
@@ -2474,6 +2476,19 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
 
 
 void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info) {
+
+    if (ast->create_new_storage) {
+        t_storage_ptr new_storage = BRAMA_MALLOC(sizeof(t_storage));
+        vec_push(&context->compiler->storages, new_storage);
+
+        new_storage->id               = context->compiler->storages.length;
+        new_storage->previous_storage = storage;
+        vec_init(&new_storage->constants);
+        vec_init(&new_storage->variables);
+
+        storage = new_storage;
+    }
+
     switch (ast->type) {
         case AST_PRIMATIVE:
             compile_primative(context, ast, storage, compile_info);
@@ -2617,6 +2632,7 @@ void brama_destroy(t_context_ptr context) {
     vec_deinit(context->compiler->op_codes);
     BRAMA_FREE(context->compiler->op_codes);
 
+    vec_deinit(&context->compiler->storages);
     vec_deinit(&context->compiler->global_storage->constants);
     vec_deinit(&context->compiler->global_storage->variables);
     BRAMA_FREE(context->compiler->global_storage);

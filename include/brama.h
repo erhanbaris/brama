@@ -224,11 +224,6 @@ enum brama_vm_operator {
     VM_OPT_AND,
     VM_OPT_OR,
     VM_OPT_DUP,
-    VM_OPT_POP,
-    VM_OPT_CONST_STR,
-    VM_OPT_CONST_INT,
-    VM_OPT_CONST_BOOL,
-    VM_OPT_CONST_DOUBLE,
     VM_OPT_NULL,
     VM_OPT_UNDEFINED,
     VM_OPT_DELETE,
@@ -472,7 +467,7 @@ typedef t_compile_info*    t_compile_info_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
-
+enum brama_vm_operator;
 
 typedef uint64_t           t_brama_value;
 typedef uint32_t           t_brama_opcode;
@@ -488,6 +483,8 @@ typedef map_t(t_brama_value)   map_value;
 typedef map_value*             map_value_ptr;
 typedef vec_t(t_brama_value)   vec_value;
 typedef vec_value*             vec_value_ptr;
+typedef vec_t(t_storage*)      vec_storage;
+typedef vec_storage*           vec_storage_ptr;
 typedef t_brama_vmdata*        t_brama_vmdata_ptr;
 typedef vec_t(t_token_ptr)     vec_token;
 typedef vec_t(t_token_ptr)*    vec_token_ptr;
@@ -534,11 +531,14 @@ typedef struct _t_compiler {
     size_t        index;
     vec_byte_ptr  op_codes;
     t_storage_ptr global_storage;
+    vec_storage   storages;
 } t_compiler;
 
 typedef struct _t_storage {
-    vec_value  constants;
-    vec_string variables;
+    size_t        id;
+    vec_value     constants;
+    vec_string    variables;
+    t_storage_ptr previous_storage;
 } t_storage;
 
 typedef struct _t_primative {
@@ -635,6 +635,7 @@ typedef struct _t_ast {
         int                    int_;
         brama_keyword_type     keyword;
     };
+    bool create_new_storage;
 } t_ast;
 
 typedef struct _t_context {
@@ -647,8 +648,8 @@ typedef struct _t_context {
 } t_context;
 
 typedef struct _t_brama_vmdata {
+    enum brama_vm_operator op;
     int reg1;
-    int op;
     union {
         struct {
             int reg2;

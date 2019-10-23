@@ -531,6 +531,7 @@ MunitResult ast_accessor_2(const MunitParameter params[], void* user_data_or_fix
     munit_assert_ptr_not_null(ast->accessor_ptr->object->accessor_ptr->property);
     munit_assert_int         (ast->accessor_ptr->object->accessor_ptr->property->type, ==, AST_SYMBOL);
     munit_assert_string_equal(ast->accessor_ptr->object->accessor_ptr->property->char_ptr, "data");
+    brama_destroy(context);
     return MUNIT_OK;
 }
 
@@ -538,6 +539,7 @@ MunitResult ast_accessor_3(const MunitParameter params[], void* user_data_or_fix
     t_context* context = brama_init();
     brama_compile(context,  "this.this[0]");
     munit_assert_int(context->status, == , BRAMA_FUNCTION_CALL_NOT_VALID);
+    brama_destroy(context);
     return MUNIT_OK;
 }
 
