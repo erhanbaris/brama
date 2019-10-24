@@ -13,7 +13,7 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init();
-    brama_compile(context, "var test = (1 + 6) * (2 - 10)");
+    brama_compile(context, "var test = (1 + 6) * (2 - 10) / 12 - 2"); /* -6.66666666667 */
     brama_run(context);
     brama_destroy(context);
 

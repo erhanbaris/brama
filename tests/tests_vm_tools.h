@@ -31,6 +31,8 @@ MunitResult encode_decode_2(const MunitParameter params[], void* user_data_or_fi
     t_brama_vmdata vmdata_decoded;
     vmdata.op   = VM_OPT_APPEND;
     vmdata.reg1 = 1;
+    vmdata.reg2 = 0;
+    vmdata.reg3 = 0;
     vmdata.scal = 60;
 
     t_brama_byte code = vm_encode(&vmdata);
