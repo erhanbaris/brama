@@ -2013,6 +2013,28 @@ void brama_dump_ast_internal(t_ast_ptr ast, size_t level) {
         AST_DUMP_END();
         break;
 
+    case AST_BINARY_OPERATION:
+        AST_DUMP_START();
+        AST_PRINT_PROPERTY("type", "BINARY");
+        AST_PRINT_PROPERTY("opt", OPERATORS[(int)ast->binary_ptr->opt]);
+        AST_PRINT_SECTION("left");
+        AST_DUMP_AST(ast->binary_ptr->left);
+        AST_PRINT_SECTION("right");
+        AST_DUMP_AST(ast->binary_ptr->right);
+        AST_DUMP_END();
+        break;
+
+    case AST_ASSIGNMENT:
+        AST_DUMP_START();
+        AST_PRINT_PROPERTY("type", "ASSIGN");
+        AST_PRINT_PROPERTY("opt", OPERATORS[(int)ast->assign_ptr->opt]);
+        AST_PRINT_SECTION("object");
+        AST_DUMP_AST(ast->assign_ptr->object);
+        AST_PRINT_SECTION("assignment");
+        AST_DUMP_AST(ast->assign_ptr->assignment);
+        AST_DUMP_END();
+        break;
+
     case AST_PRIMATIVE:
         AST_DUMP_START();
         AST_PRINT_PROPERTY("type", "PRIMATIVE");
