@@ -2381,23 +2381,24 @@ bool destroy_ast_primative(t_primative_ptr primative) {
 void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     size_t dest_id = 0;
     if (upper_ast == AST_ASSIGNMENT)
-        dest_id = compile_info->variable_index;
+        dest_id = compile_info->index;
     else {
         vec_push(&storage->variables,  NULL);
-        dest_id = storage->variables.length - 1;
+        dest_id                   = storage->variables.length - 1;
     }
 
     compile_internal(context, ast->binary_ptr->left, storage, compile_info, AST_NONE);
-    size_t left_index = compile_info->constant_index;
+    size_t left_index = compile_info->index;
 
     compile_internal(context, ast->binary_ptr->right, storage, compile_info, AST_NONE);
-    size_t right_index = compile_info->constant_index;
+    size_t right_index = compile_info->index;
 
     t_brama_vmdata code;
     code.op   = 0;
     code.reg1 = dest_id;
     code.reg2 = 0;
     code.reg3 = 0;
+    code.scal = 0;
 
     code.reg2 = left_index;
     code.reg3 = right_index;
@@ -2444,6 +2445,10 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
             break;
     }
 
+    compile_info->index       = dest_id;
+    compile_info->is_variable = true;
+    printf ("compile_binary reg1=%d reg2=%d reg3=%d\r\n", code.reg1, code.reg2, code.reg3);
+
     vec_push(context->compiler->op_codes, vm_encode(&code));
 }
 
@@ -2455,7 +2460,7 @@ void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_pt
     vec_push(&storage->constants, UNDEFINED_VAL);
     vec_push(&storage->variables,  ast->char_ptr);
 
-    compile_info->variable_index = storage->variables.length - 1;
+    compile_info->index = storage->variables.length - 1;
     compile_internal(context, ast->assign_ptr->assignment, storage, compile_info, AST_ASSIGNMENT);
 
     t_brama_vmdata code;
@@ -2476,20 +2481,20 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
             vec_find(&storage->constants, numberToValue(ast->primative_ptr->int_), index);
             if (index == -1) {
                 vec_push(&storage->constants, numberToValue(ast->primative_ptr->int_));
-                compile_info->constant_index = storage->constants.length - 1;
+                compile_info->index = storage->constants.length - 1;
             }
             else
-                compile_info->constant_index = index;
+                compile_info->index = index;
             break;
 
         case PRIMATIVE_DOUBLE:
             vec_find(&storage->constants, numberToValue(ast->primative_ptr->double_), index);
             if (index == -1) {
                 vec_push(&storage->constants, numberToValue(ast->primative_ptr->double_));
-                compile_info->constant_index = storage->constants.length - 1;
+                compile_info->index = storage->constants.length - 1;
             }
             else
-                compile_info->constant_index = index;
+                compile_info->index = index;
 
             break;
 
@@ -2497,10 +2502,10 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
             vec_find(&storage->constants, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL), index);
             if (index == -1) {
                 vec_push(&storage->constants, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL));
-                compile_info->constant_index = storage->constants.length - 1;
+                compile_info->index = storage->constants.length - 1;
             }
             else
-                compile_info->constant_index = index;
+                compile_info->index = index;
             break;
 
         default:
@@ -2646,23 +2651,19 @@ end
 
 /* FOR FUTURE USAGE */
 void vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t) {
-    t->op   = (instr & 0xF000) >> 12;
-    t->reg1 = (instr & 0x0F00) >> 8;
-    t->reg2 = (instr & 0x00F0) >> 4;
-    t->reg3 = (instr & 0x000F);
-    t->scal = (instr & 0x00FF);
+    t->op   = (instr & OP_MASK  ) >> 26;
+    t->reg1 = (instr & REG1_MASK) >> 18;
+    t->reg2 = (instr & REG2_MASK) >> 9;
+    t->reg3 = (instr & REG3_MASK);
+    t->scal = (instr & SCAL_MASK);
 }
 
 t_brama_byte vm_encode(t_brama_vmdata_ptr t) {
-    t_brama_byte instr = 0;
-    instr += t->op   << 12;
-    instr += t->reg1 << 8;
-    if (t->scal != 0)
-        instr += t->scal;
-    else {
-        instr += t->reg2 << 4;
-        instr += t->reg3;
-    }
+    t_brama_byte instr = ((t->op   << 26) & OP_MASK  ) | 
+                         ((t->reg1 << 18) & REG1_MASK) | 
+                         ((t->reg2 << 9 ) & REG2_MASK) | 
+                         ((t->reg3      ) & REG3_MASK) | 
+                         ((t->scal      ) & SCAL_MASK);
     return instr;
 }
 

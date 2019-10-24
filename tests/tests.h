@@ -7,8 +7,10 @@
 #include "tests_ast_2.h"
 #include "tests_bitwise.h"
 #include "tests_compile.h"
+#include "tests_vm_tools.h"
 
 static MunitSuite other_suites[] = {
+  { "/vm-tests",       VM_TOOLS_TESTS,NULL, 1, MUNIT_SUITE_OPTION_NONE },
    { "/token-tests",   TOKEN_TESTS,   NULL, 1, MUNIT_SUITE_OPTION_NONE },
    { "/tools-tests",   TOOLS_TESTS,   NULL, 1, MUNIT_SUITE_OPTION_NONE },
    { "/ast-tests",     AST_TESTS,     NULL, 1, MUNIT_SUITE_OPTION_NONE },

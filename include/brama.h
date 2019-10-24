@@ -1,4 +1,4 @@
-#ifndef BRAMA_H
+﻿#ifndef BRAMA_H
 #define BRAMA_H
 
 #include <stdio.h>
@@ -667,8 +667,8 @@ typedef struct _t_vm_object {
 } t_vm_object;
 
 typedef struct _t_compile_info {
-    int          variable_index;
-    int          constant_index;
+    int  index;
+    bool is_variable;
     brama_status status;
 } t_compile_info;
 
@@ -724,6 +724,23 @@ typedef struct _t_compile_info {
 #define GET_TAG(value) ((int)((t_brama_value) & MASK_TAG))
 
 #define GET_VALUE_FROM_OBJ(obj) ((t_brama_value)(SIGN_BIT | QNAN | (uint64_t)(uintptr_t)(obj)))
+
+
+/*
+-------------------------------------------------------------------------------
+ 1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1
+-------------------------------------------------------------------------------
+|   OP CODE   |        REG1       |         REG2        |         REG2        |
+-------------------------------------------------------------------------------
+|   OP CODE   |        REG1       |                    SCAL                   |
+-------------------------------------------------------------------------------
+*/
+
+#define OP_MASK   0xFC000000
+#define REG1_MASK 0x03FC0000
+#define REG2_MASK 0x0003FE00
+#define REG3_MASK 0x000001FF
+#define SCAL_MASK 0x0003FFFF
 
 typedef union
 {
