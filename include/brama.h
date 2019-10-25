@@ -537,7 +537,7 @@ typedef struct _t_compiler {
 typedef struct _t_storage {
     size_t        id;
     vec_value     constants;
-    vec_string    variables;
+    map_value     variables;
     t_storage_ptr previous_storage;
 } t_storage;
 
@@ -668,7 +668,7 @@ typedef struct _t_vm_object {
 
 typedef struct _t_compile_info {
     int  index;
-    bool is_variable;
+    //bool is_variable;
     brama_status status;
 } t_compile_info;
 

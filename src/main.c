@@ -16,6 +16,8 @@ int main(int argc, const char* argv[]) {
     brama_compile(context, "var test = (1 + 6) * (2 - 10) / 12 - 2"); /* -6.66666666667 */
     brama_run(context);
     brama_destroy(context);
+    getchar();
+    return 0;
 
 #ifdef _WIN32
     int test_status = munit_suite_main(&ALL_SUITE, (void*) "µnit", NULL, NULL);

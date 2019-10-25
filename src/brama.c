@@ -2406,14 +2406,14 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
         dest_id = compile_info->index;
     else {
         vec_push(&storage->variables,  NULL);
-        dest_id                   = storage->variables.length - 1;
+        dest_id = storage->variables.length - 1;
     }
 
     compile_internal(context, ast->binary_ptr->left, storage, compile_info, AST_NONE);
-    size_t left_index = compile_info->index;
+    int left_index = compile_info->index;
 
     compile_internal(context, ast->binary_ptr->right, storage, compile_info, AST_NONE);
-    size_t right_index = compile_info->index;
+    int right_index = compile_info->index;
 
     t_brama_vmdata code;
     code.op   = 0;
@@ -2467,10 +2467,9 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
             break;
     }
 
-    compile_info->index       = dest_id;
-    compile_info->is_variable = true;
-    printf ("compile_binary reg1=%d reg2=%d reg3=%d\r\n", code.reg1, code.reg2, code.reg3);
+    printf ("binary reg1=%d reg2=%d reg3=%d\r\n", code.reg1, code.reg2, code.reg3);
 
+    compile_info->index       = dest_id;
     vec_push(context->compiler->op_codes, vm_encode(&code));
 }
 
@@ -2503,7 +2502,7 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
             vec_find(&storage->constants, numberToValue(ast->primative_ptr->int_), index);
             if (index == -1) {
                 vec_push(&storage->constants, numberToValue(ast->primative_ptr->int_));
-                compile_info->index = storage->constants.length - 1;
+                compile_info->index = (storage->constants.length - 1) * -1;
             }
             else
                 compile_info->index = index;
@@ -2513,7 +2512,7 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
             vec_find(&storage->constants, numberToValue(ast->primative_ptr->double_), index);
             if (index == -1) {
                 vec_push(&storage->constants, numberToValue(ast->primative_ptr->double_));
-                compile_info->index = storage->constants.length - 1;
+                compile_info->index = (storage->constants.length - 1) * -1;
             }
             else
                 compile_info->index = index;
@@ -2524,7 +2523,7 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
             vec_find(&storage->constants, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL), index);
             if (index == -1) {
                 vec_push(&storage->constants, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL));
-                compile_info->index = storage->constants.length - 1;
+                compile_info->index = (storage->constants.length - 1) * -1;
             }
             else
                 compile_info->index = index;
@@ -2612,7 +2611,8 @@ void run(t_context_ptr context) {
                 t_brama_value right = constants->data[vmdata.reg3];
                 constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) + valueToNumber(right));
 
-                if (IS_NUM(left) && IS_NUM(right)) {
+                if (IS_NUM(left) && IS_NUM(right))  {
+                    printf ("compile_binary(+) reg1=%d reg2=%d(%f) reg3=%d(%f)\r\n", vmdata.reg1, vmdata.reg2, valueToNumber(left), vmdata.reg3, valueToNumber(right));
                     printf("%f\r\n", valueToNumber(left) + valueToNumber(right));
                 }
             }
@@ -2623,8 +2623,10 @@ void run(t_context_ptr context) {
                 t_brama_value right = constants->data[vmdata.reg3];
                 constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) - valueToNumber(right));
 
-                if (IS_NUM(left) && IS_NUM(right))
+                if (IS_NUM(left) && IS_NUM(right)) {
+                    printf ("compile_binary(-) reg1=%d reg2=%d(%f) reg3=%d(%f)\r\n", vmdata.reg1, vmdata.reg2, valueToNumber(left), vmdata.reg3, valueToNumber(right));
                     printf("%f\r\n", valueToNumber(left) - valueToNumber(right));
+                }
                 else if (IS_UNDEFINED(left) || IS_UNDEFINED(right))
                     printf("undefined\r\n");
             }
@@ -2635,8 +2637,10 @@ void run(t_context_ptr context) {
                 t_brama_value right = constants->data[vmdata.reg3];
                 constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) / valueToNumber(right));
 
-                if (IS_NUM(left) && IS_NUM(right))
+                if (IS_NUM(left) && IS_NUM(right)) {
+                    printf ("compile_binary(/) reg1=%d reg2=%d(%f) reg3=%d(%f)\r\n", vmdata.reg1, vmdata.reg2, valueToNumber(left), vmdata.reg3, valueToNumber(right));
                     printf("%f\r\n", valueToNumber(left) / valueToNumber(right));
+                }
                 else if (IS_UNDEFINED(left) || IS_UNDEFINED(right))
                     printf("undefined\r\n");
             }
@@ -2647,8 +2651,10 @@ void run(t_context_ptr context) {
                 t_brama_value right = constants->data[vmdata.reg3];
                 constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) * valueToNumber(right));
 
-                if (IS_NUM(left) && IS_NUM(right))
+                if (IS_NUM(left) && IS_NUM(right)) {
+                    printf ("compile_binary(*) reg1=%d reg2=%d(%f) reg3=%d(%f)\r\n", vmdata.reg1, vmdata.reg2, valueToNumber(left), vmdata.reg3, valueToNumber(right));
                     printf("%f\r\n", valueToNumber(left) * valueToNumber(right));
+                }
                 else if (IS_UNDEFINED(left) || IS_UNDEFINED(right))
                     printf("undefined\r\n");
             }
