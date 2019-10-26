@@ -76,10 +76,14 @@ void brama_dump_vector_internal (vec_ast_ptr vector, size_t level);
 void brama_dump_ast_internal    (t_ast_ptr ast, size_t level);
 
 void run                        (t_context_ptr context);
+void brama_compile_dump         (t_context_ptr context);
+brama_status brama_get_var      (t_context_ptr context, char_ptr var_name, brama_vm_const_type* type, void** data);
+
 void compile                    (t_context_ptr context);
 void compile_internal           (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_primative          (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_binary             (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_control            (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_assignment         (t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 
 void          vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t);

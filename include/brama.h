@@ -366,6 +366,51 @@ static OperatorPair OPERATORS[] =  {
     { "CURVE_BRACKET_END",       "}"   }
 };
 
+static OperatorPair VM_OPCODES[] =  {
+        { "HALT", ""},
+        { "ADD", "+"},
+        { "SUB", "-"},
+        { "MUL", "*"},
+        { "DIV", "/"},
+        { "MOD", "%"},
+        { "B.AND", "&"},
+        { "B.OR", "|"},
+        { "B.NOT", "!"},
+        { "BiXOR", "^"},
+        { "B.L.S.", "<<"},
+        { "B.R.S.", ">>"},
+        { "B.U.R.S", ">>>"},
+        { "EQ", "=="},
+        { "LT", "<"},
+        { "LTE", "<="},
+        { "GT", ">"},
+        { "GTE", ">="},
+        { "AND", "&&"},
+        { "OR", "||"},
+        { "DUP", ""},
+        { "NULL", "null"},
+        { "UNDEFINED", "undefined"},
+        { "DELETE", ""},
+        { "JMP", ""},
+        { "IF_EQ", ""},
+        { "JIF", ""},
+        { "JNIF", ""},
+        { "INC", "++"},
+        { "DINC", "--"},
+        { "INIT_VAR", ""},
+        { "CALL", ""},
+        { "RETURN", ""},
+        { "PUSH", ""},
+        { "PRINT", ""},
+        { "NEG", "-"},
+        { "CALL_NATIVE", ""},
+        { "METHOD_DEF", ""},
+        { "INITARRAY", ""},
+        { "INITDICT", ""},
+        { "NOT_EQ", "!="},
+        { "APPEND", ""}
+};
+
 static char* KEYWORDS[] = {
     "NONE",
     "DO",
@@ -483,6 +528,8 @@ typedef map_t(t_brama_value)   map_value;
 typedef map_value*             map_value_ptr;
 typedef vec_t(t_brama_value)   vec_value;
 typedef vec_value*             vec_value_ptr;
+typedef map_t(size_t)          map_size_t;
+typedef map_size_t*            map_size_t_ptr;
 typedef vec_t(t_storage*)      vec_storage;
 typedef vec_storage*           vec_storage_ptr;
 typedef t_brama_vmdata*        t_brama_vmdata_ptr;
@@ -537,7 +584,8 @@ typedef struct _t_compiler {
 typedef struct _t_storage {
     size_t        id;
     vec_value     constants;
-    map_value     variables;
+    vec_value     variables;
+    map_size_t    variable_names;
     t_storage_ptr previous_storage;
 } t_storage;
 
@@ -649,26 +697,22 @@ typedef struct _t_context {
 
 typedef struct _t_brama_vmdata {
     enum brama_vm_operator op;
-    int reg1;
-    int reg2;
-    int reg3;
-    int scal;
+    int8_t  reg1;
+    int8_t  reg2;
+    int8_t  reg3;
+    int16_t scal;
 } t_brama_vmdata;
 
 
 typedef struct _t_vm_object {
     brama_vm_const_type type;
     union {
-        int        int_;
-        double     double_;
-        bool       bool_;
-        char*      char_ptr;
+        char* char_ptr;
     };
 } t_vm_object;
 
 typedef struct _t_compile_info {
     int  index;
-    //bool is_variable;
     brama_status status;
 } t_compile_info;
 
@@ -686,8 +730,7 @@ typedef struct _t_compile_info {
 // An object pointer is a NaN with a set sign bit.
 #define IS_OBJ(value) (((value) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
 
-#define IS_STRING(value) (IS_OBJ(value) && AS_OBJ(value)->Type == vm_object::vm_object_type::STR)
-#define IS_ARRAY(value) (IS_OBJ(value) && AS_OBJ(value)->Type == vm_object::vm_object_type::ARRAY)
+#define IS_STRING(value) (IS_OBJ(value) && AS_OBJ(value)->type == CONST_STRING)
 
 #define IS_FALSE(value)     ((value) == FALSE_VAL)
 #define IS_BOOL(value)      (value == TRUE_VAL || value == FALSE_VAL)
@@ -712,6 +755,7 @@ typedef struct _t_compile_info {
 
 // Value -> Obj*.
 #define AS_OBJ(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
+#define AS_STRING(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))->char_ptr
 
 // Singleton values.
 #define NULL_VAL      ((t_brama_value)(uint64_t)(QNAN | TAG_NULL))
@@ -736,11 +780,11 @@ typedef struct _t_compile_info {
 -------------------------------------------------------------------------------
 */
 
-#define OP_MASK   0xFC000000
-#define REG1_MASK 0x03FC0000
-#define REG2_MASK 0x0003FE00
-#define REG3_MASK 0x000001FF
-#define SCAL_MASK 0x0003FFFF
+#define OP_MASK   0xFF000000
+#define REG1_MASK 0x00FF0000
+#define REG2_MASK 0x0000FF00
+#define REG3_MASK 0x000000FF
+#define SCAL_MASK 0x0000FFFF
 
 typedef union
 {

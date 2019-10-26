@@ -2406,7 +2406,7 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
         dest_id = compile_info->index;
     else {
         vec_push(&storage->variables,  NULL);
-        dest_id = storage->variables.length - 1;
+        dest_id = storage->variables.length;
     }
 
     compile_internal(context, ast->binary_ptr->left, storage, compile_info, AST_NONE);
@@ -2467,7 +2467,55 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
             break;
     }
 
-    printf ("binary reg1=%d reg2=%d reg3=%d\r\n", code.reg1, code.reg2, code.reg3);
+    compile_info->index       = dest_id;
+    vec_push(context->compiler->op_codes, vm_encode(&code));
+}
+
+void compile_control(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    vec_push(&storage->variables,  NULL);
+    size_t dest_id = storage->variables.length;
+
+    compile_internal(context, ast->binary_ptr->left, storage, compile_info, AST_NONE);
+    int left_index = compile_info->index;
+
+    compile_internal(context, ast->binary_ptr->right, storage, compile_info, AST_NONE);
+    int right_index = compile_info->index;
+
+    t_brama_vmdata code;
+    code.op   = 0;
+    code.reg1 = dest_id;
+    code.reg2 = 0;
+    code.reg3 = 0;
+    code.scal = 0;
+
+    code.reg2 = left_index;
+    code.reg3 = right_index;
+
+    switch (ast->binary_ptr->opt) {
+        case OPERATOR_LESS_THAN:
+            code.op = VM_OPT_LT;
+            break;
+
+        case OPERATOR_LESS_EQUAL_THAN:
+            code.op = VM_OPT_LTE;
+            break;
+
+        case OPERATOR_GREATER_THAN:
+            code.op = VM_OPT_GT;
+            break;
+
+        case OPERATOR_GREATER_EQUAL_THAN:
+            code.op = VM_OPT_GTE;
+            break;
+
+        case OPERATOR_EQUAL:
+            code.op = VM_OPT_GT;
+            break;
+
+        case OPERATOR_EQUAL_VALUE:
+            code.op = VM_OPT_GTE;
+            break;
+    }
 
     compile_info->index       = dest_id;
     vec_push(context->compiler->op_codes, vm_encode(&code));
@@ -2478,19 +2526,26 @@ void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_pt
     /* add undefined variable to constants for new symbol */
     t_assign_ptr assign = ast->assign_ptr;
 
-    vec_push(&storage->constants, UNDEFINED_VAL);
-    vec_push(&storage->variables,  ast->char_ptr);
+    t_vm_object_ptr new_var = BRAMA_MALLOC(sizeof(t_vm_object));
+    new_var->char_ptr       = ast->char_ptr;
+    new_var->type           = CONST_STRING;
 
-    compile_info->index = storage->variables.length - 1;
+    /* Create new variable slot */
+    vec_push(&storage->variables, UNDEFINED_VAL);
+    map_set(&storage->variable_names, assign->object->char_ptr, compile_info->index);
+    compile_info->index = storage->variables.length;
+    //vec_push(&storage->variable_names, assign->object->char_ptr);
+
     compile_internal(context, ast->assign_ptr->assignment, storage, compile_info, AST_ASSIGNMENT);
-
-    t_brama_vmdata code;
-    code.reg1 = storage->constants.length - 1;
-    code.reg2 = 0;
-    code.reg3 = 0;
-    code.op   = VM_OPT_INIT_VAR;
-
-    vec_push(context->compiler->op_codes, vm_encode(&code));
+    if (ast->assign_ptr->assignment->type == AST_PRIMATIVE) {
+        t_brama_vmdata code;
+        code.op   = VM_OPT_INIT_VAR;
+        code.reg1 = storage->variables.length;
+        code.reg2 = storage->constants.length * -1;
+        code.reg3 = 0;
+        code.scal = 0;
+        vec_push(context->compiler->op_codes, vm_encode(&code));
+    }
 }
 
 void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -2502,20 +2557,20 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
             vec_find(&storage->constants, numberToValue(ast->primative_ptr->int_), index);
             if (index == -1) {
                 vec_push(&storage->constants, numberToValue(ast->primative_ptr->int_));
-                compile_info->index = (storage->constants.length - 1) * -1;
+                compile_info->index = (storage->constants.length) * -1;
             }
             else
-                compile_info->index = index;
+                compile_info->index = ++index * -1;
             break;
 
         case PRIMATIVE_DOUBLE:
             vec_find(&storage->constants, numberToValue(ast->primative_ptr->double_), index);
             if (index == -1) {
                 vec_push(&storage->constants, numberToValue(ast->primative_ptr->double_));
-                compile_info->index = (storage->constants.length - 1) * -1;
+                compile_info->index = (storage->constants.length) * -1;
             }
             else
-                compile_info->index = index;
+                compile_info->index = ++index * -1;
 
             break;
 
@@ -2523,10 +2578,28 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
             vec_find(&storage->constants, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL), index);
             if (index == -1) {
                 vec_push(&storage->constants, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL));
-                compile_info->index = (storage->constants.length - 1) * -1;
+                compile_info->index = (storage->constants.length) * -1;
             }
             else
-                compile_info->index = index;
+                compile_info->index = ++index * -1;
+            break;
+
+        case PRIMATIVE_STRING: {
+            t_brama_value value;
+            compile_info->index = 0;
+            vec_foreach(&storage->constants, value, index) {
+                if (IS_STRING(value) && strcmp(ast->primative_ptr->char_ptr, AS_OBJ(value)->char_ptr) == 0)
+                    compile_info->index = (index + 1) * -1;
+            }
+
+            if (compile_info->index == 0) {
+                t_vm_object_ptr object = BRAMA_MALLOC(sizeof(t_vm_object));
+                object->type           = CONST_STRING;
+                object->char_ptr       = ast->primative_ptr->char_ptr;
+                vec_push(&storage->constants, GET_VALUE_FROM_OBJ(object));
+                compile_info->index = (storage->constants.length) * -1;
+            }
+        }
             break;
 
         default:
@@ -2546,6 +2619,7 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
         new_storage->previous_storage = storage;
         vec_init(&new_storage->constants);
         vec_init(&new_storage->variables);
+        map_init(&new_storage->variable_names);
 
         storage = new_storage;
     }
@@ -2561,6 +2635,10 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
 
         case AST_ASSIGNMENT:
             compile_assignment(context, ast, storage, compile_info, upper_ast);
+            break;
+
+        case AST_CONTROL_OPERATION:
+            compile_control(context, ast, storage, compile_info, upper_ast);
             break;
     }
 }
@@ -2594,9 +2672,116 @@ double valueToNumber(t_brama_value num) {
     return data.num;
 }
 
+int8_t sabs8(int8_t i)
+{
+    int8_t res;
+
+    if (INT8_MIN == i)
+    {
+        res = INT8_MAX;
+    }
+    else
+    {
+        res = i < 0 ? -i : i;
+    }
+
+    return res;
+}
+
+brama_status brama_get_var(t_context_ptr context, char_ptr var_name, brama_vm_const_type* type, void** data) {
+    size_t* index = map_get(&context->compiler->global_storage->variable_names, var_name);
+    if (index == NULL)
+        return BRAMA_NOK;
+
+    t_brama_value value = context->compiler->global_storage->variables.data[*index];
+    if (IS_BOOL(value)) {
+        *type = CONST_BOOL;
+        data  = BRAMA_MALLOC(sizeof(bool));
+        *data = IS_FALSE(value) ? false : true;
+    } else if (IS_NUM(value)) {
+        *type = CONST_INTEGER;
+        double* tmp_data = BRAMA_MALLOC(sizeof(double));
+        *tmp_data = valueToNumber(value);
+        *data = tmp_data;
+    } else if (IS_UNDEFINED(value)) {
+        *type = CONST_UNDEFINED;
+    } else if (IS_NULL(value)) {
+        *type = CONST_NULL;
+    } else if (IS_STRING(value)) {
+        *type = CONST_STRING;
+
+        char_ptr tmp = BRAMA_MALLOC(sizeof(char) * (strlen(AS_STRING(value)) + 1));
+        strcpy(tmp, AS_STRING(value));
+        tmp[strlen(AS_STRING(value))] = '\0';
+        *data = tmp;
+    }
+
+    return  BRAMA_OK;
+}
+
+void brama_compile_dump(t_context_ptr context) {
+    int            index          = 0;
+    vec_byte_ptr   bytes          = context->compiler->op_codes;
+    vec_value_ptr  constants      = &context->compiler->global_storage->constants;
+    vec_value_ptr  variables      = &context->compiler->global_storage->variables;
+    map_size_t_ptr variable_names = &context->compiler->global_storage->variable_names;
+    char_ptr       tmp_var        = NULL;
+    t_brama_value  tmp_val;
+
+    printf ("[CONSTANTS] [%d]\r\n", constants->length);
+    vec_foreach(constants, tmp_val, index) {
+        if (IS_BOOL(tmp_val))
+            printf ("    [-%d]    %s\r\n", index + 1, IS_FALSE(tmp_val) ? "false" : "true");
+        else if (IS_NUM(tmp_val))
+            printf ("    [-%d]    %f\r\n", index + 1, valueToNumber(tmp_val));
+        else if (IS_STRING(tmp_val))
+            printf ("    [-%d]    '%s'\r\n", index + 1, AS_STRING(tmp_val));
+        else if (IS_UNDEFINED(tmp_val))
+            printf ("    [-%d]    undefined\r\n", index + 1);
+        else if (IS_NULL(tmp_val))
+            printf ("    [-%d]    null\r\n", index + 1);
+    }
+
+    printf ("\r\n[VARIABLES] [%d]\r\n", variables->length);
+    map_iter_t iter = map_iter(variable_names);
+    index           = 0;
+    while ((tmp_var = map_next(variable_names, &iter))) {
+        printf ("    [%d]    %s\r\n", (*map_get(variable_names, tmp_var) + 1), tmp_var);
+    }
+    printf ("----------------------\r\n");
+    index           = 0;
+    vec_foreach(variables, tmp_val, index) {
+        if (IS_BOOL(tmp_val)) {
+            printf ("    [%d]    %s\r\n", index + 1, IS_FALSE(tmp_val) ? "false" : "true");
+        } else if (IS_NUM(tmp_val)) {
+            printf ("    [%d]    %f\r\n", index + 1, valueToNumber(tmp_val));
+        } else if (IS_UNDEFINED(tmp_val)) {
+            printf ("    [%d]    undefined\r\n", index + 1);
+        } else if (IS_NULL(tmp_val)) {
+            printf ("    [%d]    null\r\n", index + 1);
+        } else if (IS_STRING(tmp_val)) {
+            printf ("    [%d]    '%s'\r\n", index + 1, AS_STRING(tmp_val));
+        }
+    }
+
+    size_t total_bytes = bytes->length;
+    t_brama_byte* ipc  = &bytes->data[0];
+    index              = 0;
+
+    printf ("\r\n[OPCODES] [%d]\r\n", bytes->length - 1);
+    while (*ipc != NULL) {
+        t_brama_vmdata vmdata;
+        vm_decode(*ipc, &vmdata);
+
+        printf ("    [%d]    %-10s %2d %2d %2d\r\n", index++, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
+        ++ipc;
+    }
+}
+
 void run(t_context_ptr context) {
     vec_byte_ptr bytes      = context->compiler->op_codes;
     vec_value_ptr constants = &context->compiler->global_storage->constants;
+    vec_value_ptr variables = &context->compiler->global_storage->variables;
 
     size_t total_bytes = bytes->length;
     t_brama_byte* ipc  = &bytes->data[0];
@@ -2606,57 +2791,121 @@ void run(t_context_ptr context) {
         vm_decode(*ipc, &vmdata);
 
         switch (vmdata.op) {
-            case VM_OPT_ADDITION: {
-                t_brama_value left  = constants->data[vmdata.reg2];
-                t_brama_value right = constants->data[vmdata.reg3];
-                constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) + valueToNumber(right));
+
+            case VM_OPT_INIT_VAR: {
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                variables->data[vmdata.reg1 - 1] = left;
+                break;
+            }
+
+            /* CONTROLS */
+
+            /* '<' operator */
+            case VM_OPT_LT: {
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
 
                 if (IS_NUM(left) && IS_NUM(right))  {
-                    printf ("compile_binary(+) reg1=%d reg2=%d(%f) reg3=%d(%f)\r\n", vmdata.reg1, vmdata.reg2, valueToNumber(left), vmdata.reg3, valueToNumber(right));
-                    printf("%f\r\n", valueToNumber(left) + valueToNumber(right));
+                    variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(left) < valueToNumber(right)) ? TRUE_VAL : FALSE_VAL;
+                }
+                break;
+            }
+
+                /* '<=' operator */
+            case VM_OPT_LTE: {
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
+
+                if (IS_NUM(left) && IS_NUM(right))  {
+                    variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(left) <= valueToNumber(right)) ? TRUE_VAL : FALSE_VAL;
+                }
+                break;
+            }
+                /* '>' operator */
+            case VM_OPT_GT: {
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
+
+                if (IS_NUM(left) && IS_NUM(right))  {
+                    variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(left) < valueToNumber(right)) ? TRUE_VAL : FALSE_VAL;
+                }
+                break;
+            }
+
+                /* '>=' operator */
+            case VM_OPT_GTE: {
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
+
+                if (IS_NUM(left) && IS_NUM(right))  {
+                    variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(left) >= valueToNumber(right)) ? TRUE_VAL : FALSE_VAL;
+                }
+                break;
+            }
+
+            /* CONTROLS */
+
+            case VM_OPT_ADDITION: {
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
+
+                if (IS_NUM(left) && IS_NUM(right))  {
+                    variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(left) + valueToNumber(right));
+                } else if (IS_UNDEFINED(left) && IS_UNDEFINED(right)) {
+                    variables->data[vmdata.reg1 - 1] = NULL_VAL;
+                } else if (IS_STRING(left) || IS_STRING(right)) {
+                    if (IS_STRING(left) && IS_STRING(right)) {
+                        char_ptr tmp = BRAMA_MALLOC(sizeof(char) * ((strlen(AS_STRING(left))) + (strlen(AS_STRING(right))) + 1));
+                        strcpy(tmp, AS_STRING(left));
+                        strcpy(tmp + strlen(AS_STRING(left)), AS_STRING(right));
+                        tmp[(strlen(AS_STRING(left))) + (strlen(AS_STRING(right)))] = '\0';
+
+                        t_vm_object_ptr object = BRAMA_MALLOC(sizeof(t_vm_object));
+                        object->type           = CONST_STRING;
+                        object->char_ptr       = tmp;
+                        variables->data[vmdata.reg1 - 1] = GET_VALUE_FROM_OBJ(object);
+                        //compile_info->index = (storage->constants.length) * -1;
+                    }
                 }
             }
                 break;
 
             case VM_OPT_SUBTRACTION: {
-                t_brama_value left  = constants->data[vmdata.reg2];
-                t_brama_value right = constants->data[vmdata.reg3];
-                constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) - valueToNumber(right));
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
 
                 if (IS_NUM(left) && IS_NUM(right)) {
-                    printf ("compile_binary(-) reg1=%d reg2=%d(%f) reg3=%d(%f)\r\n", vmdata.reg1, vmdata.reg2, valueToNumber(left), vmdata.reg3, valueToNumber(right));
-                    printf("%f\r\n", valueToNumber(left) - valueToNumber(right));
+                    variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(left) - valueToNumber(right));
                 }
-                else if (IS_UNDEFINED(left) || IS_UNDEFINED(right))
-                    printf("undefined\r\n");
+                else if (IS_UNDEFINED(left) || IS_UNDEFINED(right)) {
+                    variables->data[vmdata.reg1 - 1] = UNDEFINED_VAL;
+                }
             }
                 break;
 
             case VM_OPT_DIVISION: {
-                t_brama_value left  = constants->data[vmdata.reg2];
-                t_brama_value right = constants->data[vmdata.reg3];
-                constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) / valueToNumber(right));
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
 
                 if (IS_NUM(left) && IS_NUM(right)) {
-                    printf ("compile_binary(/) reg1=%d reg2=%d(%f) reg3=%d(%f)\r\n", vmdata.reg1, vmdata.reg2, valueToNumber(left), vmdata.reg3, valueToNumber(right));
-                    printf("%f\r\n", valueToNumber(left) / valueToNumber(right));
+                    variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(left) / valueToNumber(right));
                 }
-                else if (IS_UNDEFINED(left) || IS_UNDEFINED(right))
-                    printf("undefined\r\n");
+                else if (IS_UNDEFINED(left) || IS_UNDEFINED(right)) {
+                    variables->data[vmdata.reg1 - 1] = UNDEFINED_VAL;
+                }
             }
                 break;
 
             case VM_OPT_MULTIPLICATION: {
-                t_brama_value left  = constants->data[vmdata.reg2];
-                t_brama_value right = constants->data[vmdata.reg3];
-                constants->data[vmdata.reg1] = numberToValue(valueToNumber(left) * valueToNumber(right));
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
 
                 if (IS_NUM(left) && IS_NUM(right)) {
-                    printf ("compile_binary(*) reg1=%d reg2=%d(%f) reg3=%d(%f)\r\n", vmdata.reg1, vmdata.reg2, valueToNumber(left), vmdata.reg3, valueToNumber(right));
-                    printf("%f\r\n", valueToNumber(left) * valueToNumber(right));
+                    variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(left) * valueToNumber(right));
                 }
-                else if (IS_UNDEFINED(left) || IS_UNDEFINED(right))
-                    printf("undefined\r\n");
+                else if (IS_UNDEFINED(left) || IS_UNDEFINED(right)) {
+                    variables->data[vmdata.reg1 - 1] = UNDEFINED_VAL;
+                }
             }
                 break;
         }
@@ -2679,17 +2928,17 @@ end
 
 /* FOR FUTURE USAGE */
 void vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t) {
-    t->op   = (instr & OP_MASK  ) >> 26;
-    t->reg1 = (instr & REG1_MASK) >> 18;
-    t->reg2 = (instr & REG2_MASK) >> 9;
+    t->op   = (instr & OP_MASK  ) >> 24;
+    t->reg1 = (instr & REG1_MASK) >> 16;
+    t->reg2 = (instr & REG2_MASK) >> 8;
     t->reg3 = (instr & REG3_MASK);
     t->scal = (instr & SCAL_MASK);
 }
 
 t_brama_byte vm_encode(t_brama_vmdata_ptr t) {
-    t_brama_byte instr = ((t->op   << 26) & OP_MASK  ) | 
-                         ((t->reg1 << 18) & REG1_MASK) | 
-                         ((t->reg2 << 9 ) & REG2_MASK) | 
+    t_brama_byte instr = ((t->op   << 24) & OP_MASK  ) |
+                         ((t->reg1 << 16) & REG1_MASK) |
+                         ((t->reg2 << 8 ) & REG2_MASK) |
                          ((t->reg3      ) & REG3_MASK) | 
                          ((t->scal      ) & SCAL_MASK);
     return instr;
@@ -2725,6 +2974,7 @@ void brama_destroy(t_context_ptr context) {
     vec_deinit(&context->compiler->storages);
     vec_deinit(&context->compiler->global_storage->constants);
     vec_deinit(&context->compiler->global_storage->variables);
+    map_deinit(&context->compiler->global_storage->variable_names);
     BRAMA_FREE(context->compiler->global_storage);
 
     vec_deinit(_context->tokinizer->tokens);

@@ -13,8 +13,15 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init();
-    brama_compile(context, "var test = (1 + 6) * (2 - 10) / 12 - 2"); /* -6.66666666667 */
+    brama_compile(context, "var test = 'ERHAN BARIS' + ' AYSEL BARIS'"); /* -6.66666666667 */
     brama_run(context);
+
+    brama_vm_const_type type;
+    void*               data;
+    brama_status status = brama_get_var(context, "test", &type, &data);
+    //printf("test : %f\r\n", *((double*)data));
+
+    brama_compile_dump(context);
     brama_destroy(context);
     getchar();
     return 0;
