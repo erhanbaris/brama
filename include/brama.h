@@ -733,6 +733,7 @@ typedef struct _t_compile_info {
 #define IS_STRING(value) (IS_OBJ(value) && AS_OBJ(value)->type == CONST_STRING)
 
 #define IS_FALSE(value)     ((value) == FALSE_VAL)
+#define IS_TRUE(value)      ((value) == TRUE_VAL)
 #define IS_BOOL(value)      (value == TRUE_VAL || value == FALSE_VAL)
 #define IS_NULL(value)      ((value) == NULL_VAL)
 #define IS_UNDEFINED(value) ((value) == UNDEFINED_VAL)
@@ -774,7 +775,7 @@ typedef struct _t_compile_info {
 -------------------------------------------------------------------------------
  1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1
 -------------------------------------------------------------------------------
-|   OP CODE   |        REG1       |         REG2        |         REG2        |
+|   OP CODE   |        REG1       |         REG2        |         REG3        |
 -------------------------------------------------------------------------------
 |   OP CODE   |        REG1       |                    SCAL                   |
 -------------------------------------------------------------------------------

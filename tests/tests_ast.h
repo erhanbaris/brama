@@ -1301,6 +1301,45 @@ MunitResult ast_assignment_expr_test_6(const MunitParameter params[], void* user
     return MUNIT_OK;
 }
 
+MunitResult ast_assignment_expr_test_7(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context,  "var person");
+    munit_assert_int(context->status, == , BRAMA_OK);
+    munit_assert_int(context->parser->asts->length, == , 1);
+
+    t_ast_ptr ast = vector_get(context->parser->asts, 0);
+    munit_assert_ptr_not_null(ast);
+    munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
+    munit_assert_int         (ast->assign_ptr->new_def,  ==, true);
+    munit_assert_int         (ast->assign_ptr->def_type, ==, KEYWORD_VAR);
+    munit_assert_int         (ast->assign_ptr->opt,      ==, OPERATOR_NONE);
+    munit_assert_null        (ast->assign_ptr->assignment);
+
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+
+MunitResult ast_assignment_expr_test_8(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context,  "var person;");
+    munit_assert_int(context->status, == , BRAMA_OK);
+    munit_assert_int(context->parser->asts->length, == , 1);
+
+    t_ast_ptr ast = vector_get(context->parser->asts, 0);
+    munit_assert_ptr_not_null(ast);
+    munit_assert_int         (ast->type, ==, AST_ASSIGNMENT);
+    munit_assert_int         (ast->assign_ptr->new_def,  ==, true);
+    munit_assert_int         (ast->assign_ptr->def_type, ==, KEYWORD_VAR);
+    munit_assert_int         (ast->assign_ptr->opt,      ==, OPERATOR_NONE);
+    munit_assert_null        (ast->assign_ptr->assignment);
+
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitResult ast_unary_expr_test_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_compile(context, "-test");
@@ -1707,6 +1746,8 @@ MunitTest AST_TESTS[] = {
     ADD_TEST(ast_assignment_expr_test_4),
     ADD_TEST(ast_assignment_expr_test_5),
     ADD_TEST(ast_assignment_expr_test_6),
+    ADD_TEST(ast_assignment_expr_test_7),
+    ADD_TEST(ast_assignment_expr_test_8),
     ADD_TEST(ast_unary_expr_test_1),
     ADD_TEST(ast_unary_expr_test_2),
     ADD_TEST(ast_unary_expr_test_3),
