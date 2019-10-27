@@ -2743,7 +2743,25 @@ void compile_unary(t_context_ptr context, t_unary_ptr const ast, t_storage_ptr s
 }
 
 void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
-    /* We need define new variable to store condition information */
+    /*                           *
+     * Else block declared so we *
+     * need to define flow       *
+     * control like below        *
+     * ------------------------- *
+     * 1. CONTROL STATEMENT      *
+     * ------------------------- *
+     * N+1. IF CONDITION (1. VAR)*
+     * ------------------------- *
+     * N+2. JMP (FALSE)->TO N+5. *
+     * ------------------------- *
+     * N+3. WHILE BLOCK          *
+     * ------------------------- *
+     * N+4. JMP -> TO 1.         *
+     * ------------------------- *
+     * N+5. NORMAL OPCODE        *
+     * ------------------------- */
+
+    /* Define new variable to store condition information */
     t_assign_ptr assign      = BRAMA_MALLOC(sizeof(t_assign));
     assign->opt              = OPERATOR_ASSIGN;
     assign->def_type         = KEYWORD_VAR;
@@ -2752,13 +2770,14 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     assign->object->type     = AST_SYMBOL;
     assign->object->char_ptr = BRAMA_MALLOC(sizeof(10));
 
+    /* Store loop status */
     sprintf(assign->object->char_ptr, "(loop #%d)", ++storage->loop_counter);
     assign->assignment = ast->condition;
 
     compile_assignment(context, assign, storage, compile_info, AST_WHILE);
     size_t condition = compile_info->index;
 
-    /* We are going to build if statement */
+    /* Build if statement */
     t_if_stmt_ptr if_stmt = BRAMA_MALLOC(sizeof(t_if_stmt));
     if_stmt->condition    = assign->object;
     if_stmt->true_body    = ast->body;
@@ -2775,7 +2794,6 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     code.scal = jmp_compare_location - context->compiler->op_codes->length - 1;
 
     vec_push(context->compiler->op_codes, vm_encode(&code));
-    //context->compiler->op_codes->data[jmp_compare_location] = vm_encode(&code);
 
     /* Remove all references */
     BRAMA_FREE(assign->object->char_ptr);
