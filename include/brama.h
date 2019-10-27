@@ -223,7 +223,6 @@ enum brama_vm_operator {
     VM_OPT_GTE,
     VM_OPT_AND,
     VM_OPT_OR,
-    VM_OPT_DUP,
     VM_OPT_NULL,
     VM_OPT_UNDEFINED,
     VM_OPT_DELETE,
@@ -236,15 +235,15 @@ enum brama_vm_operator {
     VM_OPT_INIT_VAR,
     VM_OPT_CALL,
     VM_OPT_RETURN,
-    VM_OPT_PUSH,
     VM_OPT_PRINT,
-    VM_OPT_NEG,
     VM_OPT_CALL_NATIVE,
     VM_OPT_METHOD_DEF,
     VM_OPT_INITARRAY,
     VM_OPT_INITDICT,
     VM_OPT_NOT_EQ,
-    VM_OPT_APPEND
+    VM_OPT_APPEND,
+    VM_OPT_LOOP,
+    VM_OPT_COPY
 };
 
 /* VM CONST TYPE */
@@ -387,7 +386,6 @@ static OperatorPair VM_OPCODES[] =  {
         { "GTE", ">="},
         { "AND", "&&"},
         { "OR", "||"},
-        { "DUP", ""},
         { "NULL", "null"},
         { "UNDEFINED", "undefined"},
         { "DELETE", ""},
@@ -400,15 +398,15 @@ static OperatorPair VM_OPCODES[] =  {
         { "INIT_VAR", ""},
         { "CALL", ""},
         { "RETURN", ""},
-        { "PUSH", ""},
         { "PRINT", ""},
-        { "NEG", "-"},
         { "CALL_NATIVE", ""},
         { "METHOD_DEF", ""},
         { "INITARRAY", ""},
         { "INITDICT", ""},
         { "NOT_EQ", "!="},
-        { "APPEND", ""}
+        { "APPEND", ""},
+        { "LOOP", ""},
+        { "COPY", ""}
 };
 
 static char* KEYWORDS[] = {
@@ -487,7 +485,7 @@ typedef struct _t_storage         t_storage;
 typedef struct _t_compile_info    t_compile_info;
 
 
-typedef t_vm_object*   t_vm_object_ptr;
+typedef t_vm_object*       t_vm_object_ptr;
 typedef t_tokinizer*       t_tokinizer_ptr;
 typedef t_token*           t_token_ptr;
 typedef t_parser*          t_parser_ptr;
@@ -583,6 +581,7 @@ typedef struct _t_compiler {
 
 typedef struct _t_storage {
     size_t        id;
+    size_t        loop_counter;
     vec_value     constants;
     vec_value     variables;
     map_size_t    variable_names;

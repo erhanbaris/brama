@@ -423,9 +423,9 @@ NEW_AST_DEF(control,   t_control_ptr,         AST_CONTROL_OPERATION,    control_
 NEW_AST_DEF(assign,    t_assign_ptr,          AST_ASSIGNMENT,           assign_ptr, false)
 NEW_AST_DEF(func_call, t_func_call_ptr,       AST_FUNCTION_CALL,        func_call_ptr, false)
 NEW_AST_DEF(func_decl, t_func_decl_ptr,       AST_FUNCTION_DECLARATION, func_decl_ptr, true)
-NEW_AST_DEF(block,     vec_ast_ptr ,          AST_BLOCK,                vector_ptr, true)
+NEW_AST_DEF(block,     vec_ast_ptr ,          AST_BLOCK,                vector_ptr, false)
 NEW_AST_DEF(object,    t_object_creation_ptr, AST_OBJECT_CREATION,      object_creation_ptr, false)
-NEW_AST_DEF(while,     t_while_loop_ptr ,     AST_WHILE,                while_ptr, true)
+NEW_AST_DEF(while,     t_while_loop_ptr ,     AST_WHILE,                while_ptr, false)
 NEW_AST_DEF(if,        t_if_stmt_ptr,         AST_IF_STATEMENT,         if_stmt_ptr, false)
 NEW_AST_DEF(return,    t_ast_ptr,             AST_RETURN,               ast_ptr, false)
 NEW_AST_DEF(accessor,  t_accessor_ptr,        AST_ACCESSOR,             accessor_ptr, false)
@@ -2399,7 +2399,7 @@ bool destroy_ast_primative(t_primative_ptr primative) {
 
 /* Binary Operation
  * Example : 10 + 20 - 10 * 5.5 */
-void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     size_t dest_id = 0;
     if (upper_ast == AST_ASSIGNMENT)
         dest_id = compile_info->index;
@@ -2408,10 +2408,10 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
         dest_id = storage->variables.length;
     }
 
-    compile_internal(context, ast->binary_ptr->left, storage, compile_info, AST_NONE);
+    compile_internal(context, ast->left, storage, compile_info, AST_NONE);
     int left_index = compile_info->index;
 
-    compile_internal(context, ast->binary_ptr->right, storage, compile_info, AST_NONE);
+    compile_internal(context, ast->right, storage, compile_info, AST_NONE);
     int right_index = compile_info->index;
 
     t_brama_vmdata code;
@@ -2424,7 +2424,7 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
     code.reg2 = left_index;
     code.reg3 = right_index;
 
-    switch (ast->binary_ptr->opt) {
+    switch (ast->opt) {
         case OPERATOR_ADDITION:
             code.op = VM_OPT_ADDITION;
             break;
@@ -2470,7 +2470,7 @@ void compile_binary(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
     vec_push(context->compiler->op_codes, vm_encode(&code));
 }
 
-void compile_control(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     size_t dest_id = 0;
     if (upper_ast == AST_ASSIGNMENT)
         dest_id = compile_info->index;
@@ -2479,10 +2479,10 @@ void compile_control(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr s
         dest_id = storage->variables.length;
     }
 
-    compile_internal(context, ast->binary_ptr->left, storage, compile_info, AST_NONE);
+    compile_internal(context, ast->left, storage, compile_info, AST_NONE);
     int left_index = compile_info->index;
 
-    compile_internal(context, ast->binary_ptr->right, storage, compile_info, AST_NONE);
+    compile_internal(context, ast->right, storage, compile_info, AST_NONE);
     int right_index = compile_info->index;
 
     t_brama_vmdata code;
@@ -2495,7 +2495,7 @@ void compile_control(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr s
     code.reg2 = left_index;
     code.reg3 = right_index;
 
-    switch (ast->binary_ptr->opt) {
+    switch (ast->opt) {
         case OPERATOR_LESS_THAN:
             code.op = VM_OPT_LT;
             break;
@@ -2527,9 +2527,9 @@ void compile_control(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr s
 
 
 
-void compile_symbol(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+void compile_symbol(t_context_ptr context, char_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     /* We need to check variable that used on scope before */
-    size_t* index = map_get(&storage->variable_names, ast->char_ptr);
+    size_t* index = map_get(&storage->variable_names, ast);
 
     if (index == NULL) {
         /* We did not found variable */
@@ -2539,18 +2539,16 @@ void compile_symbol(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
         compile_info->index = (*index) + 1;
 }
 
-void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
-    t_assign_ptr assign = ast->assign_ptr;
-
+void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     /* We need to check variable that used on scope before */
-    size_t* index = map_get(&storage->variable_names, assign->object->char_ptr);
+    size_t* index = map_get(&storage->variable_names, ast->object->char_ptr);
 
     if (index == NULL) {
         /* Variable not defined before, create new variable slot */
         vec_push(&storage->variables, UNDEFINED_VAL);
 
         /* Variable name linked to variable index */
-        map_set(&storage->variable_names, assign->object->char_ptr, storage->variables.length - 1);
+        map_set(&storage->variable_names, ast->object->char_ptr, storage->variables.length - 1);
 
         /* Sub operation need to know which slot it need to use */
         compile_info->index = storage->variables.length;
@@ -2561,14 +2559,14 @@ void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_pt
     //vec_push(&storage->variable_names, assign->object->char_ptr);
 
     /* Has assignment code */
-    if (assign->assignment != NULL) {
+    if (ast->assignment != NULL) {
         size_t variable_index = compile_info->index;
 
         /* Opcode generation for assignment */
-        compile_internal(context, assign->assignment, storage, compile_info, AST_ASSIGNMENT);
+        compile_internal(context, ast->assignment, storage, compile_info, AST_ASSIGNMENT);
 
         /* If it is primative, set value to variable */
-        if (assign->assignment->type == AST_PRIMATIVE) {
+        if (ast->assignment->type == AST_PRIMATIVE) {
             t_brama_vmdata code;
             code.op = VM_OPT_INIT_VAR;
             code.reg1 = variable_index;
@@ -2577,12 +2575,20 @@ void compile_assignment(t_context_ptr context, t_ast_ptr const ast, t_storage_pt
             code.scal = 0;
             vec_push(context->compiler->op_codes, vm_encode(&code));
         }
+        else if (ast->assignment->type == AST_SYMBOL) {
+            t_brama_vmdata code;
+            code.op = VM_OPT_COPY;
+            code.reg1 = variable_index;
+            code.reg2 = compile_info->index;
+            code.reg3 = 0;
+            code.scal = 0;
+            vec_push(context->compiler->op_codes, vm_encode(&code));
+        }
     }
 }
 
-void compile_if(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
-    t_if_stmt_ptr if_stmt = ast->if_stmt_ptr;
-    compile_internal(context, ast->if_stmt_ptr->condition, storage, compile_info, AST_IF_STATEMENT);
+void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    compile_internal(context, ast->condition, storage, compile_info, AST_IF_STATEMENT);
     size_t condition = compile_info->index;
 
 
@@ -2598,7 +2604,7 @@ void compile_if(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storag
     size_t jmp_true_location  = 0;
     size_t jmp_false_location = 0;
 
-    if (ast->if_stmt_ptr->false_body != NULL) {
+    if (ast->false_body != NULL) {
 
         /*                           *
          * Else block declared so we *
@@ -2622,7 +2628,7 @@ void compile_if(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storag
         jmp_false_location = context->compiler->op_codes->length - 1;
 
         /* Build 'true' block */
-        compile_internal(context, ast->if_stmt_ptr->true_body, storage, compile_info, AST_IF_STATEMENT);
+        compile_internal(context, ast->true_body, storage, compile_info, AST_IF_STATEMENT);
         vec_push(context->compiler->op_codes, NULL); // Put 'true' jmp code
 
         jmp_true_location = context->compiler->op_codes->length - 1;
@@ -2636,7 +2642,7 @@ void compile_if(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storag
         context->compiler->op_codes->data[jmp_false_location] = vm_encode(&code);
 
         /* Build 'false' block */
-        compile_internal(context, ast->if_stmt_ptr->false_body, storage, compile_info, AST_IF_STATEMENT);
+        compile_internal(context, ast->false_body, storage, compile_info, AST_IF_STATEMENT);
 
         /* Configure 'true' block jmp opcode */
         code.op = VM_OPT_JMP;
@@ -2663,10 +2669,7 @@ void compile_if(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storag
         jmp_false_location = context->compiler->op_codes->length - 1;
 
         /* Build 'true' block */
-        compile_internal(context, ast->if_stmt_ptr->true_body, storage, compile_info, AST_IF_STATEMENT);
-        vec_push(context->compiler->op_codes, NULL); // Put 'true' jmp code
-
-        jmp_true_location = context->compiler->op_codes->length - 1;
+        compile_internal(context, ast->true_body, storage, compile_info, AST_IF_STATEMENT);
 
         /* Configure 'false' block jmp opcode */
         code.op = VM_OPT_JMP;
@@ -2674,19 +2677,124 @@ void compile_if(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storag
         code.reg2 = 0;
         code.reg3 = 0;
         code.scal = context->compiler->op_codes->length - jmp_false_location - 1;
+
+        /* Part of the while condition */
+        if (upper_ast == AST_WHILE) {
+            code.scal += 1;
+        }
+
         context->compiler->op_codes->data[jmp_false_location] = vm_encode(&code);
     }
 }
 
-void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+void compile_block(t_context_ptr context, vec_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    int index;
+    t_ast_ptr ast_item = NULL;
+
+    vec_foreach(ast, ast_item, index) {
+        compile_internal(context, ast_item, storage, compile_info, upper_ast);
+    }
+}
+
+void compile_unary(t_context_ptr context, t_unary_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    int dest_id = compile_info->index;
+    compile_internal(context, ast->content, storage, compile_info, AST_UNARY);
+
+    t_brama_vmdata code;
+    code.reg1 = compile_info->index;
+    code.reg2 = 0;
+    code.reg3 = 0;
+    code.scal = 0;
+
+    switch (ast->opt) {
+        case OPERATOR_INCREMENT:
+            code.op = VM_OPT_INC;
+            break;
+
+        case OPERATOR_DECCREMENT:
+            code.op = VM_OPT_DINC;
+            break;
+
+        case OPERATOR_SUBTRACTION: {
+            /* Add mul operator */
+            code.op = VM_OPT_MULTIPLICATION;
+            code.reg1 = dest_id;
+            code.reg2 = compile_info->index;
+
+            int index;
+            vec_find(&storage->constants, numberToValue(-1), index);
+            if (index == -1) {
+                vec_push(&storage->constants, numberToValue(-1));
+                code.reg3 = (storage->constants.length) * -1;
+            }
+            else
+                code.reg3 = ++index * -1;
+            break;
+        }
+
+        case OPERATOR_NOT:
+            break;
+
+        case OPERATOR_BITWISE_NOT:
+            break;
+    }
+
+    vec_push(context->compiler->op_codes, vm_encode(&code));
+}
+
+void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    /* We need define new variable to store condition information */
+    t_assign_ptr assign      = BRAMA_MALLOC(sizeof(t_assign));
+    assign->opt              = OPERATOR_ASSIGN;
+    assign->def_type         = KEYWORD_VAR;
+    assign->new_def          = true;
+    assign->object           = BRAMA_MALLOC(sizeof(t_ast));
+    assign->object->type     = AST_SYMBOL;
+    assign->object->char_ptr = BRAMA_MALLOC(sizeof(10));
+
+    sprintf(assign->object->char_ptr, "(loop #%d)", ++storage->loop_counter);
+    assign->assignment = ast->condition;
+
+    compile_assignment(context, assign, storage, compile_info, AST_WHILE);
+    size_t condition = compile_info->index;
+
+    /* We are going to build if statement */
+    t_if_stmt_ptr if_stmt = BRAMA_MALLOC(sizeof(t_if_stmt));
+    if_stmt->condition    = assign->object;
+    if_stmt->true_body    = ast->body;
+    if_stmt->false_body   = NULL;
+
+    size_t jmp_compare_location = context->compiler->op_codes->length - 1;
+    compile_if(context, if_stmt, storage, compile_info, AST_WHILE);
+
+    t_brama_vmdata code;
+    code.op = VM_OPT_JMP;
+    code.reg1 = 0;
+    code.reg2 = 0;
+    code.reg3 = 0;
+    code.scal = jmp_compare_location - context->compiler->op_codes->length - 1;
+
+    vec_push(context->compiler->op_codes, vm_encode(&code));
+    //context->compiler->op_codes->data[jmp_compare_location] = vm_encode(&code);
+
+    /* Remove all references */
+    BRAMA_FREE(assign->object->char_ptr);
+    assign->assignment = NULL;
+    if_stmt->condition = NULL;
+    if_stmt->true_body = NULL;
+    destroy_ast_assignment(assign);
+    destroy_ast_if_stmt(if_stmt);
+}
+
+void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     int index = -1;
     compile_info->status = BRAMA_OK;
 
-    switch (ast->primative_ptr->type) {
+    switch (ast->type) {
         case PRIMATIVE_INTEGER:
-            vec_find(&storage->constants, numberToValue(ast->primative_ptr->int_), index);
+            vec_find(&storage->constants, numberToValue(ast->int_), index);
             if (index == -1) {
-                vec_push(&storage->constants, numberToValue(ast->primative_ptr->int_));
+                vec_push(&storage->constants, numberToValue(ast->int_));
                 compile_info->index = (storage->constants.length) * -1;
             }
             else
@@ -2694,9 +2802,9 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
             break;
 
         case PRIMATIVE_DOUBLE:
-            vec_find(&storage->constants, numberToValue(ast->primative_ptr->double_), index);
+            vec_find(&storage->constants, numberToValue(ast->double_), index);
             if (index == -1) {
-                vec_push(&storage->constants, numberToValue(ast->primative_ptr->double_));
+                vec_push(&storage->constants, numberToValue(ast->double_));
                 compile_info->index = (storage->constants.length) * -1;
             }
             else
@@ -2705,9 +2813,9 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
             break;
 
         case PRIMATIVE_BOOL:
-            vec_find(&storage->constants, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL), index);
+            vec_find(&storage->constants, ast->bool_ ? (TRUE_VAL) : (FALSE_VAL), index);
             if (index == -1) {
-                vec_push(&storage->constants, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL));
+                vec_push(&storage->constants, ast->bool_ ? (TRUE_VAL) : (FALSE_VAL));
                 compile_info->index = (storage->constants.length) * -1;
             }
             else
@@ -2718,14 +2826,14 @@ void compile_primative(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr
             t_brama_value value;
             compile_info->index = 0;
             vec_foreach(&storage->constants, value, index) {
-                if (IS_STRING(value) && strcmp(ast->primative_ptr->char_ptr, AS_OBJ(value)->char_ptr) == 0)
+                if (IS_STRING(value) && strcmp(ast->char_ptr, AS_OBJ(value)->char_ptr) == 0)
                     compile_info->index = (index + 1) * -1;
             }
 
             if (compile_info->index == 0) {
                 t_vm_object_ptr object = BRAMA_MALLOC(sizeof(t_vm_object));
                 object->type           = CONST_STRING;
-                object->char_ptr       = ast->primative_ptr->char_ptr;
+                object->char_ptr       = ast->char_ptr;
                 vec_push(&storage->constants, GET_VALUE_FROM_OBJ(object));
                 compile_info->index = (storage->constants.length) * -1;
             }
@@ -2756,27 +2864,39 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
 
     switch (ast->type) {
         case AST_PRIMATIVE:
-            compile_primative(context, ast, storage, compile_info, upper_ast);
+            compile_primative(context, ast->primative_ptr, storage, compile_info, upper_ast);
             break;
 
         case AST_BINARY_OPERATION:
-            compile_binary(context, ast, storage, compile_info, upper_ast);
+            compile_binary(context, ast->binary_ptr, storage, compile_info, upper_ast);
             break;
 
         case AST_ASSIGNMENT:
-            compile_assignment(context, ast, storage, compile_info, upper_ast);
+            compile_assignment(context, ast->assign_ptr, storage, compile_info, upper_ast);
             break;
 
         case AST_CONTROL_OPERATION:
-            compile_control(context, ast, storage, compile_info, upper_ast);
+            compile_control(context, ast->control_ptr, storage, compile_info, upper_ast);
             break;
 
         case AST_SYMBOL:
-            compile_symbol(context, ast, storage, compile_info, upper_ast);
+            compile_symbol(context, ast->char_ptr, storage, compile_info, upper_ast);
             break;
 
         case AST_IF_STATEMENT:
-            compile_if(context, ast, storage, compile_info, upper_ast);
+            compile_if(context, ast->if_stmt_ptr, storage, compile_info, upper_ast);
+            break;
+
+        case AST_WHILE:
+            compile_while(context, ast->while_ptr, storage, compile_info, upper_ast);
+            break;
+
+        case AST_BLOCK:
+            compile_block(context, ast->vector_ptr, storage, compile_info, upper_ast);
+            break;
+
+        case AST_UNARY:
+            compile_unary(context, ast->vector_ptr, storage, compile_info, upper_ast);
             break;
     }
 }
@@ -2916,7 +3036,35 @@ void brama_compile_dump(t_context_ptr context) {
         t_brama_vmdata vmdata;
         vm_decode(val, &vmdata);
 
-        printf ("    [%d]    %-10s %2d %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
+        switch (vmdata.op) {
+            /* Print just operator name */
+            case VM_OPT_HALT:
+                printf ("    [%d]    %-10s\r\n", index, VM_OPCODES[(int)vmdata.op].name);
+                break;
+
+            /* Print reg1*/
+            case VM_OPT_INC:
+            case VM_OPT_DINC:
+            case VM_OPT_IF_EQ:
+                printf ("    [%d]    %-10s %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1);
+                break;
+
+            /* Print reg1 and reg2 */
+            case VM_OPT_COPY:
+            case VM_OPT_INIT_VAR:
+                printf ("    [%d]    %-10s %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2);
+                break;
+
+            /* Print reg1 and scal */
+            case VM_OPT_JMP:
+                printf ("    [%d]    %-10s %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.scal);
+                break;
+
+            /* Print reg1, reg2 and  reg3*/
+            default:
+                printf ("    [%d]    %-10s %2d %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
+                break;
+        }
     }
 }
 
@@ -2952,8 +3100,30 @@ void run(t_context_ptr context) {
                 break;
             }
 
-            /* CONTROLS */
+            /* Actually this code copy variable from reg2 to reg1*/
+            case VM_OPT_COPY:
+                variables->data[vmdata.reg1 - 1] = variables->data[vmdata.reg2 - 1];
+            break;
 
+            /* Increment variable (++) */
+            case VM_OPT_INC: {
+                t_brama_value variable = variables->data[vmdata.reg1 - 1];
+                if (IS_NUM(variable)) {
+                    variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(variable) + 1);
+                }
+                break;
+            }
+
+            /* Decrement variable (--) */
+            case VM_OPT_DINC: {
+                t_brama_value variable = variables->data[vmdata.reg1 - 1];
+                if (IS_NUM(variable)) {
+                    variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(variable) - 1);
+                }
+                break;
+            }
+
+            /* CONTROLS */
             /* '<' operator */
             case VM_OPT_LT: {
                 t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
