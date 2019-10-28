@@ -64,20 +64,21 @@ MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 1024.0);
 
 
-    brama_vm_const_type type;
-    void*               data;
-    brama_status status = brama_get_var(context, "test1", &type, &data);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "test1", &var_info);
 
-    munit_assert_int   (status,           == , BRAMA_OK);
-    munit_assert_int   (type,             == , CONST_INTEGER);
-    munit_assert_double(*((double*)data), == , 2048.0);
+    munit_assert_int(status,         == , BRAMA_OK);
+    munit_assert_int(var_info->type, == , CONST_INTEGER);
+    munit_assert_int(var_info->int_, == , 2048);
+    brama_destroy_get_var(context, &var_info);
 
+    munit_assert_ptr_null(var_info);
+    status = brama_get_var(context, "test2", &var_info);
 
-    status = brama_get_var(context, "test2", &type, &data);
-
-    munit_assert_int   (status,           == , BRAMA_OK);
-    munit_assert_int   (type,             == , CONST_INTEGER);
-    munit_assert_double(*((double*)data), == , 1024.0);
+    munit_assert_int(status,         == , BRAMA_OK);
+    munit_assert_int(var_info->type, == , CONST_INTEGER);
+    munit_assert_int(var_info->int_, == , 1024);
+    brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -121,24 +122,25 @@ MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_double(AS_BOOL(context->compiler->global_storage->variables.data[2]),       ==, true);
 
 
-    brama_vm_const_type type;
-    void*               data;
-    brama_status status = brama_get_var(context, "test_1", &type, &data);
-    munit_assert_int   (status,           == , BRAMA_OK);
-    munit_assert_int   (type,             == , CONST_INTEGER);
-    munit_assert_double(*((double*)data), == , 10.0);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "test_1", &var_info);
+    munit_assert_int   (status,         == , BRAMA_OK);
+    munit_assert_int   (var_info->type, == , CONST_INTEGER);
+    munit_assert_int   (var_info->int_, == , 10);
+    brama_destroy_get_var(context, &var_info);
+
+    status = brama_get_var(context, "test_2", &var_info);
+    munit_assert_int   (status,         == , BRAMA_OK);
+    munit_assert_int   (var_info->type, == , CONST_INTEGER);
+    munit_assert_int   (var_info->int_, == , 20);
+    brama_destroy_get_var(context, &var_info);
 
 
-    status = brama_get_var(context, "test_2", &type, &data);
-    munit_assert_int   (status,           == , BRAMA_OK);
-    munit_assert_int   (type,             == , CONST_INTEGER);
-    munit_assert_double(*((double*)data), == , 20.0);
-
-
-    status = brama_get_var(context, "test_3", &type, &data);
-    munit_assert_int   (status,           == , BRAMA_OK);
-    munit_assert_int   (type,             == , CONST_BOOL);
-    munit_assert_int   (*((bool*)data),   == , true);
+    status = brama_get_var(context, "test_3", &var_info);
+    munit_assert_int   (status,          == , BRAMA_OK);
+    munit_assert_int   (var_info->type,  == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_, == , true);
+    brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -156,22 +158,24 @@ MunitResult ast_compile_4(const MunitParameter params[], void* user_data_or_fixt
                            "test_2 = 200000.111");
     brama_run(context);
 
-    brama_vm_const_type type;
-    void*               data;
-    brama_status status = brama_get_var(context, "test_1", &type, &data);
-    munit_assert_int   (status,            ==, BRAMA_OK);
-    munit_assert_int   (type,              ==, CONST_INTEGER);
-    munit_assert_double(*((double *)data), ==, 1);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "test_1", &var_info);
+    munit_assert_int   (status,         ==, BRAMA_OK);
+    munit_assert_int   (var_info->type, ==, CONST_INTEGER);
+    munit_assert_int   (var_info->int_, ==, 1);
+    brama_destroy_get_var(context, &var_info);
 
-    status = brama_get_var(context, "test_2", &type, &data);
+    status = brama_get_var(context, "test_2", &var_info);
     munit_assert_int   (status,            ==, BRAMA_OK);
-    munit_assert_int   (type,              ==, CONST_INTEGER);
-    munit_assert_double(*((double *)data), ==, 200000.111);
+    munit_assert_int   (var_info->type,    ==, CONST_DOUBLE);
+    munit_assert_double(var_info->double_, ==, 200000.111);
+    brama_destroy_get_var(context, &var_info);
 
-    status = brama_get_var(context, "test_3", &type, &data);
+    status = brama_get_var(context, "test_3", &var_info);
     munit_assert_int   (status,          ==, BRAMA_OK);
-    munit_assert_int   (type,            ==, CONST_BOOL);
-    munit_assert_double(*((bool *)data), ==, true);
+    munit_assert_int   (var_info->type,  ==, CONST_BOOL);
+    munit_assert_double(var_info->bool_, ==, true);
+    brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -183,19 +187,19 @@ MunitResult ast_compile_5(const MunitParameter params[], void* user_data_or_fixt
                            "var count = 2 ;\n"
                            "var fib ;\n"
                            "while(count <=10){\n"
-                           "    var fib = x+y ;\n"
+                           "    fib = x+y ;\n"
                            "    x = y ;\n"
                            "    y = fib;\n"
                            "count++\n"
                            "}");
     brama_run(context);
 
-    brama_vm_const_type type;
-    void*               data;
-    brama_status status = brama_get_var(context, "fib", &type, &data);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "fib", &var_info);
     munit_assert_int   (status,           == , BRAMA_OK);
-    munit_assert_int   (type,             == , CONST_INTEGER);
-    munit_assert_double(*((double *)data),   == , 55);
+    munit_assert_int   (var_info->type,   == , CONST_INTEGER);
+    munit_assert_int   (var_info->int_,   == , 55);
+    brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -206,12 +210,12 @@ MunitResult ast_compile_6(const MunitParameter params[], void* user_data_or_fixt
     brama_compile(context, "var test1 = 10; var test2 = -test1;");
     brama_run(context);
 
-    brama_vm_const_type type;
-    void*               data;
-    brama_status status = brama_get_var(context, "test2", &type, &data);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "test2", &var_info);
     munit_assert_int   (status,           == , BRAMA_OK);
-    munit_assert_int   (type,             == , CONST_INTEGER);
-    munit_assert_double(*((double *)data),   == , -10.0);
+    munit_assert_int   (var_info->type,   == , CONST_INTEGER);
+    munit_assert_int   (var_info->int_,   == , -10.0);
+    brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -222,13 +226,12 @@ MunitResult ast_compile_7(const MunitParameter params[], void* user_data_or_fixt
     brama_compile(context, "var test = 'ERHAN BARIS' + ' AYSEL BARIS'");
     brama_run(context);
 
-    brama_vm_const_type type;
-    void*               data;
-    brama_status status = brama_get_var(context, "test", &type, &data);
-    munit_assert_int         (status,           == , BRAMA_OK);
-    munit_assert_int         (type,             == , CONST_STRING);
-    munit_assert_string_equal(((char_ptr)data),   "ERHAN BARIS AYSEL BARIS");
-    BRAMA_FREE(((char_ptr)data));
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "test", &var_info);
+    munit_assert_int         (status,             == , BRAMA_OK);
+    munit_assert_int         (var_info->type,     == , CONST_STRING);
+    munit_assert_string_equal(var_info->char_ptr, "ERHAN BARIS AYSEL BARIS");
+    brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
     return MUNIT_OK;

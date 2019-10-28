@@ -1860,11 +1860,15 @@ t_context_ptr brama_init() {
     /* Compiler */
     context->compiler                 = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
     context->compiler->index          = 0;
+    context->compiler->head           = NULL;
+    context->compiler->total_object   = 0;
     context->compiler->op_codes       = BRAMA_MALLOC(sizeof (vec_opcode));
     context->compiler->global_storage = BRAMA_MALLOC(sizeof (t_storage));
-    context->compiler->global_storage->id = 0;
+    context->compiler->global_storage->id           = 0;
+    context->compiler->global_storage->loop_counter = 0;
     vec_init(&context->compiler->global_storage->constants);
     vec_init(&context->compiler->global_storage->variables);
+    map_init(&context->compiler->global_storage->variable_names);
 
     vec_init(&context->compiler->storages);
     vec_init(context->compiler->op_codes);
@@ -2768,10 +2772,12 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     assign->new_def          = true;
     assign->object           = BRAMA_MALLOC(sizeof(t_ast));
     assign->object->type     = AST_SYMBOL;
-    assign->object->char_ptr = BRAMA_MALLOC(sizeof(10));
+    assign->object->char_ptr = BRAMA_MALLOC(sizeof(char) * 20);
+    assign->object->create_new_storage = false;
 
     /* Store loop status */
     sprintf(assign->object->char_ptr, "(loop #%d)", ++storage->loop_counter);
+    assign->object->char_ptr[19] = '\0';
     assign->assignment = ast->condition;
 
     compile_assignment(context, assign, storage, compile_info, AST_WHILE);
@@ -2801,7 +2807,10 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     if_stmt->condition = NULL;
     if_stmt->true_body = NULL;
     destroy_ast_assignment(assign);
+    BRAMA_FREE(assign);
+
     destroy_ast_if_stmt(if_stmt);
+    BRAMA_FREE(if_stmt);
 }
 
 void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -2849,9 +2858,9 @@ void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_stora
             }
 
             if (compile_info->index == 0) {
-                t_vm_object_ptr object = BRAMA_MALLOC(sizeof(t_vm_object));
+                t_vm_object_ptr object = new_vm_object(context);
                 object->type           = CONST_STRING;
-                object->char_ptr       = ast->char_ptr;
+                object->char_ptr       = strdup(ast->char_ptr);
                 vec_push(&storage->constants, GET_VALUE_FROM_OBJ(object));
                 compile_info->index = (storage->constants.length) * -1;
             }
@@ -2873,6 +2882,7 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
 
         new_storage->id               = context->compiler->storages.length;
         new_storage->previous_storage = storage;
+        new_storage->loop_counter     = 0;
         vec_init(&new_storage->constants);
         vec_init(&new_storage->variables);
         map_init(&new_storage->variable_names);
@@ -2929,6 +2939,8 @@ void compile(t_context_ptr context) {
         compile_internal(context, ast, context->compiler->global_storage, compile_info, AST_NONE);
     }
 
+    BRAMA_FREE(compile_info);
+
     vec_push(context->compiler->op_codes, NULL);
 }
 
@@ -2964,40 +2976,60 @@ int8_t sabs8(int8_t i)
     return res;
 }
 
-brama_status brama_get_var(t_context_ptr context, char_ptr var_name, brama_vm_const_type* type, void** data) {
+brama_status brama_get_var(t_context_ptr context, char_ptr var_name, t_get_var_info** var_info) {
     size_t* index = map_get(&context->compiler->global_storage->variable_names, var_name);
     if (index == NULL)
         return BRAMA_NOK;
 
+    *var_info         = BRAMA_MALLOC(sizeof(t_get_var_info));
+    (*var_info)->int_ = 0;
+
     t_brama_value value = context->compiler->global_storage->variables.data[*index];
     if (IS_BOOL(value)) {
-        *type = CONST_BOOL;
-        bool* tmp_data = BRAMA_MALLOC(sizeof(bool));
-        *tmp_data = IS_TRUE(value) ? true : false;
-        *data = tmp_data;
+        (*var_info)->type  = CONST_BOOL;
+        (*var_info)->bool_ = IS_TRUE(value) ? true : false;
 
     } else if (IS_NUM(value)) {
-        *type = CONST_INTEGER;
-        double* tmp_data = BRAMA_MALLOC(sizeof(double));
-        *tmp_data = valueToNumber(value);
-        *data = tmp_data;
+        double num = valueToNumber(value);
+        double intpart;
+        double fractpart = modf(num, &intpart);
+ 
+        if (fractpart == 0.0) {
+            (*var_info)->type  = CONST_INTEGER;
+            (*var_info)->int_  = intpart;
+        } else {
+            (*var_info)->type     = CONST_DOUBLE;
+            (*var_info)->double_  = num;
+        }
 
     } else if (IS_UNDEFINED(value)) {
-        *type = CONST_UNDEFINED;
+        (*var_info)->type  = CONST_UNDEFINED;
 
     } else if (IS_NULL(value)) {
-        *type = CONST_NULL;
+        (*var_info)->type  = CONST_NULL;
 
     } else if (IS_STRING(value)) {
-        *type = CONST_STRING;
+        (*var_info)->type  = CONST_STRING;
 
-        char_ptr tmp = BRAMA_MALLOC(sizeof(char) * (strlen(AS_STRING(value)) + 1));
-        strcpy(tmp, AS_STRING(value));
-        tmp[strlen(AS_STRING(value))] = '\0';
-        *data = tmp;
+        (*var_info)->char_ptr = BRAMA_MALLOC(sizeof(char) * (strlen(AS_STRING(value)) + 1));
+        strcpy((*var_info)->char_ptr, AS_STRING(value));
+        (*var_info)->char_ptr[strlen(AS_STRING(value))] = '\0';
     }
 
     return  BRAMA_OK;
+}
+
+brama_status brama_destroy_get_var(t_context_ptr context, t_get_var_info** var_info) {
+    if (var_info == NULL || (*var_info) == NULL)
+        return BRAMA_OK;
+
+    if ((*var_info)->type  == CONST_STRING) {
+        BRAMA_FREE((*var_info)->char_ptr);
+    }
+
+    BRAMA_FREE(*var_info);
+    *var_info = NULL;
+    return BRAMA_OK;
 }
 
 void brama_compile_dump(t_context_ptr context) {
@@ -3024,7 +3056,7 @@ void brama_compile_dump(t_context_ptr context) {
     }
 
     printf ("\r\n[VARIABLES] [%d]\r\n", variables->length);
-    char_ptr* variable_infos = BRAMA_MALLOC(sizeof(char_ptr) * variables->length);
+    char_ptr* variable_infos = BRAMA_CALLOC(variables->length, sizeof(char_ptr));
 
     map_iter_t iter = map_iter(variable_names);
     index           = 0;
@@ -3084,6 +3116,8 @@ void brama_compile_dump(t_context_ptr context) {
                 break;
         }
     }
+            
+    BRAMA_FREE(variable_infos);
 }
 
 void run(t_context_ptr context) {
@@ -3202,7 +3236,7 @@ void run(t_context_ptr context) {
                         strcpy(tmp + strlen(AS_STRING(left)), AS_STRING(right));
                         tmp[(strlen(AS_STRING(left))) + (strlen(AS_STRING(right)))] = '\0';
 
-                        t_vm_object_ptr object = BRAMA_MALLOC(sizeof(t_vm_object));
+                        t_vm_object_ptr object = new_vm_object(context);
                         object->type           = CONST_STRING;
                         object->char_ptr       = tmp;
                         variables->data[vmdata.reg1 - 1] = GET_VALUE_FROM_OBJ(object);
@@ -3272,7 +3306,16 @@ end
 
 /* VM Begin */
 
-/* FOR FUTURE USAGE */
+t_vm_object_ptr new_vm_object(t_context_ptr context) {
+    t_vm_object_ptr obj = BRAMA_MALLOC(sizeof(t_vm_object));
+    obj->next   = context->compiler->head;
+    obj->marked = false;
+    context->compiler->head = obj;
+    ++context->compiler->total_object;
+    return obj;
+}
+
+
 void vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t) {
     t->op   = (instr & OP_MASK  ) >> 24;
     t->reg1 = (instr & REG1_MASK) >> 16;
@@ -3310,6 +3353,21 @@ void brama_destroy(t_context_ptr context) {
         destroy_ast(ast);
         BRAMA_FREE(ast);
     }
+
+    /* Remove all objects 
+     * Simple GC         */
+    t_vm_object_ptr _object = context->compiler->head;
+    while (_object != NULL) {
+        t_vm_object_ptr next_object = _object->next;
+
+        if (_object->type == CONST_STRING) 
+            BRAMA_FREE(_object->char_ptr);
+
+        BRAMA_FREE(_object);
+        _object = next_object;
+    }
+
+    context->compiler->total_object = 0;
 
     if (context->error_message != NULL)
         BRAMA_FREE(context->error_message);

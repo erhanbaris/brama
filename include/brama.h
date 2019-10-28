@@ -483,6 +483,7 @@ typedef struct _t_control         t_control;
 typedef struct _t_vm_object       t_vm_object;
 typedef struct _t_storage         t_storage;
 typedef struct _t_compile_info    t_compile_info;
+typedef struct _t_get_var_info    t_get_var_info;
 
 
 typedef t_vm_object*       t_vm_object_ptr;
@@ -507,6 +508,7 @@ typedef t_accessor*        t_accessor_ptr;
 typedef t_compiler*        t_compiler_ptr;
 typedef t_storage*         t_storage_ptr;
 typedef t_compile_info*    t_compile_info_ptr;
+typedef t_get_var_info*    t_get_var_info_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
@@ -573,10 +575,12 @@ typedef struct _t_parser {
 } t_parser;
 
 typedef struct _t_compiler {
-    size_t        index;
-    vec_byte_ptr  op_codes;
-    t_storage_ptr global_storage;
-    vec_storage   storages;
+    size_t          index;
+    vec_byte_ptr    op_codes;
+    t_storage_ptr   global_storage;
+    vec_storage     storages;
+    t_vm_object_ptr head;
+    size_t          total_object;
 } t_compiler;
 
 typedef struct _t_storage {
@@ -705,8 +709,10 @@ typedef struct _t_brama_vmdata {
 
 typedef struct _t_vm_object {
     brama_vm_const_type type;
+    bool                marked;
+    t_vm_object_ptr     next;
     union {
-        char* char_ptr;
+        char* char_ptr; 
     };
 } t_vm_object;
 
@@ -714,6 +720,16 @@ typedef struct _t_compile_info {
     int  index;
     brama_status status;
 } t_compile_info;
+
+typedef struct _t_get_var_info {
+    brama_vm_const_type type;
+    union {
+        int        int_;
+        double     double_;
+        bool       bool_;
+        char*      char_ptr;
+    };
+} t_get_var_info;
 
 /* VM Defs */
 

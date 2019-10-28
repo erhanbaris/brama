@@ -136,12 +136,14 @@ case OPERATOR_1_SYMBOL :                     \
 #    include <stdlib.h>
 #    include <crtdbg.h>
 
+#    define BRAMA_CALLOC(NUM, SIZE)                 _calloc_dbg( NUM , SIZE , _NORMAL_BLOCK , __FILE__, __LINE__ )
 #    define BRAMA_MALLOC(SIZE)                      _malloc_dbg( SIZE , _NORMAL_BLOCK , __FILE__, __LINE__ )
 #    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) _malloc_dbg( SIZE , _NORMAL_BLOCK , FILE__, LINE__ )
 
 #    define BRAMA_FREE(PTR)      _free_dbg  ( PTR  , _NORMAL_BLOCK)
 #else
 #    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) malloc ( SIZE )
+#    define BRAMA_CALLOC(NUM, SIZE)                 Calloc ( NUM , SIZE )
 #    define BRAMA_MALLOC( SIZE )                    malloc ( SIZE )
 #    define BRAMA_FREE(PTR)                         free   ( PTR )
 
