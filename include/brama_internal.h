@@ -92,6 +92,7 @@ void compile_while              (t_context_ptr context, t_while_loop_ptr const a
 void compile_block              (t_context_ptr context, vec_ast_ptr const ast,      t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_unary              (t_context_ptr context, t_unary_ptr const ast,      t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_assignment         (t_context_ptr context, t_assign_ptr const ast,     t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_break              (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 
 t_vm_object_ptr new_vm_object(t_context_ptr context);
 void            vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t);

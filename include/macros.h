@@ -143,7 +143,7 @@ case OPERATOR_1_SYMBOL :                     \
 #    define BRAMA_FREE(PTR)      _free_dbg  ( PTR  , _NORMAL_BLOCK)
 #else
 #    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) malloc ( SIZE )
-#    define BRAMA_CALLOC(NUM, SIZE)                 Calloc ( NUM , SIZE )
+#    define BRAMA_CALLOC(NUM, SIZE)                 calloc ( NUM , SIZE )
 #    define BRAMA_MALLOC( SIZE )                    malloc ( SIZE )
 #    define BRAMA_FREE(PTR)                         free   ( PTR )
 

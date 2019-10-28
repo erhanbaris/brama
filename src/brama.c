@@ -2531,7 +2531,9 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
     vec_push(context->compiler->op_codes, vm_encode(&code));
 }
 
+void compile_break(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
 
+}
 
 void compile_symbol(t_context_ptr context, char_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     /* We need to check variable that used on scope before */
@@ -2919,6 +2921,14 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
         case AST_UNARY:
             compile_unary(context, ast->vector_ptr, storage, compile_info, upper_ast);
             break;
+
+        case AST_BREAK:
+            compile_break(context, ast->vector_ptr, storage, compile_info, upper_ast);
+            break;
+
+        default:
+            printf("Unknown AST: %d\r\n", ast->type);
+            break;
     }
 }
 
@@ -3164,6 +3174,46 @@ void run(t_context_ptr context) {
                 t_brama_value variable = variables->data[vmdata.reg1 - 1];
                 if (IS_NUM(variable)) {
                     variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(variable) - 1);
+                }
+                break;
+            }
+
+            case VM_OPT_BITWISE_RIGHT_SHIFT: {
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
+
+                if (IS_NUM(left) && IS_NUM(right))  {
+                    variables->data[vmdata.reg1 - 1] = numberToValue((uint32_t)valueToNumber(left) >> (uint32_t)valueToNumber(right));
+                }
+                break;
+            }
+
+            case VM_OPT_BITWISE_LEFT_SHIFT: {
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
+
+                if (IS_NUM(left) && IS_NUM(right))  {
+                    variables->data[vmdata.reg1 - 1] = numberToValue((uint32_t)valueToNumber(left) << (uint32_t)valueToNumber(right));
+                }
+                break;
+            }
+
+            case VM_OPT_BITWISE_OR: {
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
+
+                if (IS_NUM(left) && IS_NUM(right))  {
+                    variables->data[vmdata.reg1 - 1] = numberToValue((uint32_t)valueToNumber(left) | (uint32_t)valueToNumber(right));
+                }
+                break;
+            }
+
+            case VM_OPT_BITWISE_AND: {
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
+
+                if (IS_NUM(left) && IS_NUM(right))  {
+                    variables->data[vmdata.reg1 - 1] = numberToValue((uint32_t)valueToNumber(left) & (uint32_t)valueToNumber(right));
                 }
                 break;
             }
