@@ -512,6 +512,7 @@ typedef t_get_var_info*    t_get_var_info_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
+typedef double*            double_ptr;
 enum brama_vm_operator;
 
 typedef uint64_t           t_brama_value;
@@ -551,7 +552,6 @@ typedef struct _t_token {
     union {
         char*  char_ptr;
         char   char_;
-        int    int_;
         double double_;
         brama_keyword_type  keyword;
         brama_operator_type opt;
@@ -724,7 +724,6 @@ typedef struct _t_compile_info {
 typedef struct _t_get_var_info {
     brama_vm_const_type type;
     union {
-        int        int_;
         double     double_;
         bool       bool_;
         char*      char_ptr;

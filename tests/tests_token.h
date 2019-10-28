@@ -8,7 +8,7 @@
 #define KEYWORD_EQUAL(INDEX, KEYWORD) \
     if (context->tokinizer->tokens->length <= INDEX ) return MUNIT_FAIL;\
     munit_assert_int (context->tokinizer->tokens->data[ INDEX ]->type, ==, TOKEN_KEYWORD); \
-    munit_assert_int (context->tokinizer->tokens->data[ INDEX ]->int_, ==, KEYWORD );
+    munit_assert_int (context->tokinizer->tokens->data[ INDEX ]->keyword, ==, KEYWORD );
 
 #define SYMBOL_EQUAL(INDEX, SYMBOL) \
     if (context->tokinizer->tokens->length <= INDEX ) return MUNIT_FAIL;\
@@ -23,12 +23,12 @@
 #define OPERATOR_CHECK(INDEX, OPERATOR) \
     if (context->tokinizer->tokens->length <= INDEX ) return MUNIT_FAIL;\
     munit_assert_int(context->tokinizer->tokens->data[ INDEX ]->type, ==, TOKEN_OPERATOR); \
-    munit_assert_int(context->tokinizer->tokens->data[ INDEX ]->int_, ==, OPERATOR );
+    munit_assert_int(context->tokinizer->tokens->data[ INDEX ]->opt, ==, OPERATOR );
 
 #define INTEGER_CHECK(INDEX, NUMBER) \
     if (context->tokinizer->tokens->length <= INDEX ) return MUNIT_FAIL;\
     munit_assert_int(context->tokinizer->tokens->data[ INDEX ] ->type, ==, TOKEN_INTEGER); \
-    munit_assert_int(context->tokinizer->tokens->data[ INDEX ]->int_,  ==, NUMBER );
+    munit_assert_int(context->tokinizer->tokens->data[ INDEX ]->double_,  ==, NUMBER );
 
 #define DOUBLE_CHECK(INDEX, NUMBER) \
     if (context->tokinizer->tokens->length <= INDEX ) return MUNIT_FAIL;\
@@ -174,7 +174,7 @@ MunitResult number_token_1(const MunitParameter params[], void* user_data_or_fix
         return MUNIT_FAIL;
 
     munit_assert_int(token->type, ==, TOKEN_INTEGER);
-    munit_assert_int(token->int_, ==, 1024);
+    munit_assert_int(token->double_, ==, 1024);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -206,7 +206,7 @@ MunitResult number_token_3(const MunitParameter params[], void* user_data_or_fix
         return MUNIT_FAIL;
 
     munit_assert_int(token->type, ==, TOKEN_INTEGER);
-    munit_assert_int(token->int_, ==, 2048);
+    munit_assert_int(token->double_, ==, 2048);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -239,16 +239,30 @@ MunitResult number_token_5(const MunitParameter params[], void* user_data_or_fix
     t_token* token_4 = context->tokinizer->tokens->data[3];
 
     munit_assert_int    (token_1->type, ==, TOKEN_OPERATOR);
-    munit_assert_double (token_1->int_, ==, OPERATOR_SUBTRACTION);
+    munit_assert_double (token_1->opt, ==, OPERATOR_SUBTRACTION);
 
     munit_assert_int    (token_2->type,    ==, TOKEN_DOUBLE);
     munit_assert_double (token_2->double_, ==, 1024.1234567);
 
     munit_assert_int    (token_3->type, ==, TOKEN_OPERATOR);
-    munit_assert_double (token_3->int_, ==, OPERATOR_SUBTRACTION);
+    munit_assert_double (token_3->opt, ==, OPERATOR_SUBTRACTION);
 
     munit_assert_int    (token_4->type, ==, TOKEN_INTEGER);
-    munit_assert_double (token_4->int_, ==, 1024);
+    munit_assert_double (token_4->double_, ==, 1024);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult number_token_6(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context, "9007199254740992");
+    munit_assert_int(context->tokinizer->tokens->length, ==, 1);
+
+    t_token* token = context->tokinizer->tokens->data[0];
+
+    munit_assert_int    (token->type, ==, TOKEN_INTEGER);
+    munit_assert_double (token->double_, ==, 9007199254740992.0);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -320,7 +334,7 @@ MunitResult symbol_token_2(const MunitParameter params[], void* user_data_or_fix
         return MUNIT_FAIL;
 
     munit_assert_int(token->type, ==, TOKEN_INTEGER);
-    munit_assert_int(token->int_, ==, 2048);
+    munit_assert_int(token->double_, ==, 2048);
 
     token = context->tokinizer->tokens->data[5];
     if (token == NULL)
@@ -548,6 +562,7 @@ MunitTest TOKEN_TESTS[] = {
     ADD_TEST(number_token_3),
     ADD_TEST(number_token_4),
     ADD_TEST(number_token_5),
+    ADD_TEST(number_token_6),
 
     ADD_TEST(symbol_token_1),
     ADD_TEST(symbol_token_2),

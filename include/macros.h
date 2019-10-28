@@ -4,34 +4,34 @@
 #define OPERATOR_CASE_DOUBLE_START_WITH(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_3_SYMBOL, OPERATOR_1, OPERATOR_2, OPERATOR_3) \
     case OPERATOR_1_SYMBOL :                       \
         if (chNext == OPERATOR_2_SYMBOL ) {        \
-            token->int_ = OPERATOR_2 ;             \
+            token->opt = OPERATOR_2 ;             \
             increase(tokinizer);                   \
         } else if (chNext == OPERATOR_3_SYMBOL ) { \
-            token->int_ = OPERATOR_3 ;             \
+            token->opt = OPERATOR_3 ;             \
             increase(tokinizer);                   \
-        } else token->int_ = OPERATOR_1 ;          \
+        } else token->opt = OPERATOR_1 ;          \
         break;
 
 #define OPERATOR_CASE_DOUBLE_START_WITH_FOUR(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_3_SYMBOL, OPERATOR_4_SYMBOL, OPERATOR_1, OPERATOR_2, OPERATOR_3, OPERATOR_4) \
     case OPERATOR_1_SYMBOL :                       \
         if (chNext == OPERATOR_2_SYMBOL ) {        \
-            token->int_ = OPERATOR_2 ;             \
+            token->opt = OPERATOR_2 ;             \
             increase(tokinizer);                   \
         } else if (chNext == OPERATOR_3_SYMBOL ) { \
-            token->int_ = OPERATOR_3 ;             \
+            token->opt = OPERATOR_3 ;             \
             increase(tokinizer);                   \
         } else if (chNext == OPERATOR_4_SYMBOL ) { \
-            token->int_ = OPERATOR_4 ;             \
+            token->opt = OPERATOR_4 ;             \
             increase(tokinizer);                   \
-        } else token->int_ = OPERATOR_1 ;          \
+        } else token->opt = OPERATOR_1 ;          \
         break;
 
 #define OPERATOR_CASE_DOUBLE(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_1, OPERATOR_2)  \
     case OPERATOR_1_SYMBOL :                \
         if (chNext == OPERATOR_2_SYMBOL ) { \
-            token->int_ = OPERATOR_2 ;      \
+            token->opt = OPERATOR_2 ;      \
             increase(tokinizer);            \
-        } else token->int_ = OPERATOR_1 ;   \
+        } else token->opt = OPERATOR_1 ;   \
         break;
 
 #define OPERATOR_CASE_TRIBLE(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_3_SYMBOL, OPERATOR_1, OPERATOR_2, OPERATOR_3) \
@@ -39,15 +39,15 @@ case OPERATOR_1_SYMBOL :                     \
     if (chNext == OPERATOR_2_SYMBOL ) {      \
         increase(tokinizer);                 \
         if (chThird == OPERATOR_3_SYMBOL ) { \
-            token->int_ = OPERATOR_3 ;       \
+            token->opt = OPERATOR_3 ;       \
             increase(tokinizer);             \
-        } else token->int_ = OPERATOR_2 ;    \
-    } else token->int_ = OPERATOR_1 ;        \
+        } else token->opt = OPERATOR_2 ;    \
+    } else token->opt = OPERATOR_1 ;        \
     break;
 
 #define OPERATOR_CASE_SINGLE(OPERATOR_SYMBOL, OPERATOR)  \
     case OPERATOR_SYMBOL :\
-        token->int_ = OPERATOR ;\
+        token->opt = OPERATOR ;\
     break;
 
 #define RESULT_CHECK(RESULT)\
@@ -55,8 +55,8 @@ case OPERATOR_1_SYMBOL :                     \
         return RESULT;\
     }
 
-#define get_operator_type(token) token->int_
-#define get_keyword_type(token) token->int_
+#define get_operator_type(token) token->opt
+#define get_keyword_type(token) token->keyword
 
 #define IS_ITEM(NAME, TYPE) \
     bool is_##NAME (t_token* token)\

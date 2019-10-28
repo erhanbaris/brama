@@ -87,7 +87,7 @@ int getSymbol(t_tokinizer_ptr tokinizer) {
         token->type       = TOKEN_KEYWORD;
         token->current    = tokinizer->column;
         token->line       = tokinizer->line;
-        token->int_       = *keywordInfo;
+        token->keyword    = *keywordInfo;
 
         vec_push(tokinizer->tokens, token);
         BRAMA_FREE(data);
@@ -156,8 +156,8 @@ int getText(t_tokinizer_ptr tokinizer, char symbol) {
 int getNumber(t_tokinizer_ptr tokinizer) {
     bool isMinus       = false;
     int dotPlace       = 0;
-    int beforeTheComma = 0;
-    int afterTheComma  = 0;
+    double beforeTheComma = 0;
+    double afterTheComma  = 0;
     size_t start       = tokinizer->column;
     bool isDouble      = false;
     char ch            = getChar(tokinizer);
@@ -204,7 +204,7 @@ int getNumber(t_tokinizer_ptr tokinizer) {
 
     if (!isDouble) {
         token->type = TOKEN_INTEGER;
-        token->int_ = beforeTheComma;
+        token->double_ = beforeTheComma;
     } else {
         token->type    = TOKEN_DOUBLE;
         token->double_ = (beforeTheComma + (afterTheComma * pow(10, -1 * dotPlace)));
@@ -218,7 +218,7 @@ int getNumber(t_tokinizer_ptr tokinizer) {
         token->type    = TOKEN_OPERATOR;
         token->current = tokinizer->column;
         token->line    = tokinizer->line;
-        token->int_    = OPERATOR_SUBTRACTION;
+        token->opt     = OPERATOR_SUBTRACTION;
 
         vec_push(tokinizer->tokens, token);
     }
@@ -240,7 +240,7 @@ brama_status getOperator(t_tokinizer_ptr tokinizer) {
     token->type       = TOKEN_OPERATOR;
     token->current    = tokinizer->column;
     token->line       = tokinizer->line;
-    token->int_       = OPERATOR_NONE;
+    token->opt        = OPERATOR_NONE;
 
     switch (ch) {
         
@@ -251,17 +251,17 @@ brama_status getOperator(t_tokinizer_ptr tokinizer) {
         case '>' : {
             if (chNext == '>') {
                 if (chThird == '>') {
-                    token->int_ = OPERATOR_BITWISE_UNSIGNED_RIGHT_SHIFT;
+                    token->opt = OPERATOR_BITWISE_UNSIGNED_RIGHT_SHIFT;
                     increase(tokinizer);
                 }
                 else 
-                    token->int_ = OPERATOR_BITWISE_RIGHT_SHIFT;
+                    token->opt = OPERATOR_BITWISE_RIGHT_SHIFT;
                 increase(tokinizer);
 
             } else if (chNext == '=' ) {
-                token->int_ = OPERATOR_GREATER_EQUAL_THAN;
+                token->opt = OPERATOR_GREATER_EQUAL_THAN;
                 increase(tokinizer);
-            } else token->int_ = OPERATOR_GREATER_THAN;
+            } else token->opt = OPERATOR_GREATER_THAN;
         }
         break;
 
@@ -294,7 +294,7 @@ brama_status getOperator(t_tokinizer_ptr tokinizer) {
         OPERATOR_CASE_SINGLE('.', OPERATOR_DOT);
     }
 
-    if (token->int_ == OPERATOR_NONE)
+    if (token->opt == OPERATOR_NONE)
         return BRAMA_NOK;
 
     vec_push(tokinizer->tokens, token);
@@ -315,7 +315,7 @@ int brama_tokinize(t_context_ptr context, char_ptr data) {
             token->type    = TOKEN_OPERATOR;
             token->current = tokinizer->column;
             token->line    = tokinizer->line;
-            token->int_    = OPERATOR_NEW_LINE;
+            token->opt     = OPERATOR_NEW_LINE;
 
             vec_push(tokinizer->tokens, token);
             tokinizer->column = 0;
@@ -401,19 +401,19 @@ IS_ITEM(text,     TOKEN_TEXT)
 IS_ITEM(symbol,   TOKEN_SYMBOL)
 IS_ITEM(operator, TOKEN_OPERATOR)
 
-GET_ITEM(keyword,  int_,     brama_keyword_type)
-GET_ITEM(integer,  int_,     int)
+GET_ITEM(keyword,  keyword,  brama_keyword_type)
+GET_ITEM(integer,  double_,  int)
 GET_ITEM(double,   double_,  double)
 GET_ITEM(text,     char_ptr, char_ptr)
 GET_ITEM(symbol,   char_ptr, char_ptr)
-GET_ITEM(operator, int_,     brama_operator_type)
+GET_ITEM(operator, opt,      brama_operator_type)
 
-NEW_PRIMATIVE_DEF(int,    int,                 PRIMATIVE_INTEGER,    int_)
+NEW_PRIMATIVE_DEF(int,    double,              PRIMATIVE_INTEGER,    double_)
 NEW_PRIMATIVE_DEF(double, double,              PRIMATIVE_DOUBLE,     double_)
 NEW_PRIMATIVE_DEF(text,   char_ptr,            PRIMATIVE_STRING,     char_ptr)
 NEW_PRIMATIVE_DEF(bool,   bool,                PRIMATIVE_BOOL,       bool_)
-NEW_PRIMATIVE_DEF(empty,  int,                 PRIMATIVE_NULL,       int_)
-NEW_PRIMATIVE_DEF(array,  vec_ast_ptr, PRIMATIVE_ARRAY,      array)
+NEW_PRIMATIVE_DEF(empty,  int,                 PRIMATIVE_NULL,       double_)
+NEW_PRIMATIVE_DEF(array,  vec_ast_ptr,         PRIMATIVE_ARRAY,      array)
 NEW_PRIMATIVE_DEF(dict,   map_ast_t_ptr,       PRIMATIVE_DICTIONARY, dict)
 
 NEW_AST_DEF(symbol,    char_ptr,              AST_SYMBOL,               char_ptr, false)
@@ -434,7 +434,7 @@ NEW_AST_DEF(keyword,   brama_keyword_type,    AST_KEYWORD,              keyword,
 brama_status as_primative(t_token_ptr token, t_ast_ptr_ptr ast) {
     switch (token->type) {
     case TOKEN_INTEGER:
-        *ast = new_primative_ast_int(get_integer(token));
+        *ast = new_primative_ast_int(get_double(token));
         break;
 
     case TOKEN_DOUBLE:
@@ -452,6 +452,8 @@ brama_status as_primative(t_token_ptr token, t_ast_ptr_ptr ast) {
             *ast = new_primative_ast_bool(false);
         else if (get_keyword_type(token) == KEYWORD_NULL)
             *ast = new_primative_ast_empty(0);
+        else
+            return BRAMA_PARSE_ERROR;
         break;
 
     default:
@@ -1717,12 +1719,12 @@ bool ast_check_token(t_context_ptr context, brama_token_type token_type) {
 
 bool ast_check_operator(t_context_ptr context, brama_operator_type operator_type) {
     t_token_ptr token = ast_peek(context);
-    return token != NULL && token->type == TOKEN_OPERATOR && token->int_ == operator_type;
+    return token != NULL && token->type == TOKEN_OPERATOR && token->opt == operator_type;
 }
 
 bool ast_check_keyword(t_context_ptr context, brama_keyword_type keyword_type) {
     t_token_ptr token = ast_peek(context);
-    return token != NULL && token->type == TOKEN_KEYWORD && token->int_ == keyword_type;
+    return token != NULL && token->type == TOKEN_KEYWORD && token->keyword == keyword_type;
 }
 
 bool ast_match_token(t_context_ptr context, size_t count, ...) {
@@ -1932,13 +1934,13 @@ void brama_dump(t_context_ptr context) {
         if (token->type == TOKEN_TEXT)
             printf("TEXT     = '%s'\r\n", token->char_ptr);
         else if (token->type == TOKEN_OPERATOR)
-            printf("OPERATOR = '%s'\r\n", OPERATORS[token->int_].opt);
+            printf("OPERATOR = '%s'\r\n", OPERATORS[(int)token->opt].opt);
         else if (token->type == TOKEN_SYMBOL)
             printf("SYMBOL   = '%s'\r\n", token->char_ptr);
         else if (token->type == TOKEN_KEYWORD)
-            printf("KEYWORD  = '%s'\r\n", KEYWORDS[token->int_]);
+            printf("KEYWORD  = '%s'\r\n", KEYWORDS[(int)token->keyword]);
         else if (token->type == TOKEN_INTEGER)
-            printf("INTEGER  = '%d'\r\n", token->int_);
+            printf("INTEGER  = '%d'\r\n", token->double_);
         else if (token->type == TOKEN_DOUBLE)
             printf("DOUBLE   = '%f'\r\n", token->double_);
     }
@@ -2819,15 +2821,6 @@ void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_stora
 
     switch (ast->type) {
         case PRIMATIVE_INTEGER:
-            vec_find(&storage->constants, numberToValue(ast->int_), index);
-            if (index == -1) {
-                vec_push(&storage->constants, numberToValue(ast->int_));
-                compile_info->index = (storage->constants.length) * -1;
-            }
-            else
-                compile_info->index = ++index * -1;
-            break;
-
         case PRIMATIVE_DOUBLE:
             vec_find(&storage->constants, numberToValue(ast->double_), index);
             if (index == -1) {
@@ -2981,8 +2974,8 @@ brama_status brama_get_var(t_context_ptr context, char_ptr var_name, t_get_var_i
     if (index == NULL)
         return BRAMA_NOK;
 
-    *var_info         = BRAMA_MALLOC(sizeof(t_get_var_info));
-    (*var_info)->int_ = 0;
+    *var_info          = BRAMA_MALLOC(sizeof(t_get_var_info));
+    (*var_info)->bool_ = false;
 
     t_brama_value value = context->compiler->global_storage->variables.data[*index];
     if (IS_BOOL(value)) {
@@ -2996,7 +2989,7 @@ brama_status brama_get_var(t_context_ptr context, char_ptr var_name, t_get_var_i
  
         if (fractpart == 0.0) {
             (*var_info)->type  = CONST_INTEGER;
-            (*var_info)->int_  = intpart;
+            (*var_info)->double_  = num;
         } else {
             (*var_info)->type     = CONST_DOUBLE;
             (*var_info)->double_  = num;
