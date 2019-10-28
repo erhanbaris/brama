@@ -2519,11 +2519,11 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
             break;
 
         case OPERATOR_EQUAL:
-            code.op = VM_OPT_GT;
+            code.op = VM_OPT_EQ;
             break;
 
         case OPERATOR_EQUAL_VALUE:
-            code.op = VM_OPT_GTE;
+            code.op = VM_OPT_EQ; // todo: fix me !!!!!
             break;
     }
 
@@ -3208,6 +3208,17 @@ void run(t_context_ptr context) {
 
                 if (IS_NUM(left) && IS_NUM(right))  {
                     variables->data[vmdata.reg1 - 1] = numberToValue(valueToNumber(left) >= valueToNumber(right)) ? TRUE_VAL : FALSE_VAL;
+                }
+                break;
+            }
+
+                /* '==' operator */
+            case VM_OPT_EQ: {
+                t_brama_value left  = vmdata.reg2 < 0 ? constants->data[sabs8(vmdata.reg2) - 1] : variables->data[vmdata.reg2 - 1];
+                t_brama_value right = vmdata.reg3 < 0 ? constants->data[sabs8(vmdata.reg3) - 1] : variables->data[vmdata.reg3 - 1];
+
+                if (IS_NUM(left) && IS_NUM(right))  {
+                    variables->data[vmdata.reg1 - 1] = valueToNumber(left) == valueToNumber(right) ? TRUE_VAL : FALSE_VAL;
                 }
                 break;
             }
