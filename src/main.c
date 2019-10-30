@@ -14,14 +14,16 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init();
-    brama_compile(context, "var x = 9007199254740992;"
-"var y = -x;"
-"var a = x == x + 1;"
-"var b = y == y - 1; "
-"var c = x / 2;"
-"var d = x / 2;"
-"var e = x >> 1;     // 0"
-"var f = x | 1;      // 1");
+    brama_compile(context, "var x = 0; var y = 1;\n"
+                           "var count = 2 ;\n"
+                           "var fib ;\n"
+                           "while(count <=10){\n"
+                           "    fib = x+y ;\n if (count == 5) break;"
+                           "    x = y ;\n"
+                           "    y = fib;\n"
+                           "count++\n"
+                           "}");
+
     brama_run(context);
     brama_compile_dump(context);
 

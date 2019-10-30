@@ -93,6 +93,11 @@ void compile_block              (t_context_ptr context, vec_ast_ptr const ast,  
 void compile_unary              (t_context_ptr context, t_unary_ptr const ast,      t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_assignment         (t_context_ptr context, t_assign_ptr const ast,     t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_break              (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_continue           (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+
+t_compile_stack_ptr new_compile_stack        (t_context_ptr context, brama_ast_type ast_type, void_ptr ast, void_ptr compile_obj) ;
+brama_status        find_compile_stack       (t_context_ptr context, brama_ast_type ast_type, t_compile_stack_ptr* stack);
+void                remove_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack);
 
 t_vm_object_ptr new_vm_object(t_context_ptr context);
 void            vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t);

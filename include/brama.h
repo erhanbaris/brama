@@ -484,7 +484,8 @@ typedef struct _t_vm_object       t_vm_object;
 typedef struct _t_storage         t_storage;
 typedef struct _t_compile_info    t_compile_info;
 typedef struct _t_get_var_info    t_get_var_info;
-
+typedef struct _t_compile_stack   t_compile_stack;
+typedef struct _t_compile_while   t_compile_while;
 
 typedef t_vm_object*       t_vm_object_ptr;
 typedef t_tokinizer*       t_tokinizer_ptr;
@@ -509,10 +510,13 @@ typedef t_compiler*        t_compiler_ptr;
 typedef t_storage*         t_storage_ptr;
 typedef t_compile_info*    t_compile_info_ptr;
 typedef t_get_var_info*    t_get_var_info_ptr;
+typedef t_compile_while*   t_compile_while_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
 typedef double*            double_ptr;
+typedef t_compile_stack*   t_compile_stack_ptr;
+
 enum brama_vm_operator;
 
 typedef uint64_t           t_brama_value;
@@ -544,6 +548,8 @@ typedef vec_t(t_brama_byte)    vec_byte;
 typedef vec_t(t_brama_byte)*   vec_byte_ptr;
 typedef vec_t(char_ptr)        vec_string;
 typedef vec_t(char_ptr)*       vec_string_ptr;
+typedef vec_t(t_compile_stack*) vec_compile_stack;
+typedef vec_compile_stack*      vec_compile_stack_ptr;
 
 typedef struct _t_token {
     size_t           line;
@@ -575,12 +581,12 @@ typedef struct _t_parser {
 } t_parser;
 
 typedef struct _t_compiler {
-    size_t          index;
-    vec_byte_ptr    op_codes;
-    t_storage_ptr   global_storage;
-    vec_storage     storages;
-    t_vm_object_ptr head;
-    size_t          total_object;
+    vec_compile_stack compile_stack;
+    vec_byte_ptr      op_codes;
+    t_storage_ptr     global_storage;
+    vec_storage       storages;
+    t_vm_object_ptr   head;
+    size_t            total_object;
 } t_compiler;
 
 typedef struct _t_storage {
@@ -729,6 +735,19 @@ typedef struct _t_get_var_info {
         char*      char_ptr;
     };
 } t_get_var_info;
+
+typedef struct _t_compile_stack {
+    size_t         start_address;
+    size_t         end_address;
+    brama_ast_type ast_type;
+    void*          ast;
+    void*          compile_obj;
+} t_compile_stack;
+
+typedef struct _t_compile_while {
+    vec_int_t breaks;
+    vec_int_t continues;
+} t_compile_while;
 
 /* VM Defs */
 

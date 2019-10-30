@@ -1861,10 +1861,10 @@ t_context_ptr brama_init() {
 
     /* Compiler */
     context->compiler                 = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
-    context->compiler->index          = 0;
     context->compiler->head           = NULL;
     context->compiler->total_object   = 0;
     context->compiler->op_codes       = BRAMA_MALLOC(sizeof (vec_opcode));
+    vec_init(&context->compiler->compile_stack);
     context->compiler->global_storage = BRAMA_MALLOC(sizeof (t_storage));
     context->compiler->global_storage->id           = 0;
     context->compiler->global_storage->loop_counter = 0;
@@ -2403,6 +2403,40 @@ bool destroy_ast_primative(t_primative_ptr primative) {
 
 /* Compile Begin */
 
+t_compile_stack_ptr new_compile_stack(t_context_ptr context, brama_ast_type ast_type, void_ptr ast, void_ptr compile_obj) {
+    t_compile_stack_ptr stack = BRAMA_MALLOC(sizeof(t_compile_stack));
+    stack->ast           = ast;
+    stack->ast_type      = ast_type;
+    stack->start_address = 0;
+    stack->end_address   = 0;
+    stack->compile_obj   = compile_obj;
+
+    vec_push(&context->compiler->compile_stack, stack);
+    return stack;
+}
+
+brama_status find_compile_stack(t_context_ptr context, brama_ast_type ast_type, t_compile_stack_ptr* stack) {
+    t_compile_stack_ptr tmp_stack = NULL;
+    int index;
+    vec_foreach_rev(&context->compiler->storages, tmp_stack, index) {
+
+        if (tmp_stack->ast_type == ast_type) {
+            (*stack) = tmp_stack;
+            return BRAMA_OK;
+        }
+
+    }
+    return BRAMA_NOK;
+}
+
+void remove_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack) {
+    if (stack->compile_obj != NULL)
+        BRAMA_FREE(stack->compile_obj);
+
+    vec_remove(&context->compiler->compile_stack, stack);
+    BRAMA_FREE(stack);
+}
+
 /* Binary Operation
  * Example : 10 + 20 - 10 * 5.5 */
 void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -2532,7 +2566,19 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
 }
 
 void compile_break(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    t_compile_stack_ptr while_stack = NULL;
+    if (find_compile_stack(context, AST_WHILE, &while_stack) == BRAMA_OK) {
+        vec_push(context->compiler->op_codes, 0); // We will setup it later
+        vec_push(&((t_compile_while_ptr)while_stack->compile_obj)->breaks, context->compiler->op_codes->length - 1);
+    }
+}
 
+void compile_continue(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    t_compile_stack_ptr while_stack = NULL;
+    if (find_compile_stack(context, AST_WHILE, &while_stack) == BRAMA_OK) {
+        vec_push(context->compiler->op_codes, 0); // We will setup it later
+        vec_push(&((t_compile_while_ptr)while_stack->compile_obj)->continues, context->compiler->op_codes->length - 1);
+    }
 }
 
 void compile_symbol(t_context_ptr context, char_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -2769,6 +2815,12 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
      * N+5. NORMAL OPCODE        *
      * ------------------------- */
 
+    t_compile_while_ptr compile_obj = BRAMA_MALLOC(sizeof(t_compile_while));
+    vec_init(&compile_obj->breaks);
+    vec_init(&compile_obj->continues);
+
+    t_compile_stack_ptr stack_info = new_compile_stack(context, AST_WHILE, ast, compile_obj);
+
     /* Define new variable to store condition information */
     t_assign_ptr assign      = BRAMA_MALLOC(sizeof(t_assign));
     assign->opt              = OPERATOR_ASSIGN;
@@ -2782,7 +2834,7 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     /* Store loop status */
     sprintf(assign->object->char_ptr, "(loop #%d)", ++storage->loop_counter);
     assign->object->char_ptr[19] = '\0';
-    assign->assignment = ast->condition;
+    assign->assignment           = ast->condition;
 
     compile_assignment(context, assign, storage, compile_info, AST_WHILE);
     size_t condition = compile_info->index;
@@ -2796,14 +2848,40 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     size_t jmp_compare_location = context->compiler->op_codes->length - 1;
     compile_if(context, if_stmt, storage, compile_info, AST_WHILE);
 
+    size_t begin_of_while_loc = jmp_compare_location - context->compiler->op_codes->length - 1;
+
     t_brama_vmdata code;
     code.op = VM_OPT_JMP;
     code.reg1 = 0;
     code.reg2 = 0;
     code.reg3 = 0;
-    code.scal = jmp_compare_location - context->compiler->op_codes->length - 1;
+    code.scal = begin_of_while_loc;
 
     vec_push(context->compiler->op_codes, vm_encode(&code));
+
+    /* continue and break commands need to refere right location */
+    int location;
+    int index;
+
+    /* change breaks reference */
+    vec_foreach(&compile_obj->breaks, location, index) {
+        code.op   = VM_OPT_JMP;
+        code.reg1 = 0;
+        code.reg2 = 0;
+        code.reg3 = 0;
+        code.scal = context->compiler->op_codes->length - 1;
+        context->compiler->op_codes->data[location] = vm_encode(&code);
+    }
+
+     /* change continues reference */
+    vec_foreach(&compile_obj->continues, location, index) {
+        code.op   = VM_OPT_JMP;
+        code.reg1 = 0;
+        code.reg2 = 0;
+        code.reg3 = 0;
+        code.scal = begin_of_while_loc;
+        context->compiler->op_codes->data[location] = vm_encode(&code);
+    }
 
     /* Remove all references */
     BRAMA_FREE(assign->object->char_ptr);
@@ -2815,6 +2893,10 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
 
     destroy_ast_if_stmt(if_stmt);
     BRAMA_FREE(if_stmt);
+
+    vec_deinit(&compile_obj->breaks);
+    vec_deinit(&compile_obj->continues);
+    remove_from_compile_stack(context, stack_info);
 }
 
 void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -2921,9 +3003,13 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
         case AST_UNARY:
             compile_unary(context, ast->vector_ptr, storage, compile_info, upper_ast);
             break;
-
+            
         case AST_BREAK:
-            compile_break(context, ast->vector_ptr, storage, compile_info, upper_ast);
+            compile_break(context, ast, storage, compile_info, upper_ast);
+            break;
+
+        case AST_CONTINUE:
+            compile_continue(context, ast, storage, compile_info, upper_ast);
             break;
 
         default:
@@ -3434,6 +3520,7 @@ void brama_destroy(t_context_ptr context) {
     vec_deinit(&context->compiler->global_storage->variables);
     map_deinit(&context->compiler->global_storage->variable_names);
     BRAMA_FREE(context->compiler->global_storage);
+    vec_deinit(&context->compiler->compile_stack);
 
     vec_deinit(_context->tokinizer->tokens);
     BRAMA_FREE(_context->tokinizer->tokens);
