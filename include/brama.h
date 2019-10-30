@@ -674,6 +674,10 @@ typedef struct _t_if_stmt {
 
 typedef struct _t_ast {
     brama_ast_type type;
+    bool           ends_with_newline;
+    bool           ends_with_semicolon;
+    bool create_new_storage;
+
     union {
         t_func_call*           func_call_ptr;
         t_func_decl*           func_decl_ptr;
@@ -692,7 +696,6 @@ typedef struct _t_ast {
         int                    int_;
         brama_keyword_type     keyword;
     };
-    bool create_new_storage;
 } t_ast;
 
 typedef struct _t_context {

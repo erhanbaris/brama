@@ -522,6 +522,7 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_as
                 }
 
                 map_set(dictionary, key, item);
+                check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
             } while (ast_match_operator(context, 1, OPERATOR_COMMA));
         }
 
@@ -696,6 +697,8 @@ brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_
         func_call->function    = *ast;
         func_call->type        = FUNC_CALL_NORMAL;
         *ast                   = new_func_call_ast(func_call);
+        set_semicolon_and_newline(context, *ast);
+
         status = BRAMA_OK;
     }
 
@@ -747,6 +750,8 @@ brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, 
 
         if (!ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_END)) {
             do {
+                check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+
                 t_ast_ptr block = NULL;
                 brama_status status = ast_declaration_stmt(context, &block, extra_data);
                 if (status != BRAMA_OK) {
@@ -756,7 +761,20 @@ brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, 
                     RESTORE_PARSER_INDEX_AND_RETURN(status);
                 }
 
-                if (!ast_match_operator(context, 1, OPERATOR_SEMICOLON) && !is_next_new_line(context)) { // Require semicolon or new line
+                set_semicolon_and_newline(context, block);
+
+                /* Primative value can not valid */
+                if (block->type == AST_PRIMATIVE) {
+                    destroy_ast_vector(blocks);
+                    BRAMA_FREE(blocks);
+                    CLEAR_AST(block);
+
+                    if (ast_match_operator(context, 1, OPERATOR_COLON_MARK))
+                        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
+                    RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_SEMICOLON_REQUIRED);
+                }
+
+                if (!block->ends_with_semicolon && !block->ends_with_newline) {
                     if (!ast_is_at_end(context) && !ast_check_operator(context, OPERATOR_CURVE_BRACKET_END)) {
                         destroy_ast_vector(blocks);
                         BRAMA_FREE(blocks);
@@ -1345,6 +1363,7 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama
     assign->assignment  = right;
     assign->new_def     = new_def;
     *ast = new_assign_ast(assign);
+    set_semicolon_and_newline(context, *ast);
 
     return BRAMA_OK;
 }
@@ -1436,6 +1455,9 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
     BACKUP_PARSER_INDEX();
 
     if (ast_match_keyword(context, 1, KEYWORD_WHILE)) {
+        /* Remove new lines */
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
 
@@ -1456,6 +1478,8 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         t_ast_ptr body = NULL;
         brama_status body_status = ast_block_multiline_stmt(context, &body, extra_data | AST_IN_LOOP);
         if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
+            check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+
             body_status = ast_block_body(context, &body, extra_data | AST_IN_LOOP);
             if (body_status != BRAMA_OK) {
                 CLEAR_AST(condition);
@@ -1467,6 +1491,11 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
             CLEAR_AST(condition);
             CLEAR_AST(body);
             RESTORE_PARSER_INDEX_AND_RETURN(condition_status)
+        }
+        else if (body_status != BRAMA_OK) {
+            CLEAR_AST(condition);
+            CLEAR_AST(body);
+            RESTORE_PARSER_INDEX_AND_RETURN(body_status)
         }
 
         t_while_loop_ptr object = (t_while_loop_ptr)BRAMA_MALLOC(sizeof(t_while_loop));
@@ -1483,8 +1512,6 @@ brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_ext
     BACKUP_PARSER_INDEX();
 
     if (ast_match_keyword(context, 1, KEYWORD_IF)) {
-        check_end_of_line(context, END_LINE_CHECKER_NEWLINE); /* Clear new line */
-
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
 
@@ -1499,6 +1526,9 @@ brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_ext
 
         if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES))
             DESTROY_AST_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND, condition);
+
+        /* Remove new lines */
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
 
         brama_status body_status = ast_block_multiline_stmt(context, &true_body, extra_data);
         if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
@@ -1515,8 +1545,10 @@ brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_ext
             RESTORE_PARSER_INDEX_AND_RETURN(condition_status)
         }
 
-        check_end_of_line(context, END_LINE_CHECKER_NEWLINE | END_LINE_CHECKER_SEMICOLON);
         if (ast_match_keyword(context, 1, KEYWORD_ELSE)) {
+            /* Remove new lines */
+            check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+
             body_status = ast_block_multiline_stmt(context, &false_body, extra_data);
             if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
                 body_status = ast_declaration_stmt(context, &false_body, extra_data);
@@ -1605,6 +1637,46 @@ brama_status check_end_of_line(t_context_ptr context, int operators) {
     return status;
 }
 
+void set_semicolon_and_newline(t_context_ptr context, t_ast_ptr ast) {
+
+    /* Set to false */
+    if (context->tokinizer->tokens->length <= context->parser->index)
+        return;
+
+    t_token_ptr token = context->tokinizer->tokens->data[context->parser->index];
+    int index = 0;
+    do {
+        /* If there is no more token, it means we are end of tokens and we do not event need to validate */
+        if (token == NULL)
+            return;
+
+        bool is_semicolon = token->opt == OPERATOR_SEMICOLON;
+        bool is_newline   = token->opt == OPERATOR_NEW_LINE;
+
+        /* If there is no token or it is not one of the required operator, respose error code */
+        if (token->type != TOKEN_OPERATOR || (!is_semicolon && !is_newline))
+            break;
+
+        /* Is semi colon required, if yes, consume all semicolons */
+        if (is_semicolon) {
+            ++context->parser->index;
+            ast->ends_with_semicolon = true;
+        }
+
+        /* Is end line required, if yes, consume all end lines */
+        if (is_newline) {
+            ++context->parser->index;
+            ast->ends_with_newline = true;
+        }
+        ++index;
+
+        if (context->tokinizer->tokens->length <= context->parser->index)
+            return;
+
+        token = context->tokinizer->tokens->data[context->parser->index];
+    } while(true); /* Continue until next_token is null or operator not valid anymore */
+}
+
 brama_status ast_block_body(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status status = BRAMA_NOK;
 
@@ -1647,7 +1719,6 @@ brama_status ast_block_body(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
     return BRAMA_DOES_NOT_MATCH_AST;
 
     check_semicolon_and_new_line: // It looks not good, I know, I will fix it
-    status = check_end_of_line(context, END_LINE_CHECKER_NEWLINE | END_LINE_CHECKER_SEMICOLON);
     if (status != BRAMA_OK)
         return status;
 
@@ -1658,8 +1729,9 @@ brama_status ast_expression(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
     BACKUP_PARSER_INDEX();
 
     brama_status status = ast_or_expr(context, ast, extra_data);
-    if (status == BRAMA_OK)
+    if (status == BRAMA_OK) {
         return BRAMA_OK;
+    }
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
         return status;
 
@@ -1702,7 +1774,6 @@ bool is_next_new_line(t_context_ptr context) {
 }
 
 t_token_ptr ast_peek(t_context_ptr context) {
-    check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
     if (context->tokinizer->tokens->length <= context->parser->index)
         return NULL;
     return context->tokinizer->tokens->data[context->parser->index];
@@ -1794,9 +1865,9 @@ brama_status validate_ast(t_context_ptr context, t_ast_ptr_ptr ast) {
         (*ast)->type == AST_CONTROL_OPERATION ||
         (*ast)->type == AST_UNARY ||
         (*ast)->type == AST_FUNCTION_DECLARATION) &&
-        (!is_next_new_line(context) &&
-         !ast_is_at_end(context) &&
-         !ast_check_operator(context, OPERATOR_SEMICOLON)))
+        (!ast_is_at_end(context) &&
+         !(*ast)->ends_with_newline &&
+         !(*ast)->ends_with_semicolon))
             return BRAMA_BLOCK_NOT_VALID;
     return BRAMA_OK;
 }
@@ -1805,17 +1876,23 @@ brama_status ast_parser(t_context_ptr context) {
     context->parser->index = 0;
     while (!ast_is_at_end(context)) {
 
-        /* In that situation, we don't need new line or semi colon. Clean all */
-        check_end_of_line(context, END_LINE_CHECKER_NEWLINE | END_LINE_CHECKER_SEMICOLON);
         if (ast_peek(context) == NULL)
             return BRAMA_OK;
+
+        /* Remove new lines */
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE | END_LINE_CHECKER_SEMICOLON);
 
         t_ast_ptr ast       = NULL;
         brama_status status = ast_declaration_stmt(context, &ast, AST_IN_NONE);
         if (status == BRAMA_OK) {
+            set_semicolon_and_newline(context, ast);
             status = validate_ast(context, &ast);
-            if (status == BRAMA_OK)
+            if (status == BRAMA_OK) {
+                /* Remove new lines */
+                check_end_of_line(context, END_LINE_CHECKER_NEWLINE | END_LINE_CHECKER_SEMICOLON);
+
                 vec_push(context->parser->asts, ast);
+            }
             else {
                 CLEAR_AST(ast);
                 return status;
@@ -2418,7 +2495,7 @@ t_compile_stack_ptr new_compile_stack(t_context_ptr context, brama_ast_type ast_
 brama_status find_compile_stack(t_context_ptr context, brama_ast_type ast_type, t_compile_stack_ptr* stack) {
     t_compile_stack_ptr tmp_stack = NULL;
     int index;
-    vec_foreach_rev(&context->compiler->storages, tmp_stack, index) {
+    vec_foreach_rev(&context->compiler->compile_stack, tmp_stack, index) {
 
         if (tmp_stack->ast_type == ast_type) {
             (*stack) = tmp_stack;
@@ -2565,19 +2642,23 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
     vec_push(context->compiler->op_codes, vm_encode(&code));
 }
 
-void compile_break(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+void compile_keyword(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     t_compile_stack_ptr while_stack = NULL;
-    if (find_compile_stack(context, AST_WHILE, &while_stack) == BRAMA_OK) {
-        vec_push(context->compiler->op_codes, 0); // We will setup it later
-        vec_push(&((t_compile_while_ptr)while_stack->compile_obj)->breaks, context->compiler->op_codes->length - 1);
-    }
-}
 
-void compile_continue(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
-    t_compile_stack_ptr while_stack = NULL;
     if (find_compile_stack(context, AST_WHILE, &while_stack) == BRAMA_OK) {
-        vec_push(context->compiler->op_codes, 0); // We will setup it later
-        vec_push(&((t_compile_while_ptr)while_stack->compile_obj)->continues, context->compiler->op_codes->length - 1);
+        switch (ast->keyword) {
+            case KEYWORD_BREAK: {
+                vec_push(context->compiler->op_codes, 0); // We will setup it later
+                vec_push(&((t_compile_while_ptr)while_stack->compile_obj)->breaks, context->compiler->op_codes->length - 1);
+                break;
+            }
+
+            case KEYWORD_CONTINUE: {
+                vec_push(context->compiler->op_codes, 0); // We will setup it later
+                vec_push(&((t_compile_while_ptr)while_stack->compile_obj)->continues, context->compiler->op_codes->length - 1);
+                break;
+            }
+        }
     }
 }
 
@@ -2820,6 +2901,7 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     vec_init(&compile_obj->continues);
 
     t_compile_stack_ptr stack_info = new_compile_stack(context, AST_WHILE, ast, compile_obj);
+    vec_push(&context->compiler->compile_stack, stack_info);
 
     /* Define new variable to store condition information */
     t_assign_ptr assign      = BRAMA_MALLOC(sizeof(t_assign));
@@ -2879,7 +2961,7 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
         code.reg1 = 0;
         code.reg2 = 0;
         code.reg3 = 0;
-        code.scal = begin_of_while_loc;
+        code.scal = jmp_compare_location - location - 1;
         context->compiler->op_codes->data[location] = vm_encode(&code);
     }
 
@@ -3003,13 +3085,9 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
         case AST_UNARY:
             compile_unary(context, ast->vector_ptr, storage, compile_info, upper_ast);
             break;
-            
-        case AST_BREAK:
-            compile_break(context, ast, storage, compile_info, upper_ast);
-            break;
 
-        case AST_CONTINUE:
-            compile_continue(context, ast, storage, compile_info, upper_ast);
+        case AST_KEYWORD:
+            compile_keyword(context, ast, storage, compile_info, upper_ast);
             break;
 
         default:

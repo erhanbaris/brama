@@ -24,6 +24,7 @@ t_token_ptr ast_consume       (t_context_ptr context);
 bool        ast_is_at_end     (t_context_ptr context);
 bool        is_primative      (t_token_ptr token);
 bool        is_next_new_line  (t_context_ptr context);
+void        set_semicolon_and_newline(t_context_ptr context, t_ast_ptr ast);
 
 brama_status as_primative            (t_token_ptr token, t_ast_ptr_ptr ast);
 brama_status ast_parser              (t_context_ptr context);
@@ -92,8 +93,7 @@ void compile_while              (t_context_ptr context, t_while_loop_ptr const a
 void compile_block              (t_context_ptr context, vec_ast_ptr const ast,      t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_unary              (t_context_ptr context, t_unary_ptr const ast,      t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_assignment         (t_context_ptr context, t_assign_ptr const ast,     t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
-void compile_break              (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
-void compile_continue           (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_keyword            (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 
 t_compile_stack_ptr new_compile_stack        (t_context_ptr context, brama_ast_type ast_type, void_ptr ast, void_ptr compile_obj) ;
 brama_status        find_compile_stack       (t_context_ptr context, brama_ast_type ast_type, t_compile_stack_ptr* stack);

@@ -613,7 +613,7 @@ MunitResult ast_primary_expr_test_14(const MunitParameter params[], void* user_d
 MunitResult ast_primary_expr_test_15(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_compile(context, "{ 1\r\n true\r\n null\r\n 1.1\r\n []\r\n 'hello'\r\n \"world\" }");
-    munit_assert_int(context->status, ==, BRAMA_OK);
+    munit_assert_int(context->status, ==, BRAMA_SEMICOLON_REQUIRED);
     brama_destroy(context);
     return MUNIT_OK;
 }
