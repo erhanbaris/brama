@@ -2514,6 +2514,59 @@ void remove_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack)
     BRAMA_FREE(stack);
 }
 
+/* Calculate max temporary assignment in one ast. We need to allocate that mount of memory for operations.
+   Todo : Extend that function to find all valid assignments */
+size_t find_max_temp_variable_size(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upper_ast) {
+    switch (ast->type)
+    {
+        case AST_ASSIGNMENT: {
+            size_t in_object     = find_max_temp_variable_size(context, ast->assign_ptr->object,     ast);
+            size_t in_assignment = find_max_temp_variable_size(context, ast->assign_ptr->assignment, ast);
+
+            if (in_object > in_assignment)
+                return in_object;
+            return in_assignment;
+        }
+
+        case AST_BINARY_OPERATION: {
+            size_t in_left  = find_max_temp_variable_size(context, ast->binary_ptr->left,  ast);
+            size_t in_right = find_max_temp_variable_size(context, ast->binary_ptr->right, ast);
+            int current_status = upper_ast == NULL || upper_ast->type != AST_ASSIGNMENT ? 1 : 0;
+
+            if (in_left > in_right)
+                return in_left + current_status;
+            return in_right + current_status;
+        }
+
+        case AST_CONTROL_OPERATION: {
+            size_t in_left  = find_max_temp_variable_size(context, ast->control_ptr->left,  ast);
+            size_t in_right = find_max_temp_variable_size(context, ast->control_ptr->right, ast);
+            int current_status = upper_ast == NULL || upper_ast->type != AST_ASSIGNMENT ? 1 : 0;
+
+            if (in_left > in_right)
+                return in_left + current_status;
+            return in_right + current_status;
+        }
+
+        case AST_BLOCK: {
+            int index;
+            int max = 0;
+            t_ast_ptr ast_item = NULL;
+
+            vec_foreach(ast->vector_ptr, ast_item, index) {
+                size_t total_temp = find_max_temp_variable_size(context, ast_item, ast);
+                if (total_temp > max)
+                    max = total_temp;
+            }
+
+            return max;
+        }
+
+        default:
+            return 0;
+    }
+}
+
 /* Binary Operation
  * Example : 10 + 20 - 10 * 5.5 */
 void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -2981,6 +3034,12 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     remove_from_compile_stack(context, stack_info);
 }
 
+void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    if (ast->type == FUNC_CALL_NORMAL) {
+        
+    }
+}
+
 void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     int index = -1;
     compile_info->status = BRAMA_OK;
@@ -3090,6 +3149,10 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
             compile_keyword(context, ast, storage, compile_info, upper_ast);
             break;
 
+        case AST_FUNCTION_CALL:
+            compile_func_call(context, ast->func_call_ptr, storage, compile_info, upper_ast);
+            break;
+
         default:
             printf("Unknown AST: %d\r\n", ast->type);
             break;
@@ -3099,16 +3162,19 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
 void compile(t_context_ptr context) {
     t_compile_info_ptr compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
 
-    vec_ast_ptr asts             = context->parser->asts;
-    size_t total_ast             = asts->length;
-    for (size_t i = 0; i < total_ast; ++i) {
-        t_ast_ptr ast = asts->data[i];
-        compile_internal(context, ast, context->compiler->global_storage, compile_info, AST_NONE);
-    }
+    /* Main application */
+    t_ast_ptr main = new_block_ast(context->parser->asts);
 
-    BRAMA_FREE(compile_info);
-
+    /* Calculate total temporary variable in time */
+    size_t total = find_max_temp_variable_size(context, main, NULL);
+    compile_internal(context, main, context->compiler->global_storage, compile_info, AST_NONE);
     vec_push(context->compiler->op_codes, NULL);
+
+    /* Clear */
+    vec_deinit(main->vector_ptr);
+    main->vector_ptr = NULL;
+    BRAMA_FREE(main);
+    BRAMA_FREE(compile_info);
 }
 
 bool isBool(t_brama_value value) {
@@ -3256,30 +3322,30 @@ void brama_compile_dump(t_context_ptr context) {
         switch (vmdata.op) {
             /* Print just operator name */
             case VM_OPT_HALT:
-                printf ("    [%d]    %-10s\r\n", index, VM_OPCODES[(int)vmdata.op].name);
+                printf ("    %5d    %-10s\r\n", index, VM_OPCODES[(int)vmdata.op].name);
                 break;
 
             /* Print reg1*/
             case VM_OPT_INC:
             case VM_OPT_DINC:
             case VM_OPT_IF_EQ:
-                printf ("    [%d]    %-10s %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1);
+                printf ("    %5d    %-10s %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1);
                 break;
 
             /* Print reg1 and reg2 */
             case VM_OPT_COPY:
             case VM_OPT_INIT_VAR:
-                printf ("    [%d]    %-10s %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2);
+                printf ("    %5d    %-10s %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2);
                 break;
 
             /* Print reg1 and scal */
             case VM_OPT_JMP:
-                printf ("    [%d]    %-10s %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.scal);
+                printf ("    %5d    %-10s %2d %2d     ; -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.scal, index + vmdata.scal + 1);
                 break;
 
             /* Print reg1, reg2 and  reg3*/
             default:
-                printf ("    [%d]    %-10s %2d %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
+                printf ("    %5d    %-10s %2d %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
                 break;
         }
     }

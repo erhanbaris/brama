@@ -686,7 +686,7 @@ typedef struct _t_ast {
         t_control*             control_ptr;
         t_primative*           primative_ptr;
         t_assign*              assign_ptr;
-        vec_t(struct _t_ast*)* vector_ptr;
+        vec_ast_ptr            vector_ptr;
         t_object_creation*     object_creation_ptr;
         t_while_loop*          while_ptr;
         t_if_stmt*             if_stmt_ptr;
@@ -746,6 +746,11 @@ typedef struct _t_compile_stack {
     void*          ast;
     void*          compile_obj;
 } t_compile_stack;
+
+typedef struct _t_compile_block {
+    vec_int_t breaks;
+    vec_int_t continues;
+} t_compile_block;
 
 typedef struct _t_compile_while {
     vec_int_t breaks;

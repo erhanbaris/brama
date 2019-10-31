@@ -94,6 +94,7 @@ void compile_block              (t_context_ptr context, vec_ast_ptr const ast,  
 void compile_unary              (t_context_ptr context, t_unary_ptr const ast,      t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_assignment         (t_context_ptr context, t_assign_ptr const ast,     t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_keyword            (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_func_call          (t_context_ptr context, t_func_call_ptr const ast,  t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 
 t_compile_stack_ptr new_compile_stack        (t_context_ptr context, brama_ast_type ast_type, void_ptr ast, void_ptr compile_obj) ;
 brama_status        find_compile_stack       (t_context_ptr context, brama_ast_type ast_type, t_compile_stack_ptr* stack);

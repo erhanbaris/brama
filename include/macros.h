@@ -84,6 +84,8 @@ case OPERATOR_1_SYMBOL :                     \
         t_primative* primative = BRAMA_MALLOC_LINE(sizeof (t_primative), FILE__ , LINE__ ); \
         ast->primative_ptr     = primative;                    \
         ast->type              = AST_PRIMATIVE ;               \
+        ast->ends_with_newline   = false;                      \
+        ast->ends_with_semicolon = false;                      \
         primative-> STR_TYPE   = value;                        \
         primative->type        = PRI_TYPE ;                    \
         ast->create_new_storage = false ;                      \
@@ -96,6 +98,8 @@ case OPERATOR_1_SYMBOL :                     \
         t_ast_ptr ast           = BRAMA_MALLOC_LINE(sizeof (t_ast), FILE__ , LINE__ );  \
         ast->type               = STR_TYPE;    \
         ast-> TYPE              = variable;    \
+        ast->ends_with_newline   = false;      \
+        ast->ends_with_semicolon = false;      \
         ast->create_new_storage = NEWSTORAGE ; \
         return ast;                            \
     }
