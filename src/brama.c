@@ -1945,7 +1945,6 @@ t_context_ptr brama_init() {
     context->compiler->global_storage = BRAMA_MALLOC(sizeof (t_storage));
     context->compiler->global_storage->id           = 0;
     context->compiler->global_storage->loop_counter = 0;
-    vec_init(&context->compiler->global_storage->constants);
     vec_init(&context->compiler->global_storage->variables);
     map_init(&context->compiler->global_storage->variable_names);
 
@@ -2516,10 +2515,8 @@ void remove_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack)
 
 /* Calculate max temporary assignment in one ast. We need to allocate that mount of memory for operations.
    Todo : Extend that function to find all valid assignments */
-void find_max_temp_variable_size(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upper_ast, size_t* temps, size_t* vars) {
+void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upper_ast, t_storage_ptr storage, size_t* temps) {
     if (ast == NULL) {
-        *temps = 0;
-        *vars  = 0;
         return;
     }
 
@@ -2529,10 +2526,10 @@ void find_max_temp_variable_size(t_context_ptr context, t_ast_ptr ast, t_ast_ptr
             size_t in_object;
             size_t in_assignment;
 
-            find_max_temp_variable_size(context, ast->assign_ptr->object,     ast, &in_object,     vars);
-            find_max_temp_variable_size(context, ast->assign_ptr->assignment, ast, &in_assignment, vars);
+            find_max_temp_variable_size(context, ast->assign_ptr->object,     ast, storage, &in_object);
+            find_max_temp_variable_size(context, ast->assign_ptr->assignment, ast, storage, &in_assignment);
 
-            *vars += 1;
+            ++storage->variable_count;
 
             if (in_object > in_assignment)
                 *temps = in_object;
@@ -2545,8 +2542,8 @@ void find_max_temp_variable_size(t_context_ptr context, t_ast_ptr ast, t_ast_ptr
             size_t in_left;
             size_t in_right;
 
-            find_max_temp_variable_size(context, ast->binary_ptr->left,  ast, &in_left,  vars);
-            find_max_temp_variable_size(context, ast->binary_ptr->right, ast, &in_right, vars);
+            find_max_temp_variable_size(context, ast->binary_ptr->left,  ast, storage, &in_left);
+            find_max_temp_variable_size(context, ast->binary_ptr->right, ast, storage, &in_right);
             int is_anony = upper_ast == NULL || upper_ast->type != AST_ASSIGNMENT ? true : false;
 
             if (is_anony) {
@@ -2563,8 +2560,8 @@ void find_max_temp_variable_size(t_context_ptr context, t_ast_ptr ast, t_ast_ptr
             size_t in_left;
             size_t in_right;
 
-            find_max_temp_variable_size(context, ast->control_ptr->left,  ast, &in_left,  vars);
-            find_max_temp_variable_size(context, ast->control_ptr->right, ast, &in_right, vars);
+            find_max_temp_variable_size(context, ast->control_ptr->left,  ast, storage, &in_left);
+            find_max_temp_variable_size(context, ast->control_ptr->right, ast, storage, &in_right);
             int is_anony = upper_ast == NULL || upper_ast->type != AST_ASSIGNMENT ? true : false;
 
             if (is_anony) {
@@ -2584,7 +2581,7 @@ void find_max_temp_variable_size(t_context_ptr context, t_ast_ptr ast, t_ast_ptr
 
             vec_foreach(ast->vector_ptr, ast_item, index) {
                 size_t total_temp;
-                find_max_temp_variable_size(context, ast_item, ast, &total_temp, vars);
+                find_max_temp_variable_size(context, ast_item, ast, storage, &total_temp);
 
                 if (total_temp > max)
                     max = total_temp;
@@ -2592,6 +2589,38 @@ void find_max_temp_variable_size(t_context_ptr context, t_ast_ptr ast, t_ast_ptr
 
             *temps = max;
             break;
+        }
+
+        case AST_PRIMATIVE: {
+            int index;
+            switch (ast->type) {
+                case PRIMATIVE_INTEGER:
+                case PRIMATIVE_DOUBLE:
+                    vec_find(&storage->variables, numberToValue(ast->primative_ptr->double_), index);
+                    if (index == -1) {
+                        vec_push(&storage->variables, numberToValue(ast->primative_ptr->double_));
+                        ++storage->constant_count;
+                    }
+                    break;
+
+                case PRIMATIVE_BOOL:
+                    vec_find(&storage->variables, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL), index);
+                    if (index == -1) {
+                        vec_push(&storage->variables, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL));
+                        ++storage->constant_count;
+                    }
+                    break;
+
+                case PRIMATIVE_STRING: {
+                    t_brama_value value;
+                    t_vm_object_ptr object = new_vm_object(context);
+                    object->type           = CONST_STRING;
+                    object->char_ptr       = strdup(ast->primative_ptr->char_ptr);
+                    vec_push(&storage->variables, GET_VALUE_FROM_OBJ(object));
+                    ++storage->constant_count;
+                }
+                    break;
+            }
         }
 
         default:

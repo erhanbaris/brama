@@ -590,9 +590,11 @@ typedef struct _t_compiler {
 } t_compiler;
 
 typedef struct _t_storage {
+    size_t        temp_count;
+    size_t        constant_count;
+    size_t        variable_count;
     size_t        id;
     size_t        loop_counter;
-    vec_value     constants;
     vec_value     variables;
     map_size_t    variable_names;
     t_storage_ptr previous_storage;
