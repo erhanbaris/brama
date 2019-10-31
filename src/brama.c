@@ -2516,36 +2516,65 @@ void remove_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack)
 
 /* Calculate max temporary assignment in one ast. We need to allocate that mount of memory for operations.
    Todo : Extend that function to find all valid assignments */
-size_t find_max_temp_variable_size(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upper_ast) {
+void find_max_temp_variable_size(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upper_ast, size_t* temps, size_t* vars) {
+    if (ast == NULL) {
+        *temps = 0;
+        *vars  = 0;
+        return;
+    }
+
     switch (ast->type)
     {
         case AST_ASSIGNMENT: {
-            size_t in_object     = find_max_temp_variable_size(context, ast->assign_ptr->object,     ast);
-            size_t in_assignment = find_max_temp_variable_size(context, ast->assign_ptr->assignment, ast);
+            size_t in_object;
+            size_t in_assignment;
+
+            find_max_temp_variable_size(context, ast->assign_ptr->object,     ast, &in_object,     vars);
+            find_max_temp_variable_size(context, ast->assign_ptr->assignment, ast, &in_assignment, vars);
+
+            *vars += 1;
 
             if (in_object > in_assignment)
-                return in_object;
-            return in_assignment;
+                *temps = in_object;
+            else
+                *temps = in_assignment;
+            break;
         }
 
         case AST_BINARY_OPERATION: {
-            size_t in_left  = find_max_temp_variable_size(context, ast->binary_ptr->left,  ast);
-            size_t in_right = find_max_temp_variable_size(context, ast->binary_ptr->right, ast);
-            int current_status = upper_ast == NULL || upper_ast->type != AST_ASSIGNMENT ? 1 : 0;
+            size_t in_left;
+            size_t in_right;
 
-            if (in_left > in_right)
-                return in_left + current_status;
-            return in_right + current_status;
+            find_max_temp_variable_size(context, ast->binary_ptr->left,  ast, &in_left,  vars);
+            find_max_temp_variable_size(context, ast->binary_ptr->right, ast, &in_right, vars);
+            int is_anony = upper_ast == NULL || upper_ast->type != AST_ASSIGNMENT ? true : false;
+
+            if (is_anony) {
+                *temps = in_left + in_right + 1;
+            }
+            else if (in_left > in_right)
+                *temps = in_left;
+            else
+                *temps = in_right;
+            break;
         }
 
         case AST_CONTROL_OPERATION: {
-            size_t in_left  = find_max_temp_variable_size(context, ast->control_ptr->left,  ast);
-            size_t in_right = find_max_temp_variable_size(context, ast->control_ptr->right, ast);
-            int current_status = upper_ast == NULL || upper_ast->type != AST_ASSIGNMENT ? 1 : 0;
+            size_t in_left;
+            size_t in_right;
 
-            if (in_left > in_right)
-                return in_left + current_status;
-            return in_right + current_status;
+            find_max_temp_variable_size(context, ast->control_ptr->left,  ast, &in_left,  vars);
+            find_max_temp_variable_size(context, ast->control_ptr->right, ast, &in_right, vars);
+            int is_anony = upper_ast == NULL || upper_ast->type != AST_ASSIGNMENT ? true : false;
+
+            if (is_anony) {
+                *temps = in_left + in_right;
+            }
+            else if (in_left > in_right)
+                *temps = in_left;
+            else
+                *temps = in_right;
+            break;
         }
 
         case AST_BLOCK: {
@@ -2554,16 +2583,19 @@ size_t find_max_temp_variable_size(t_context_ptr context, t_ast_ptr ast, t_ast_p
             t_ast_ptr ast_item = NULL;
 
             vec_foreach(ast->vector_ptr, ast_item, index) {
-                size_t total_temp = find_max_temp_variable_size(context, ast_item, ast);
+                size_t total_temp;
+                find_max_temp_variable_size(context, ast_item, ast, &total_temp, vars);
+
                 if (total_temp > max)
                     max = total_temp;
             }
 
-            return max;
+            *temps = max;
+            break;
         }
 
         default:
-            return 0;
+            *temps = 0;
     }
 }
 
@@ -3166,7 +3198,10 @@ void compile(t_context_ptr context) {
     t_ast_ptr main = new_block_ast(context->parser->asts);
 
     /* Calculate total temporary variable in time */
-    size_t total = find_max_temp_variable_size(context, main, NULL);
+    size_t max_temp   = 0;
+    size_t total_vars = 0;
+
+    find_max_temp_variable_size(context, main, NULL, &max_temp, &total_vars);
     compile_internal(context, main, context->compiler->global_storage, compile_info, AST_NONE);
     vec_push(context->compiler->op_codes, NULL);
 

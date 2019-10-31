@@ -15,3 +15,4 @@ Todos:
 * add tests for continue
 * use dmalloc on mac and linux for memory leak
 * accessor configure for assignment
+* constants, variables, temporaries should be in same list.
