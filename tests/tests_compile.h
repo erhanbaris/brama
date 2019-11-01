@@ -20,11 +20,10 @@ MunitResult ast_compile_1(const MunitParameter params[], void* user_data_or_fixt
     vm_decode(context->compiler->op_codes->data[0], &vmdata);
 
     munit_assert_int(vmdata.op, ==, VM_OPT_ADDITION);
-    munit_assert_int(context->compiler->global_storage->variables.length, ==, 1);
-    munit_assert_int(context->compiler->global_storage->constants.length, ==, 2);
+    munit_assert_int(context->compiler->global_storage->variables.length, ==, 3);
 
-    munit_assert_double(valueToNumber(context->compiler->global_storage->constants.data[0]), ==, 10.0);
-    munit_assert_double(valueToNumber(context->compiler->global_storage->constants.data[1]), ==, 20.0);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 10.0);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 20.0);
 
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 30.0);
 
@@ -54,11 +53,10 @@ MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_int(vmdata.reg2, ==, -2);
     munit_assert_int(vmdata.reg3, ==, 0);
 
-    munit_assert_int(context->compiler->global_storage->variables.length, ==, 2);
-    munit_assert_int(context->compiler->global_storage->constants.length, ==, 2);
+    munit_assert_int(context->compiler->global_storage->variables.length, ==, 4);
 
-    munit_assert_double(valueToNumber(context->compiler->global_storage->constants.data[0]), ==, 1024.0);
-    munit_assert_double(valueToNumber(context->compiler->global_storage->constants.data[1]), ==, 2048.0);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 1024.0);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 2048.0);
 
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 2048.0);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 1024.0);
@@ -111,11 +109,10 @@ MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_int(vmdata.reg2, ==, 1);
     munit_assert_int(vmdata.reg3, ==, 2);
 
-    munit_assert_int(context->compiler->global_storage->variables.length, ==, 3);
-    munit_assert_int(context->compiler->global_storage->constants.length, ==, 2);
+    munit_assert_int(context->compiler->global_storage->variables.length, ==, 5);
 
-    munit_assert_double(valueToNumber(context->compiler->global_storage->constants.data[0]), ==, 10.0);
-    munit_assert_double(valueToNumber(context->compiler->global_storage->constants.data[1]), ==, 20.0);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 10.0);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 20.0);
 
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 10.0);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 20.0);

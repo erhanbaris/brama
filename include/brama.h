@@ -40,7 +40,8 @@ typedef enum brama_status  {
     BRAMA_ILLEGAL_BREAK_STATEMENT        = 20,
     BRAMA_ILLEGAL_CONTINUE_STATEMENT     = 21,
     BRAMA_ILLEGAL_ACCESSOR_STATEMENT     = 22,
-    BRAMA_ILLEGAL_FUNCTION_ARGUMENT      = 23
+    BRAMA_ILLEGAL_FUNCTION_ARGUMENT      = 23,
+    BRAMA_CONSTANT_NOT_FOUND             = 24
 
 } brama_status;
 
@@ -590,11 +591,18 @@ typedef struct _t_compiler {
 } t_compiler;
 
 typedef struct _t_storage {
+    size_t        id;
+    
+    /* Totals */
     size_t        temp_count;
     size_t        constant_count;
     size_t        variable_count;
-    size_t        id;
+
+    /* Counters */
     size_t        loop_counter;
+    size_t        temp_counter;    
+    size_t        variable_counter;
+
     vec_value     variables;
     map_size_t    variable_names;
     t_storage_ptr previous_storage;

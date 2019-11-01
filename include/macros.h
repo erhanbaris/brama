@@ -1,6 +1,13 @@
 #ifndef MACROS_H
 #define MACROS_H
 
+/* Calculating absolute value with branches (if) very slow. Using bitwise operation much for faster than if.
+   http://graphics.stanford.edu/~seander/bithacks.html#IntegerAbs */
+#define FAST_ABS(SOURCE_VAR) do {\
+    abs_mask = SOURCE_VAR >> sizeof(int) * CHAR_BIT - 1;\
+    abs_value = ( SOURCE_VAR + abs_mask) ^ abs_mask; \
+}while(false)
+
 #define OPERATOR_CASE_DOUBLE_START_WITH(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_3_SYMBOL, OPERATOR_1, OPERATOR_2, OPERATOR_3) \
     case OPERATOR_1_SYMBOL :                       \
         if (chNext == OPERATOR_2_SYMBOL ) {        \
