@@ -153,7 +153,14 @@ int getText(t_tokinizer_ptr tokinizer, char symbol) {
     return BRAMA_OK;
 }
 
+typedef enum _number_type {
+    NUMBER_NORMAL,
+    NUMBER_HEX,
+    NUMBER_OCTAL
+} number_type;
+
 int getNumber(t_tokinizer_ptr tokinizer) {
+    size_t index       = 0;
     bool isMinus       = false;
     int dotPlace       = 0;
     double beforeTheComma = 0;
@@ -162,7 +169,11 @@ int getNumber(t_tokinizer_ptr tokinizer) {
     bool isDouble      = false;
     char ch            = getChar(tokinizer);
     char chNext        = getNextChar(tokinizer);
-    bool isHex         = false;
+    number_type type   = NUMBER_NORMAL;
+
+    bool e_used        = false;
+    int e_after        = 0;
+
 
     while (!isEnd(tokinizer)) {
         if (ch == '-') {
@@ -171,10 +182,20 @@ int getNumber(t_tokinizer_ptr tokinizer) {
 
             isMinus = true;
         }
-        else if (ch == '0' && chNext == 'x') { // HEX
-            isHex = true;
+
+        else if (index == 0 && ch == '0' && chNext == 'x') { // HEX
+            type = NUMBER_HEX;
             increase(tokinizer);
         }
+
+        else if (index != 0 && ch == 'e') {
+            e_used = true;
+        }
+
+        else if (index == 0 && ch == '0' && (chNext >= '0' && chNext <= '9')) { // OCT
+            type = NUMBER_OCTAL;
+        }
+
         else if (ch == '.') {
             /*if (chNext == '.')
                 break;*/
@@ -185,7 +206,8 @@ int getNumber(t_tokinizer_ptr tokinizer) {
 
             isDouble = true;
         }
-        else if (!isHex && (ch >= '0' && ch <= '9')) {
+
+        else if (!e_used && type == NUMBER_NORMAL && (ch >= '0' && ch <= '9')) {
             if (isDouble) {
                 ++dotPlace;
 
@@ -197,13 +219,34 @@ int getNumber(t_tokinizer_ptr tokinizer) {
                 beforeTheComma += ch - '0';
             }
         }
-        else if (isHex && ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))) {
+
+        else if (!e_used && type == NUMBER_HEX && ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))) {
             ch = (ch <= '9') ? ch - '0' : (ch & 0x7) + 9;
 
             beforeTheComma = (uint64_t)beforeTheComma << 4;
             beforeTheComma += (int)ch;
+        }
 
-            isHex = true;
+        else if (!e_used && type == NUMBER_OCTAL && ((ch >= '0' && ch <= '7'))) {
+            int num = ch - '0';
+            int dec_value = 0;
+
+            int base = 1;
+            int temp = num;
+            while (temp) {
+                int last_digit = temp % 10;
+                temp = temp / 10;
+                dec_value += last_digit * base;
+                base = base * 8;
+            }
+
+            beforeTheComma = (uint64_t)beforeTheComma << 3;
+            beforeTheComma += (int)dec_value;
+        }
+
+        else if (e_used && (ch >= '0' && ch <= '9')) {
+            e_after *= (int)pow(10, 1);
+            e_after += ch - '0';
         }
         else
             break;
@@ -211,6 +254,7 @@ int getNumber(t_tokinizer_ptr tokinizer) {
         increase(tokinizer);
         ch     = getChar(tokinizer);
         chNext = getNextChar(tokinizer);
+        ++index;
     }
 
     t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
@@ -222,6 +266,9 @@ int getNumber(t_tokinizer_ptr tokinizer) {
         token->type    = TOKEN_DOUBLE;
         token->double_ = (beforeTheComma + (afterTheComma * pow(10, -1 * dotPlace)));
     }
+
+    if (e_used)
+        token->double_ = token->double_ * (double)pow((double)10, (double)e_after);
 
     token->current = start;
     token->line    = tokinizer->line;
@@ -2628,7 +2675,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             size_t in_false      = 0;
 
             prepare_variable_memory(context, ast->if_stmt_ptr->condition,   ast, storage, &in_condition);
-            prepare_variable_memory(context, ast->if_stmt_ptr->true_body,   ast, storage, &in_condition);
+            prepare_variable_memory(context, ast->if_stmt_ptr->true_body,   ast, storage, &in_true);
             prepare_variable_memory(context, ast->if_stmt_ptr->false_body,  ast, storage, &in_false);
 
             *temps = FAST_MAX(in_condition, in_true);
@@ -2871,6 +2918,14 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
 
         case OPERATOR_GREATER_EQUAL_THAN:
             code.op = VM_OPT_GTE;
+            break;
+
+        case OPERATOR_NOT_EQUAL:
+            code.op = VM_OPT_NEQ;
+            break;
+
+        case OPERATOR_NOT_EQUAL_VALUE:
+            code.op = VM_OPT_EQ;
             break;
 
         case OPERATOR_EQUAL:
@@ -3740,6 +3795,15 @@ void run(t_context_ptr context) {
                     *(variables + vmdata.reg1) = numberToValue(valueToNumber(left) >= valueToNumber(right)) ? TRUE_VAL : FALSE_VAL;
                 break;
             }
+                /* '!=' operator */
+            case VM_OPT_NEQ: {
+                t_brama_value left  = *(variables + vmdata.reg2);
+                t_brama_value right = *(variables + vmdata.reg3);
+
+                if (IS_NUM(left) && IS_NUM(right))
+                    *(variables + vmdata.reg1) = valueToNumber(left) != valueToNumber(right) ? TRUE_VAL : FALSE_VAL;
+                break;
+            }
 
                 /* '==' operator */
             case VM_OPT_EQ: {
@@ -3759,8 +3823,17 @@ void run(t_context_ptr context) {
 
                 if (IS_NUM(left) && IS_NUM(right))  {
                     *(variables + vmdata.reg1) = numberToValue(valueToNumber(left) + valueToNumber(right));
-                } else if (IS_UNDEFINED(left) && IS_UNDEFINED(right)) {
+                } else if (IS_UNDEFINED(left) || IS_UNDEFINED(right)) {
                     *(variables + vmdata.reg1) = NULL_VAL;
+                    char_ptr tmp = BRAMA_MALLOC(sizeof(char) * 10);
+                    strcpy(tmp, "undefined");
+                    tmp[9] = '\0';
+
+                    t_vm_object_ptr object = new_vm_object(context);
+                    object->type           = CONST_STRING;
+                    object->char_ptr       = tmp;
+                    *(variables + vmdata.reg1) = GET_VALUE_FROM_OBJ(object);
+
                 } else if (IS_STRING(left) || IS_STRING(right)) {
                     if (IS_STRING(left) && IS_STRING(right)) {
                         char_ptr tmp = BRAMA_MALLOC(sizeof(char) * ((strlen(AS_STRING(left))) + (strlen(AS_STRING(right))) + 1));

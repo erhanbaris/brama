@@ -338,6 +338,49 @@ MunitResult ast_compile_10(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+MunitResult ast_compile_11(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context, "var a = 42;\n"
+                           "if (a != 42)\n"
+                           "  result = 0;\n"
+                           "else\n"
+                           "  result = 1;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,            == , BRAMA_OK);
+    munit_assert_int   (var_info->type,    == , CONST_INTEGER);
+    munit_assert_int   (var_info->double_, == , 1.0);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_12(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context, "// Number definition from http://en.wikipedia.org/wiki/JavaScript_syntax\n"
+                           "a = 345;    // an \"integer\", although there is only one numeric type in JavaScript\n"
+                           "b = 34.5;   // a floating-point number\n"
+                           "c = 3.45e2; // another floating-point, equivalent to 345\n"
+                           "d = 0377;   // an octal integer equal to 255\n"
+                           "e = 0xFF;   // a hexadecimal integer equal to 255, digits represented by the letters A-F may be upper or lowercase\n"
+                           "\n"
+                           "result = a==345 && b*10==345 && c==345 && d==255 && e==255;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,            == , BRAMA_OK);
+    munit_assert_int   (var_info->type,    == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_, == , true);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitTest COMPILE_TESTS[] = {
 
         ADD_TEST(ast_compile_1),
@@ -350,6 +393,7 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_8),
         ADD_TEST(ast_compile_9),
         ADD_TEST(ast_compile_10),
+        ADD_TEST(ast_compile_11),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

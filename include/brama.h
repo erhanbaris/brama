@@ -1,4 +1,4 @@
-﻿#ifndef BRAMA_H
+#ifndef BRAMA_H
 #define BRAMA_H
 
 #include <stdio.h>
@@ -218,6 +218,7 @@ enum brama_vm_operator {
     VM_OPT_BITWISE_RIGHT_SHIFT     ,
     VM_OPT_BITWISE_UNSIGNED_RIGHT_SHIFT,
     VM_OPT_EQ,
+    VM_OPT_NEQ,
     VM_OPT_LT,
     VM_OPT_LTE,
     VM_OPT_GT,
@@ -379,6 +380,7 @@ static OperatorPair VM_OPCODES[] =  {
         { "SHIFTR", ">>"},
         { "SHIFTUR", ">>>"},
         { "EQ", "=="},
+        { "NEQ", "!="},
         { "LT", "<"},
         { "LTE", "<="},
         { "GT", ">"},
