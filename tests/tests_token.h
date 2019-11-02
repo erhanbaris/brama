@@ -231,24 +231,16 @@ MunitResult number_token_4(const MunitParameter params[], void* user_data_or_fix
 MunitResult number_token_5(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
     brama_compile(context, "      -1024.1234567     -1024   ");
-    munit_assert_int(context->tokinizer->tokens->length, ==, 4);
+    munit_assert_int(context->tokinizer->tokens->length, ==, 2);
 
     t_token* token_1 = context->tokinizer->tokens->data[0];
     t_token* token_2 = context->tokinizer->tokens->data[1];
-    t_token* token_3 = context->tokinizer->tokens->data[2];
-    t_token* token_4 = context->tokinizer->tokens->data[3];
 
-    munit_assert_int    (token_1->type, ==, TOKEN_OPERATOR);
-    munit_assert_double (token_1->opt, ==, OPERATOR_SUBTRACTION);
+    munit_assert_int    (token_1->type,    ==, TOKEN_DOUBLE);
+    munit_assert_double (token_1->double_, ==, -1024.1234567);
 
-    munit_assert_int    (token_2->type,    ==, TOKEN_DOUBLE);
-    munit_assert_double (token_2->double_, ==, 1024.1234567);
-
-    munit_assert_int    (token_3->type, ==, TOKEN_OPERATOR);
-    munit_assert_double (token_3->opt, ==, OPERATOR_SUBTRACTION);
-
-    munit_assert_int    (token_4->type, ==, TOKEN_INTEGER);
-    munit_assert_double (token_4->double_, ==, 1024);
+    munit_assert_int    (token_2->type, ==, TOKEN_INTEGER);
+    munit_assert_double (token_2->double_, ==, -1024);
 
     brama_destroy(context);
     return MUNIT_OK;

@@ -220,7 +220,7 @@ MunitResult ast_if_stmt_4(const MunitParameter params[], void* user_data_or_fixt
 
     ast = context->parser->asts->data[1];
     munit_assert_int         (ast->if_stmt_ptr->condition->control_ptr->left->type,  ==, AST_SYMBOL);
-    munit_assert_int         (ast->if_stmt_ptr->condition->control_ptr->right->type, ==, AST_UNARY);
+    munit_assert_int         (ast->if_stmt_ptr->condition->control_ptr->right->type, ==, AST_PRIMATIVE);
 
     munit_assert_ptr_not_null(ast->if_stmt_ptr->true_body);
     munit_assert_int         (ast->if_stmt_ptr->true_body->type, ==, AST_FUNCTION_CALL);

@@ -54,5 +54,6 @@ add_executable(brama
         tests/tests.h
         tests/tests_core.h
         tests/tests_token.h
-        tests/tests_ast.h)
+        tests/tests_ast.h
+        tests/tests_compile.h)
 

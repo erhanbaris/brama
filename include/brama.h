@@ -229,8 +229,6 @@ enum brama_vm_operator {
     VM_OPT_DELETE,
     VM_OPT_JMP,
     VM_OPT_IF_EQ,
-    VM_OPT_JIF,
-    VM_OPT_JNIF,
     VM_OPT_INC,
     VM_OPT_DINC,
     VM_OPT_INIT_VAR,
@@ -373,13 +371,13 @@ static OperatorPair VM_OPCODES[] =  {
         { "MUL", "*"},
         { "DIV", "/"},
         { "MOD", "%"},
-        { "B.AND", "&"},
-        { "B.OR", "|"},
-        { "B.NOT", "!"},
-        { "BiXOR", "^"},
-        { "B.L.S.", "<<"},
-        { "B.R.S.", ">>"},
-        { "B.U.R.S", ">>>"},
+        { "BAND", "&"},
+        { "BOR", "|"},
+        { "BNOT", "!"},
+        { "BXOR", "^"},
+        { "SHIFTL", "<<"},
+        { "SHIFTR", ">>"},
+        { "SHIFTUR", ">>>"},
         { "EQ", "=="},
         { "LT", "<"},
         { "LTE", "<="},
@@ -392,8 +390,6 @@ static OperatorPair VM_OPCODES[] =  {
         { "DELETE", ""},
         { "JMP", ""},
         { "IF_EQ", ""},
-        { "JIF", ""},
-        { "JNIF", ""},
         { "INC", "++"},
         { "DINC", "--"},
         { "INIT_VAR", ""},
@@ -736,8 +732,9 @@ typedef struct _t_vm_object {
 } t_vm_object;
 
 typedef struct _t_compile_info {
-    int  index;
-    brama_status status;
+    int                index;
+    brama_status       status;
+    t_brama_vmdata_ptr post_opcode;
 } t_compile_info;
 
 typedef struct _t_get_var_info {

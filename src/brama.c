@@ -162,6 +162,7 @@ int getNumber(t_tokinizer_ptr tokinizer) {
     bool isDouble      = false;
     char ch            = getChar(tokinizer);
     char chNext        = getNextChar(tokinizer);
+    bool isHex         = false;
 
     while (!isEnd(tokinizer)) {
         if (ch == '-') {
@@ -169,6 +170,10 @@ int getNumber(t_tokinizer_ptr tokinizer) {
                 break;
 
             isMinus = true;
+        }
+        else if (ch == '0' && chNext == 'x') { // HEX
+            isHex = true;
+            increase(tokinizer);
         }
         else if (ch == '.') {
             /*if (chNext == '.')
@@ -180,7 +185,7 @@ int getNumber(t_tokinizer_ptr tokinizer) {
 
             isDouble = true;
         }
-        else if ((ch >= '0' && ch <= '9')) {
+        else if (!isHex && (ch >= '0' && ch <= '9')) {
             if (isDouble) {
                 ++dotPlace;
 
@@ -191,6 +196,14 @@ int getNumber(t_tokinizer_ptr tokinizer) {
                 beforeTheComma *= (int)pow(10, 1);
                 beforeTheComma += ch - '0';
             }
+        }
+        else if (isHex && ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))) {
+            ch = (ch <= '9') ? ch - '0' : (ch & 0x7) + 9;
+
+            beforeTheComma = (uint64_t)beforeTheComma << 4;
+            beforeTheComma += (int)ch;
+
+            isHex = true;
         }
         else
             break;
@@ -213,15 +226,8 @@ int getNumber(t_tokinizer_ptr tokinizer) {
     token->current = start;
     token->line    = tokinizer->line;
 
-    if (isMinus) {
-        t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
-        token->type    = TOKEN_OPERATOR;
-        token->current = tokinizer->column;
-        token->line    = tokinizer->line;
-        token->opt     = OPERATOR_SUBTRACTION;
-
-        vec_push(tokinizer->tokens, token);
-    }
+    if (isMinus)
+        token->double_ *= -1;
 
     vec_push(tokinizer->tokens, token);
     return BRAMA_OK;
@@ -2368,6 +2374,7 @@ bool destroy_ast_accessor(t_accessor_ptr accessor_ptr) {
             BRAMA_FREE(accessor_ptr->property);
         }
     }
+    return true;
 }
 
 bool destroy_ast_binary(t_binary_ptr binary) {
@@ -2527,6 +2534,32 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
 
     switch (ast->type)
     {
+        case AST_UNARY: {
+            switch (ast->unary_ptr->opt) {
+                case OPERATOR_SUBTRACTION: {
+                    int index         = 0;
+                    t_brama_value num = numberToValue(-1);
+                    vec_find(&storage->variables, num, index);
+                    if (index == -1) {
+                        vec_push(&storage->variables, num);
+                        ++storage->constant_count;
+                    }
+                    break;
+                }
+
+                case OPERATOR_INCREMENT:
+                case OPERATOR_DECCREMENT:
+                case OPERATOR_NOT:
+                case OPERATOR_BITWISE_NOT:
+                    break;
+            }
+
+            size_t in_object = 0;
+            prepare_variable_memory(context, ast->unary_ptr->content, ast, storage, &in_object);
+            *temps = in_object;
+            break;
+        }
+
         case AST_ASSIGNMENT: {
             size_t in_object     = 0;
             size_t in_assignment = 0;
@@ -2567,7 +2600,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             int is_anony = upper_ast == NULL || upper_ast->type != AST_ASSIGNMENT ? true : false;
 
             if (is_anony)
-                *temps = in_left + in_right;
+                *temps = in_left + in_right + 1;
             else
                 *temps = FAST_MAX(in_left, in_right);
             break;
@@ -2746,10 +2779,6 @@ void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr
     code.reg2 = left_index;
     code.reg3 = right_index;
 
-    /* If we used temp variable, we are freeing that space for others */
-    if (left_index <= storage->temp_count)  --storage->temp_count;
-    if (right_index <= storage->temp_count) --storage->temp_count;
-
     switch (ast->opt) {
         case OPERATOR_ADDITION:
             code.op = VM_OPT_ADDITION;
@@ -2760,7 +2789,7 @@ void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr
             break;
 
         case OPERATOR_BITWISE_AND:
-            code.op = VM_OPT_SUBTRACTION;
+            code.op = VM_OPT_BITWISE_AND;
             break;
 
         case OPERATOR_BITWISE_OR:
@@ -2819,11 +2848,15 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
     code.reg2 = left_index;
     code.reg3 = right_index;
 
-    /* If we used temp variable, we are freeing that space for others */
-    if (left_index <= storage->temp_count)  --storage->temp_count;
-    if (right_index <= storage->temp_count) --storage->temp_count;
-
     switch (ast->opt) {
+        case OPERATOR_AND:
+            code.op = VM_OPT_AND;
+            break;
+
+            case OPERATOR_OR:
+                code.op = VM_OPT_OR;
+                break;
+
         case OPERATOR_LESS_THAN:
             code.op = VM_OPT_LT;
             break;
@@ -2902,26 +2935,17 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
         /* Assign previous variable index */
         compile_info->index = *index;
 
-    //vec_push(&storage->variable_names, assign->object->char_ptr);
+    size_t temp_counter = storage->temp_counter;
 
     /* Has assignment code */
     if (ast->assignment != NULL) {
         size_t variable_index = compile_info->index;
+        size_t opcode_count   = context->compiler->op_codes->length;
 
         /* Opcode generation for assignment */
         compile_internal(context, ast->assignment, storage, compile_info, AST_ASSIGNMENT);
 
-        /* If it is primative, set value to variable */
-        if (ast->assignment->type == AST_PRIMATIVE) {
-            t_brama_vmdata code;
-            code.op = VM_OPT_INIT_VAR;
-            code.reg1 = variable_index;
-            code.reg2 = compile_info->index;
-            code.reg3 = 0;
-            code.scal = 0;
-            vec_push(context->compiler->op_codes, vm_encode(&code));
-        }
-        else if (ast->assignment->type == AST_SYMBOL) {
+        if (ast->assignment->type == AST_SYMBOL) {
             t_brama_vmdata code;
             code.op = VM_OPT_COPY;
             code.reg1 = variable_index;
@@ -2929,8 +2953,37 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
             code.reg3 = 0;
             code.scal = 0;
             vec_push(context->compiler->op_codes, vm_encode(&code));
+
+        }
+        else {
+            /* Do we need to insert new opcode for assignment operation or already assigned ?
+             * If we did not add any opcode on assignment operation */
+            bool opcode_need = true;
+            if (context->compiler->op_codes->length > 0 && opcode_count != context->compiler->op_codes->length) {
+                t_brama_byte   last_byte = context->compiler->op_codes->data[context->compiler->op_codes->length - 1];
+                t_brama_vmdata last_code;
+                vm_decode(last_byte, &last_code);
+
+                /* Last opcode not assigned to variable */
+                if (last_code.reg1 == variable_index)
+                    opcode_need = false;
+            }
+
+            /* Last opcode not assigned to variable */
+            if (opcode_need) {
+                t_brama_vmdata code;
+                code.op = VM_OPT_INIT_VAR;
+                code.reg1 = variable_index;
+                code.reg2 = compile_info->index;
+                code.reg3 = 0;
+                code.scal = 0;
+                vec_push(context->compiler->op_codes, vm_encode(&code));
+            }
         }
     }
+
+    /* If we used temp variable, we are freeing that space for others */
+    storage->temp_counter = temp_counter;
 }
 
 void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -3039,6 +3092,13 @@ void compile_block(t_context_ptr context, vec_ast_ptr const ast, t_storage_ptr s
 
     vec_foreach(ast, ast_item, index) {
         compile_internal(context, ast_item, storage, compile_info, upper_ast);
+
+        /* For unary operation. Example: my_var++ */
+        if (compile_info->post_opcode != NULL) {
+            vec_push(context->compiler->op_codes, vm_encode(compile_info->post_opcode));
+            BRAMA_FREE(compile_info->post_opcode);
+            compile_info->post_opcode = NULL;
+        }
     }
 }
 
@@ -3046,35 +3106,35 @@ void compile_unary(t_context_ptr context, t_unary_ptr const ast, t_storage_ptr s
     int dest_id = compile_info->index;
     compile_internal(context, ast->content, storage, compile_info, AST_UNARY);
 
-    t_brama_vmdata code;
-    code.reg1 = compile_info->index;
-    code.reg2 = 0;
-    code.reg3 = 0;
-    code.scal = 0;
+    t_brama_vmdata_ptr code = BRAMA_MALLOC(sizeof(t_brama_vmdata));
+    code->reg1 = compile_info->index;
+    code->reg2 = 0;
+    code->reg3 = 0;
+    code->scal = 0;
 
     switch (ast->opt) {
         case OPERATOR_INCREMENT:
-            code.op = VM_OPT_INC;
+            code->op = VM_OPT_INC;
             break;
 
         case OPERATOR_DECCREMENT:
-            code.op = VM_OPT_DINC;
+            code->op = VM_OPT_DINC;
             break;
 
         case OPERATOR_SUBTRACTION: {
             /* Add mul operator */
-            code.op = VM_OPT_MULTIPLICATION;
-            code.reg1 = dest_id;
-            code.reg2 = compile_info->index;
+            code->op = VM_OPT_MULTIPLICATION;
+            code->reg1 = dest_id;
+            code->reg2 = compile_info->index;
 
             int index;
             vec_find(&storage->variables, numberToValue(-1), index);
             if (index == -1) {
                 vec_push(&storage->variables, numberToValue(-1));
-                code.reg3 = storage->variables.length - 1;
+                code->reg3 = storage->variables.length - 1;
             }
             else
-                code.reg3 = index++;
+                code->reg3 = index++;
             break;
         }
 
@@ -3085,7 +3145,11 @@ void compile_unary(t_context_ptr context, t_unary_ptr const ast, t_storage_ptr s
             break;
     }
 
-    vec_push(context->compiler->op_codes, vm_encode(&code));
+    if (ast->operand_type == UNARY_OPERAND_BEFORE) {
+        vec_push(context->compiler->op_codes, vm_encode(code));
+        BRAMA_FREE(code);
+    } else
+        compile_info->post_opcode = code;
 }
 
 void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -3125,12 +3189,11 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     assign->object->create_new_storage = false;
 
     /* Store loop status */
-    sprintf(assign->object->char_ptr, "(loop #%d)", ++storage->loop_counter);
+    sprintf(assign->object->char_ptr, "(loop #%zu)", ++storage->loop_counter);
     assign->object->char_ptr[19] = '\0';
     assign->assignment           = ast->condition;
 
     compile_assignment(context, assign, storage, compile_info, AST_WHILE);
-    size_t condition = compile_info->index;
 
     /* Build if statement */
     t_if_stmt_ptr if_stmt = BRAMA_MALLOC(sizeof(t_if_stmt));
@@ -3302,7 +3365,7 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
             break;
 
         case AST_UNARY:
-            compile_unary(context, ast->vector_ptr, storage, compile_info, upper_ast);
+            compile_unary(context, ast->unary_ptr, storage, compile_info, upper_ast);
             break;
 
         case AST_KEYWORD:
@@ -3321,6 +3384,7 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
 
 void compile(t_context_ptr context) {
     t_compile_info_ptr compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
+    compile_info->post_opcode = NULL;
 
     /* Main application */
     t_ast_ptr main = new_block_ast(context->parser->asts);
@@ -3415,7 +3479,7 @@ void brama_compile_dump(t_context_ptr context) {
     char_ptr       tmp_var        = NULL;
     t_brama_value  tmp_val;
 
-    printf ("[CONSTANTS] [%d]\r\n", context->compiler->global_storage->constant_count);
+    printf ("[CONSTANTS] [%zu]\r\n", context->compiler->global_storage->constant_count);
     for (int i = 0; i < context->compiler->global_storage->constant_count; ++i) {
         tmp_val = context->compiler->global_storage->variables.data[i];
 
@@ -3431,14 +3495,13 @@ void brama_compile_dump(t_context_ptr context) {
             printf ("%8d    null\r\n", i);
     }
 
-    printf ("\r\n[TEMPORARY VARIABLES] [%d]\r\n", context->compiler->global_storage->temp_count);
-    printf ("\r\n[VARIABLES] [%d]\r\n", context->compiler->global_storage->variable_count);
+    printf ("\r\n[TEMPORARY VARIABLES] [%zu]\r\n", context->compiler->global_storage->temp_count);
+    printf ("\r\n[VARIABLES] [%zu]\r\n", context->compiler->global_storage->variable_count);
     char_ptr* variable_infos = BRAMA_CALLOC(variables->length, sizeof(char_ptr));
 
     map_iter_t iter = map_iter(variable_names);
     index           = 0;
     while ((tmp_var = map_next(variable_names, &iter))) {
-        int a = (*map_get(variable_names, tmp_var));
         variable_infos[(*map_get(variable_names, tmp_var))] = tmp_var;
     }
 
@@ -3505,7 +3568,6 @@ void run(t_context_ptr context) {
     vec_byte_ptr bytes       = context->compiler->op_codes;
     t_brama_value* variables = context->compiler->global_storage->variables.data;
 
-    size_t total_bytes       = bytes->length;
     t_brama_byte* ipc        = &bytes->data[0];
 
     while (*ipc != NULL) {
@@ -3564,6 +3626,15 @@ void run(t_context_ptr context) {
                 break;
             }
 
+            case VM_OPT_BITWISE_UNSIGNED_RIGHT_SHIFT: {
+                t_brama_value left  = *(variables + vmdata.reg2);
+                t_brama_value right = *(variables + vmdata.reg3);
+                // (uint32_t)(int32_t)x >> (int32_t)16;
+                if (IS_NUM(left) && IS_NUM(right))
+                    *(variables + vmdata.reg1) = numberToValue((uint32_t)(int32_t)valueToNumber(left) >> (int32_t)valueToNumber(right));
+                break;
+            }
+
             case VM_OPT_BITWISE_LEFT_SHIFT: {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
@@ -3592,6 +3663,45 @@ void run(t_context_ptr context) {
             }
 
             /* CONTROLS */
+                
+            case VM_OPT_AND: {
+                t_brama_value left  = *(variables + vmdata.reg2);
+                t_brama_value right = *(variables + vmdata.reg3);
+                bool status = false;
+                
+                if (IS_NUM(left))
+                    status = (bool)left;
+                else if (IS_BOOL(left))
+                    status = IS_TRUE(left);
+                
+                if (IS_NUM(right))
+                    status = status && (bool)right;
+                else if (IS_BOOL(right))
+                    status = status && IS_TRUE(right);
+                *(variables + vmdata.reg1) = status ? TRUE_VAL : FALSE_VAL;
+                break;
+            }
+                
+            case VM_OPT_OR: {
+                t_brama_value left  = *(variables + vmdata.reg2);
+                t_brama_value right = *(variables + vmdata.reg3);
+                bool status = false;
+                
+                if (IS_NUM(left))
+                    status = (bool)left;
+                else if (IS_BOOL(left))
+                    status = IS_TRUE(left);
+                
+                if (IS_NUM(right))
+                    status = status || (bool)right;
+                else if (IS_BOOL(right))
+                    status = status || IS_TRUE(right);
+                *(variables + vmdata.reg1) = status ? TRUE_VAL : FALSE_VAL;
+                break;
+                break;
+            }
+            
+            
             /* '<' operator */
             case VM_OPT_LT: {
                 t_brama_value left  = *(variables + vmdata.reg2);

@@ -290,6 +290,54 @@ MunitResult ast_compile_8(const MunitParameter params[], void* user_data_or_fixt
     return MUNIT_OK;
 }
 
+MunitResult ast_compile_9(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context, "var x = 10\r\n"
+                           "var a = ++x;\r\n"
+                           "var b = x++;\r\n");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "x", &var_info);
+    munit_assert_int   (status,            == , BRAMA_OK);
+    munit_assert_int   (var_info->type,    == , CONST_INTEGER);
+    munit_assert_double(var_info->double_, ==, 12.0);
+    brama_destroy_get_var(context, &var_info);
+
+    status = brama_get_var(context, "a", &var_info);
+    munit_assert_int   (status,            == , BRAMA_OK);
+    munit_assert_int   (var_info->type,    == , CONST_INTEGER);
+    munit_assert_double(var_info->double_, ==, 11.0);
+    brama_destroy_get_var(context, &var_info);
+
+    status = brama_get_var(context, "b", &var_info);
+    munit_assert_int   (status,            == , BRAMA_OK);
+    munit_assert_int   (var_info->type,    == , CONST_INTEGER);
+    munit_assert_double(var_info->double_, ==, 11.0);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_10(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context, "var a = (2<<2);\r\n"
+                           "var b = (16>>3);\r\n"
+                           "var c = (-1 >>> 16);\r\n"
+                           "result = a==8 && b==2 && c == 0xFFFF;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,           == , BRAMA_OK);
+    munit_assert_int   (var_info->type,   == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_,== , true);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitTest COMPILE_TESTS[] = {
 
         ADD_TEST(ast_compile_1),
@@ -300,6 +348,8 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_6),
         ADD_TEST(ast_compile_7),
         ADD_TEST(ast_compile_8),
+        ADD_TEST(ast_compile_9),
+        ADD_TEST(ast_compile_10),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
