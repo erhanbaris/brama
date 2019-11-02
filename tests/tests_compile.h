@@ -24,8 +24,7 @@ MunitResult ast_compile_1(const MunitParameter params[], void* user_data_or_fixt
 
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 10.0);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 20.0);
-
-    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 30.0);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[2]), ==, 30.0);
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -42,15 +41,15 @@ MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixt
     vm_decode(context->compiler->op_codes->data[0], &vmdata);
 
     munit_assert_int(vmdata.op,   ==, VM_OPT_INIT_VAR);
-    munit_assert_int(vmdata.reg1, ==, 2);
-    munit_assert_int(vmdata.reg2, ==, -1);
+    munit_assert_int(vmdata.reg1, ==, 3);
+    munit_assert_int(vmdata.reg2, ==, 0);
     munit_assert_int(vmdata.reg3, ==, 0);
 
     vm_decode(context->compiler->op_codes->data[1], &vmdata);
 
     munit_assert_int(vmdata.op,   ==, VM_OPT_INIT_VAR);
-    munit_assert_int(vmdata.reg1, ==, 1);
-    munit_assert_int(vmdata.reg2, ==, -2);
+    munit_assert_int(vmdata.reg1, ==, 2);
+    munit_assert_int(vmdata.reg2, ==, 1);
     munit_assert_int(vmdata.reg3, ==, 0);
 
     munit_assert_int(context->compiler->global_storage->variables.length, ==, 4);
@@ -58,8 +57,8 @@ MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 1024.0);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 2048.0);
 
-    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 2048.0);
-    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 1024.0);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[2]), ==, 2048.0);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[3]), ==, 1024.0);
 
 
     t_get_var_info_ptr var_info = NULL;
@@ -93,21 +92,21 @@ MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixt
 
     vm_decode(context->compiler->op_codes->data[0], &vmdata);
     munit_assert_int(vmdata.op,   ==, VM_OPT_INIT_VAR);
-    munit_assert_int(vmdata.reg1, ==, 1);
-    munit_assert_int(vmdata.reg2, ==, -1);
+    munit_assert_int(vmdata.reg1, ==, 2);
+    munit_assert_int(vmdata.reg2, ==, 0);
     munit_assert_int(vmdata.reg3, ==, 0);
 
     vm_decode(context->compiler->op_codes->data[1], &vmdata);
     munit_assert_int(vmdata.op,   ==, VM_OPT_INIT_VAR);
-    munit_assert_int(vmdata.reg1, ==, 2);
-    munit_assert_int(vmdata.reg2, ==, -2);
+    munit_assert_int(vmdata.reg1, ==, 3);
+    munit_assert_int(vmdata.reg2, ==, 1);
     munit_assert_int(vmdata.reg3, ==, 0);
 
     vm_decode(context->compiler->op_codes->data[2], &vmdata);
     munit_assert_int(vmdata.op,   ==, VM_OPT_LT);
-    munit_assert_int(vmdata.reg1, ==, 3);
-    munit_assert_int(vmdata.reg2, ==, 1);
-    munit_assert_int(vmdata.reg3, ==, 2);
+    munit_assert_int(vmdata.reg1, ==, 4);
+    munit_assert_int(vmdata.reg2, ==, 2);
+    munit_assert_int(vmdata.reg3, ==, 3);
 
     munit_assert_int(context->compiler->global_storage->variables.length, ==, 5);
 
@@ -116,7 +115,7 @@ MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixt
 
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 10.0);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 20.0);
-    munit_assert_double(AS_BOOL(context->compiler->global_storage->variables.data[2]),       ==, true);
+    munit_assert_double(AS_BOOL(context->compiler->global_storage->variables.data[4]),       ==, true);
 
 
     t_get_var_info_ptr var_info = NULL;

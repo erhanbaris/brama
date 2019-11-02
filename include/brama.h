@@ -719,9 +719,9 @@ typedef struct _t_context {
 
 typedef struct _t_brama_vmdata {
     enum brama_vm_operator op;
-    int8_t  reg1;
-    int8_t  reg2;
-    int8_t  reg3;
+    uint8_t  reg1;
+    uint8_t  reg2;
+    uint8_t  reg3;
     int16_t scal;
 } t_brama_vmdata;
 
@@ -841,7 +841,6 @@ typedef struct _t_compile_while {
 typedef union
 {
     uint64_t bits64;
-    uint32_t bits32[2];
     double num;
 } DoubleBits;
 
