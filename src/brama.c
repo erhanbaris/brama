@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <brama.h>
+#include "murmur3.h"
 
 
 /* TOKINIZER OPERATIONS START */
@@ -481,6 +482,7 @@ NEW_AST_DEF(block,     vec_ast_ptr ,          AST_BLOCK,                vector_p
 NEW_AST_DEF(object,    t_object_creation_ptr, AST_OBJECT_CREATION,      object_creation_ptr, false)
 NEW_AST_DEF(while,     t_while_loop_ptr ,     AST_WHILE,                while_ptr, false)
 NEW_AST_DEF(if,        t_if_stmt_ptr,         AST_IF_STATEMENT,         if_stmt_ptr, false)
+NEW_AST_DEF(switch,    t_switch_stmt_ptr ,    AST_SWITCH,               switch_stmt_ptr, false)
 NEW_AST_DEF(return,    t_ast_ptr,             AST_RETURN,               ast_ptr, false)
 NEW_AST_DEF(accessor,  t_accessor_ptr,        AST_ACCESSOR,             accessor_ptr, false)
 NEW_AST_DEF(keyword,   brama_keyword_type,    AST_KEYWORD,              keyword, false)
@@ -1072,6 +1074,12 @@ brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, bram
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
         return status;
 
+    status = ast_switch_stmt(context, ast, extra_data);
+    if (status == BRAMA_OK)
+        return BRAMA_OK;
+    else if (status != BRAMA_DOES_NOT_MATCH_AST)
+        return status;
+
     status = ast_new_object(context, ast, extra_data);
     if (status == BRAMA_OK)
         return BRAMA_OK;
@@ -1098,7 +1106,7 @@ brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, bram
 
     status = ast_break(context, ast, extra_data);
     if (status == BRAMA_OK) {
-        if (extra_data & AST_IN_LOOP)
+        if (extra_data & AST_IN_LOOP || extra_data & AST_IN_SWITCH)
             return BRAMA_OK;
         return BRAMA_ILLEGAL_BREAK_STATEMENT;
 
@@ -1428,6 +1436,7 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama
 brama_status ast_continue(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     if (ast_match_keyword(context, 1, KEYWORD_CONTINUE)) {
         *ast = new_keyword_ast(KEYWORD_CONTINUE);
+        set_semicolon_and_newline(context, *ast);
         return BRAMA_OK;
     }
 
@@ -1437,6 +1446,7 @@ brama_status ast_continue(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_ex
 brama_status ast_break(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     if (ast_match_keyword(context, 1, KEYWORD_BREAK)) {
         *ast = new_keyword_ast(KEYWORD_BREAK);
+        set_semicolon_and_newline(context, *ast);
         return BRAMA_OK;
     }
 
@@ -1450,6 +1460,7 @@ brama_status ast_return_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
         t_ast_ptr statement = NULL;
         if (check_end_of_line(context, END_LINE_CHECKER_SEMICOLON) == BRAMA_OK || ast_check_operator(context, OPERATOR_CURVE_BRACKET_END)) {
             *ast = new_return_ast(statement);
+            set_semicolon_and_newline(context, *ast);
             return BRAMA_OK;
         }
 
@@ -1458,6 +1469,7 @@ brama_status ast_return_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
             DESTROY_AST_AND_RETURN(status, statement);
 
         *ast = new_return_ast(statement);
+        set_semicolon_and_newline(context, *ast);
         return BRAMA_OK;
     }
 
@@ -1502,6 +1514,7 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         object->object_name = object_name;
         object->args        = args;
         *ast = new_object_ast(object);
+        set_semicolon_and_newline(context, *ast);
         return BRAMA_OK;
     }
 
@@ -1559,6 +1572,7 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         object->body            = body;
         object->condition       = condition;
         *ast = new_while_ast(object);
+        set_semicolon_and_newline(context, *ast);
         return BRAMA_OK;
     }
 
@@ -1629,6 +1643,134 @@ brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_ext
         object->false_body = false_body;
         object->condition  = condition;
         *ast = new_if_ast(object);
+        return BRAMA_OK;
+    }
+
+    RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
+}
+
+brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
+    BACKUP_PARSER_INDEX();
+
+    if (ast_match_keyword(context, 1, KEYWORD_SWITCH)) {
+        if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+
+        /* If statement parts */
+        t_ast_ptr condition  = NULL;
+
+        brama_status condition_status = ast_expression(context, &condition, extra_data);
+        if (condition_status != BRAMA_OK)
+            DESTROY_AST_AND_RETURN(condition_status, condition);
+
+        /* Remove new lines */
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+
+        if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES))
+            DESTROY_AST_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND, condition);
+
+        /* Remove new lines */
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+
+        if (!ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_START))
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+
+        /* Remove new lines */
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+
+        vec_case_item_ptr cases = BRAMA_MALLOC(sizeof(vec_case_item));
+        vec_init(cases);
+
+        /*
+         * parse case statements
+         * */
+
+        do {
+            if (!ast_match_keyword(context, 1, KEYWORD_CASE))
+                RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CASE_KEYWORD_NOT_FOUND);
+
+            /* Key and value for case */
+            t_case_item_ptr case_item = BRAMA_MALLOC(sizeof(t_case_item));
+            case_item->key            = NULL;
+            case_item->body           = NULL;
+
+            brama_status condition_status = as_primative(ast_peek(context), &case_item->key);
+            if (condition_status != BRAMA_OK) {
+                CLEAR_AST(condition);
+                CLEAR_AST(case_item->key);
+                BRAMA_FREE(case_item);
+                CLEAR_AST(cases);
+                RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CASE_KEYWORD_NOT_FOUND);
+            }
+
+            ast_consume(context);
+            if (ast_consume_operator(context, OPERATOR_COLON_MARK) == NULL) {
+                CLEAR_AST(condition);
+                CLEAR_AST(case_item->key);
+                BRAMA_FREE(case_item);
+                CLEAR_AST(cases);
+                RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CASE_KEYWORD_NOT_FOUND);
+            }
+
+            brama_status body_status = ast_block_multiline_stmt(context, case_item->body, extra_data | AST_IN_SWITCH);
+            if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
+                vec_ast_ptr blocks = BRAMA_MALLOC(sizeof (vec_ast));
+                vec_init(blocks);
+
+                do {
+                    check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+                    t_ast_ptr block = NULL;
+                    body_status     = ast_declaration_stmt(context, &block, extra_data | AST_IN_SWITCH);
+
+                    if (body_status != BRAMA_OK) {
+                        CLEAR_AST(condition);
+                        CLEAR_AST(case_item->body);
+                        CLEAR_AST(case_item->key);
+                        BRAMA_FREE(case_item);
+                        CLEAR_AST(cases);
+                        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_SWITCH_NOT_VALID)
+                    }
+
+                    /* Semicolon required */
+                    if (!block->ends_with_semicolon) {
+                        CLEAR_AST(condition);
+                        CLEAR_AST(case_item->body);
+                        CLEAR_AST(case_item->key);
+                        BRAMA_FREE(case_item);
+                        CLEAR_AST(cases);
+                        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_SEMICOLON_REQUIRED)
+                    }
+
+                    vec_push(blocks, block);
+                    check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+
+                } while (!ast_is_at_end(context) && !ast_check_keyword(context, KEYWORD_CASE) && !ast_check_operator(context, OPERATOR_CURVE_BRACKET_END));
+
+                case_item->body = new_block_ast(blocks);
+            }
+            else if (condition_status != BRAMA_OK) {
+                CLEAR_AST(condition);
+                CLEAR_AST(case_item->body);
+                CLEAR_AST(case_item->key);
+                BRAMA_FREE(case_item);
+                CLEAR_AST(cases);
+                RESTORE_PARSER_INDEX_AND_RETURN(condition_status)
+            }
+
+            vec_push(cases, case_item);
+
+        } while (!ast_is_at_end(context) && !ast_check_operator(context, OPERATOR_CURVE_BRACKET_END));
+
+        if (!ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_END)) {
+            CLEAR_AST(condition);
+            CLEAR_AST(cases);
+            DESTROY_AST_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND, *ast);
+        }
+
+        t_switch_stmt_ptr object = (t_switch_stmt_ptr)BRAMA_MALLOC(sizeof(t_switch_stmt));
+        object->condition  = condition;
+        object->cases      = cases;
+        *ast = new_switch_ast(object);
         return BRAMA_OK;
     }
 
@@ -2675,6 +2817,29 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             break;
         }
 
+        case AST_SWITCH: {
+            size_t in_condition  = 0;
+            prepare_variable_memory(context, ast->switch_stmt_ptr->condition,   ast, storage, &in_condition);
+
+            int index = 0;
+            int max   = 0;
+            t_case_item_ptr case_item = NULL;
+
+            vec_foreach(ast->switch_stmt_ptr->cases, case_item, index) {
+                size_t total_temp = 0;
+                prepare_variable_memory(context, case_item->key, ast, storage, &total_temp);
+                max = FAST_MAX(total_temp, max);
+
+                total_temp = 0;
+                prepare_variable_memory(context, case_item->body, ast, storage, &total_temp);
+                max = FAST_MAX(total_temp, max);
+            }
+
+            *temps = FAST_MAX(in_condition, max);
+
+            break;
+        }
+
         case AST_IF_STATEMENT: {
             size_t in_condition  = 0;
             size_t in_true       = 0;
@@ -3080,8 +3245,10 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
 }
 
 void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    size_t temp_counter = storage->temp_counter;
     compile_internal(context, ast->condition, storage, compile_info, AST_IF_STATEMENT);
     COMPILE_CHECK();
+    storage->temp_counter = temp_counter;
     size_t condition = compile_info->index;
 
 
@@ -3359,8 +3526,121 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
 
 void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     if (ast->type == FUNC_CALL_NORMAL) {
-        
+
     }
+}
+
+/* Nice document http://www.eecg.toronto.edu/~moshovos/ECE243-07/l09-switch.html */
+void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    size_t temp_counter = storage->temp_counter;
+    compile_internal(context, ast->condition, storage, compile_info, AST_SWITCH);
+    COMPILE_CHECK();
+
+    int case_variable = compile_info->index;
+    storage->temp_counter = temp_counter;
+    size_t condition = compile_info->index;
+
+
+        /*                            *
+         * Switch bloks looks like    *
+         * if blocks.                 *
+         * -------------------------- *
+         *  1. CONDITION              *
+         * -------------------------- *
+         *  2. CASE 1                 *
+         * -------------------------- *
+         *  3. JMP (CASE 1)           *
+         * -------------------------- *
+         *  4. CASE 2                 *
+         * -------------------------- *
+         *  5. JMP (CASE 2)           *
+         * -------------------------- *
+         *  6. JMP (DEFAULT)          *
+         * -------------------------- *
+         *  7. CASE 1 BLOCK           *
+         * -------------------------- *
+         *  8. JMP TO END             *
+         * -------------------------- *
+         *  9. CASE 2 BLOCK           *
+         * -------------------------- *
+         * 10. JMP TO END             *
+         * -------------------------- *
+         * 11. DEFAULT BLOCK          *
+         * -------------------------- *
+         * 12. NORMAL CODE            *
+         * -------------------------- *
+         * 13. NORMAL OPCODE          *
+         * -------------------------- */
+
+    t_case_item_ptr value;
+    size_t index = 0;
+    size_t* jmp_address = BRAMA_MALLOC(sizeof(size_t) * storage->variables.length);
+
+    /* Case conditions */
+    vec_foreach(ast->cases, value, index) {
+        compile_internal(context, value->key, storage, compile_info, AST_SWITCH);
+        COMPILE_CHECK();
+
+        t_brama_vmdata code;
+        code.op   = VM_OPT_CASE;
+        code.reg1 = case_variable;
+        code.reg2 = compile_info->index;
+        code.reg3 = 0;
+        code.scal = 0;
+        vec_push(context->compiler->op_codes, vm_encode(&code));
+
+        /* JMP CODE  */
+        vec_push(context->compiler->op_codes, NULL);
+
+        /* Mark JMP code location */
+        jmp_address[index] = context->compiler->op_codes->length - 1;
+    }
+
+    /* General exit */
+    vec_push(context->compiler->op_codes, NULL);
+    size_t general_exit_jmp = context->compiler->op_codes->length - 1;
+
+    /* Condition blocks */
+    index = 0;
+    vec_foreach(ast->cases, value, index) {
+        t_brama_vmdata code;
+        code.op   = VM_OPT_JMP;
+        code.reg1 = 0;
+        code.reg2 = 0;
+        code.reg3 = 0;
+        code.scal = context->compiler->op_codes->length - jmp_address[index] - 1;
+        context->compiler->op_codes->data[jmp_address[index]] = vm_encode(&code);
+
+        compile_internal(context, value->body, storage, compile_info, AST_SWITCH);
+        COMPILE_CHECK();
+
+        vec_push(context->compiler->op_codes, NULL);
+        jmp_address[index] = context->compiler->op_codes->length - 1;
+    }
+
+    /* Set next command */
+    index = 0;
+    vec_foreach(ast->cases, value, index) {
+        t_brama_vmdata code;
+        code.op   = VM_OPT_JMP;
+        code.reg1 = 0;
+        code.reg2 = 0;
+        code.reg3 = 0;
+        code.scal = context->compiler->op_codes->length - jmp_address[index];
+        context->compiler->op_codes->data[jmp_address[index]] = vm_encode(&code);
+        COMPILE_CHECK();
+    }
+
+    t_brama_vmdata code;
+    code.op   = VM_OPT_JMP;
+    code.reg1 = 0;
+    code.reg2 = 0;
+    code.reg3 = 0;
+    code.scal = context->compiler->op_codes->length - general_exit_jmp;
+    context->compiler->op_codes->data[general_exit_jmp] = vm_encode(&code);
+    COMPILE_CHECK();
+
+    BRAMA_FREE(jmp_address);
 }
 
 void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -3492,6 +3772,10 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
 
         case AST_FUNCTION_CALL:
             compile_func_call(context, ast->func_call_ptr, storage, compile_info, upper_ast);
+            break;
+
+        case AST_SWITCH:
+            compile_switch(context, ast->switch_stmt_ptr, storage, compile_info, upper_ast);
             break;
 
         default:
@@ -3666,6 +3950,7 @@ void brama_compile_dump(t_context_ptr context) {
 
             /* Print reg1 and reg2 */
             case VM_OPT_COPY:
+            case VM_OPT_CASE:
             case VM_OPT_INIT_VAR:
                 printf ("%8d    %-10s %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2);
                 break;
@@ -3706,6 +3991,36 @@ void run(t_context_ptr context) {
             case VM_OPT_IF_EQ: {
                 t_brama_value variable = *(variables + vmdata.reg1);
                 if (IS_TRUE(variable))
+                    ++ipc;
+                break;
+            }
+
+            case VM_OPT_CASE: {
+                t_brama_value left  = *(variables + vmdata.reg1);
+                t_brama_value right = *(variables + vmdata.reg2);
+
+                uint64_t left_val;
+                uint64_t right_val;
+
+                if (IS_NUM(left))
+                    left_val = valueToNumber(left);
+                else if (IS_BOOL(left))
+                    left_val = IS_TRUE(left) ? 1 : 0;
+                else if (IS_STRING(left))
+                    left_val = MurmurHash64B(AS_STRING(left), strlen(AS_STRING(left)), 1024);
+                else if (IS_UNDEFINED(left) || IS_NULL(left))
+                    left_val = (QNAN | TAG_UNDEFINED);
+
+                if (IS_NUM(right))
+                    right_val = valueToNumber(right);
+                else if (IS_BOOL(right))
+                    right_val = IS_TRUE(right) ? 1 : 0;
+                else if (IS_STRING(right))
+                    right_val = MurmurHash64B(AS_STRING(right), strlen(AS_STRING(right)), 1024);
+                else if (IS_UNDEFINED(right) || IS_NULL(right))
+                    right_val = (QNAN | TAG_UNDEFINED);
+
+                if (left_val != right_val)
                     ++ipc;
                 break;
             }
@@ -3866,8 +4181,28 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                if (IS_NUM(left) && IS_NUM(right))
-                    *(variables + vmdata.reg1) = valueToNumber(left) != valueToNumber(right) ? TRUE_VAL : FALSE_VAL;
+                uint64_t left_val;
+                uint64_t right_val;
+
+                if (IS_NUM(left))
+                    left_val = valueToNumber(left);
+                else if (IS_BOOL(left))
+                    left_val = IS_TRUE(left) ? 1 : 0;
+                else if (IS_STRING(left))
+                    left_val = MurmurHash64B(AS_STRING(left), strlen(AS_STRING(left)), 1024);
+                else if (IS_UNDEFINED(left) || IS_NULL(left))
+                    left_val = (QNAN | TAG_UNDEFINED);
+
+                if (IS_NUM(right))
+                    right_val = valueToNumber(right);
+                else if (IS_BOOL(right))
+                    right_val = IS_TRUE(right) ? 1 : 0;
+                else if (IS_STRING(right))
+                    right_val = MurmurHash64B(AS_STRING(right), strlen(AS_STRING(right)), 1024);
+                else if (IS_UNDEFINED(right) || IS_NULL(right))
+                    right_val = (QNAN | TAG_UNDEFINED);
+
+                *(variables + vmdata.reg1) = left_val != right_val ? TRUE_VAL : FALSE_VAL;
                 break;
             }
 
@@ -3876,12 +4211,28 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                if (IS_NUM(left) && IS_NUM(right))
-                    *(variables + vmdata.reg1) = valueToNumber(left) == valueToNumber(right) ? TRUE_VAL : FALSE_VAL;
-                else if (IS_STRING(left) && IS_STRING(right))
-                    *(variables + vmdata.reg1) = strcmp(AS_STRING(left), AS_STRING(right)) == 0 ? TRUE_VAL : FALSE_VAL;
-                else
-                    *(variables + vmdata.reg1) = FALSE_VAL;
+                uint64_t left_val;
+                uint64_t right_val;
+
+                if (IS_NUM(left))
+                    left_val = valueToNumber(left);
+                else if (IS_BOOL(left))
+                    left_val = IS_TRUE(left) ? 1 : 0;
+                else if (IS_STRING(left))
+                    left_val = MurmurHash64B(AS_STRING(left), strlen(AS_STRING(left)), 1024);
+                else if (IS_UNDEFINED(left) || IS_NULL(left))
+                    left_val = (QNAN | TAG_UNDEFINED);
+
+                if (IS_NUM(right))
+                    right_val = valueToNumber(right);
+                else if (IS_BOOL(right))
+                    right_val = IS_TRUE(right) ? 1 : 0;
+                else if (IS_STRING(right))
+                    right_val = MurmurHash64B(AS_STRING(right), strlen(AS_STRING(right)), 1024);
+                else if (IS_UNDEFINED(right) || IS_NULL(right))
+                    right_val = (QNAN | TAG_UNDEFINED);
+
+                *(variables + vmdata.reg1) = left_val == right_val ? TRUE_VAL : FALSE_VAL;
                 break;
             }
 

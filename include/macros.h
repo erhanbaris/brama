@@ -133,6 +133,7 @@ case OPERATOR_1_SYMBOL :                     \
 #define new_object_ast(DATA)       new_object_ast_internal   ( DATA , __FILE__, __LINE__ )
 #define new_while_ast(DATA)        new_while_ast_internal    ( DATA , __FILE__, __LINE__ )
 #define new_if_ast(DATA)           new_if_ast_internal       ( DATA , __FILE__, __LINE__ )
+#define new_switch_ast(DATA)       new_switch_ast_internal   ( DATA , __FILE__, __LINE__ )
 #define new_return_ast(DATA)       new_return_ast_internal   ( DATA , __FILE__, __LINE__ )
 #define new_accessor_ast(DATA)     new_accessor_ast_internal ( DATA , __FILE__, __LINE__ )
 #define new_keyword_ast(DATA)      new_keyword_ast_internal  ( DATA , __FILE__, __LINE__ )

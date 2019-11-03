@@ -41,7 +41,9 @@ typedef enum brama_status  {
     BRAMA_ILLEGAL_CONTINUE_STATEMENT     = 21,
     BRAMA_ILLEGAL_ACCESSOR_STATEMENT     = 22,
     BRAMA_ILLEGAL_FUNCTION_ARGUMENT      = 23,
-    BRAMA_CONSTANT_NOT_FOUND             = 24
+    BRAMA_CONSTANT_NOT_FOUND             = 24,
+    BRAMA_CASE_KEYWORD_NOT_FOUND         = 25,
+    BRAMA_SWITCH_NOT_VALID               = 26
 
 } brama_status;
 
@@ -248,7 +250,8 @@ enum brama_vm_operator {
     VM_OPT_APPEND,
     VM_OPT_LOOP,
     VM_OPT_COPY,
-    VM_OPT_NOT
+    VM_OPT_NOT,
+    VM_OPT_CASE
 };
 
 /* VM CONST TYPE */
@@ -413,7 +416,8 @@ static OperatorPair VM_OPCODES[] =  {
         { "APPEND", ""},
         { "LOOP", ""},
         { "LOOP", ""},
-        { "NOT", "!"}
+        { "NOT", "!"},
+        { "CASE", ""}
 };
 
 static char* KEYWORDS[] = {
@@ -482,6 +486,8 @@ typedef struct _t_func_decl       t_func_decl;
 typedef struct _t_object_creation t_object_creation;
 typedef struct _t_while_loop      t_while_loop;
 typedef struct _t_if_stmt         t_if_stmt;
+typedef struct _t_switch_stmt     t_switch_stmt;
+typedef struct _t_case_item       t_case_item;
 typedef struct _t_accessor        t_accessor;
 typedef struct _t_compiler        t_compiler;
 typedef struct _t_brama_vmdata    t_brama_vmdata;
@@ -513,6 +519,8 @@ typedef t_string_stream*   t_string_stream_ptr;
 typedef t_object_creation* t_object_creation_ptr;
 typedef t_while_loop*      t_while_loop_ptr;
 typedef t_if_stmt*         t_if_stmt_ptr;
+typedef t_switch_stmt*     t_switch_stmt_ptr;
+typedef t_case_item*       t_case_item_ptr;
 typedef t_accessor*        t_accessor_ptr;
 typedef t_compiler*        t_compiler_ptr;
 typedef t_storage*         t_storage_ptr;
@@ -535,27 +543,29 @@ typedef union              _t_brama_double { t_brama_byte bytes[8];  double doub
 typedef union              _t_brama_int    { t_brama_byte bytes[4];  int int_; } t_brama_int;
 typedef bool               t_brama_bool;
 
-typedef map_t(struct _t_ast *) map_ast_t;
-typedef map_ast_t*             map_ast_t_ptr;
-typedef map_t(t_brama_value)   map_value;
-typedef map_value*             map_value_ptr;
-typedef vec_t(t_brama_value)   vec_value;
-typedef vec_value*             vec_value_ptr;
-typedef map_t(size_t)          map_size_t;
-typedef map_size_t*            map_size_t_ptr;
-typedef vec_t(t_storage*)      vec_storage;
-typedef vec_storage*           vec_storage_ptr;
-typedef t_brama_vmdata*        t_brama_vmdata_ptr;
-typedef vec_t(t_token_ptr)     vec_token;
-typedef vec_t(t_token_ptr)*    vec_token_ptr;
-typedef vec_t(t_ast_ptr)       vec_ast;
-typedef vec_t(t_ast_ptr)*      vec_ast_ptr;
-typedef vec_t(t_brama_opcode)  vec_opcode;
-typedef vec_t(t_brama_opcode)* vec_opcode_ptr;
-typedef vec_t(t_brama_byte)    vec_byte;
-typedef vec_t(t_brama_byte)*   vec_byte_ptr;
-typedef vec_t(char_ptr)        vec_string;
-typedef vec_t(char_ptr)*       vec_string_ptr;
+typedef map_t(struct _t_ast *)  map_ast_t;
+typedef map_ast_t*              map_ast_t_ptr;
+typedef map_t(t_brama_value)    map_value;
+typedef map_value*              map_value_ptr;
+typedef vec_t(t_brama_value)    vec_value;
+typedef vec_value*              vec_value_ptr;
+typedef map_t(size_t)           map_size_t;
+typedef map_size_t*             map_size_t_ptr;
+typedef vec_t(t_storage*)       vec_storage;
+typedef vec_storage*            vec_storage_ptr;
+typedef t_brama_vmdata*         t_brama_vmdata_ptr;
+typedef vec_t(t_token_ptr)      vec_token;
+typedef vec_t(t_token_ptr)*     vec_token_ptr;
+typedef vec_t(t_case_item_ptr)  vec_case_item;
+typedef vec_t(t_case_item_ptr)* vec_case_item_ptr;
+typedef vec_t(t_ast_ptr)        vec_ast;
+typedef vec_t(t_ast_ptr)*       vec_ast_ptr;
+typedef vec_t(t_brama_opcode)   vec_opcode;
+typedef vec_t(t_brama_opcode)*  vec_opcode_ptr;
+typedef vec_t(t_brama_byte)     vec_byte;
+typedef vec_t(t_brama_byte)*    vec_byte_ptr;
+typedef vec_t(char_ptr)         vec_string;
+typedef vec_t(char_ptr)*        vec_string_ptr;
 typedef vec_t(t_compile_stack*) vec_compile_stack;
 typedef vec_compile_stack*      vec_compile_stack_ptr;
 
@@ -689,6 +699,16 @@ typedef struct _t_if_stmt {
     t_ast* false_body;
 } t_if_stmt;
 
+typedef struct _t_case_item {
+    t_ast* key;
+    t_ast* body;
+} t_case_item;
+
+typedef struct _t_switch_stmt {
+    t_ast*            condition;
+    vec_case_item_ptr cases;
+} t_switch_stmt;
+
 typedef struct _t_ast {
     brama_ast_type type;
     bool           ends_with_newline;
@@ -708,6 +728,7 @@ typedef struct _t_ast {
         t_while_loop*          while_ptr;
         t_if_stmt*             if_stmt_ptr;
         t_accessor*            accessor_ptr;
+        t_switch_stmt*         switch_stmt_ptr;
         struct _t_ast*         ast_ptr;
         char*                  char_ptr;
         int                    int_;
@@ -773,6 +794,7 @@ typedef struct _t_compile_while {
     vec_int_t breaks;
     vec_int_t continues;
 } t_compile_while;
+
 
 /* VM Defs */
 
