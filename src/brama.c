@@ -461,13 +461,14 @@ GET_ITEM(text,     char_ptr, char_ptr)
 GET_ITEM(symbol,   char_ptr, char_ptr)
 GET_ITEM(operator, opt,      brama_operator_type)
 
-NEW_PRIMATIVE_DEF(int,    double,              PRIMATIVE_INTEGER,    double_)
-NEW_PRIMATIVE_DEF(double, double,              PRIMATIVE_DOUBLE,     double_)
-NEW_PRIMATIVE_DEF(text,   char_ptr,            PRIMATIVE_STRING,     char_ptr)
-NEW_PRIMATIVE_DEF(bool,   bool,                PRIMATIVE_BOOL,       bool_)
-NEW_PRIMATIVE_DEF(empty,  int,                 PRIMATIVE_NULL,       double_)
-NEW_PRIMATIVE_DEF(array,  vec_ast_ptr,         PRIMATIVE_ARRAY,      array)
-NEW_PRIMATIVE_DEF(dict,   map_ast_t_ptr,       PRIMATIVE_DICTIONARY, dict)
+NEW_PRIMATIVE_DEF(int,       double,              PRIMATIVE_INTEGER,    double_)
+NEW_PRIMATIVE_DEF(double,    double,              PRIMATIVE_DOUBLE,     double_)
+NEW_PRIMATIVE_DEF(text,      char_ptr,            PRIMATIVE_STRING,     char_ptr)
+NEW_PRIMATIVE_DEF(bool,      bool,                PRIMATIVE_BOOL,       bool_)
+NEW_PRIMATIVE_DEF(null,      int,                 PRIMATIVE_NULL,       double_)
+NEW_PRIMATIVE_DEF(undefined, int,                 PRIMATIVE_UNDEFINED,  double_)
+NEW_PRIMATIVE_DEF(array,     vec_ast_ptr,         PRIMATIVE_ARRAY,      array)
+NEW_PRIMATIVE_DEF(dict,      map_ast_t_ptr,       PRIMATIVE_DICTIONARY, dict)
 
 NEW_AST_DEF(symbol,    char_ptr,              AST_SYMBOL,               char_ptr, false)
 NEW_AST_DEF(unary,     t_unary_ptr,           AST_UNARY,                unary_ptr, false)
@@ -504,7 +505,9 @@ brama_status as_primative(t_token_ptr token, t_ast_ptr_ptr ast) {
         else if (get_keyword_type(token) == KEYWORD_FALSE)
             *ast = new_primative_ast_bool(false);
         else if (get_keyword_type(token) == KEYWORD_NULL)
-            *ast = new_primative_ast_empty(0);
+            *ast = new_primative_ast_null(0);
+        else if (get_keyword_type(token) == KEYWORD_UNDEFINED)
+            *ast = new_primative_ast_undefined(0);
         else
             return BRAMA_PARSE_ERROR;
         break;
@@ -523,6 +526,7 @@ bool is_primative(t_token_ptr token) {
                              is_integer(token)  ||
                              (is_keyword(token) && get_keyword_type(token) == KEYWORD_TRUE)  ||
                              (is_keyword(token) && get_keyword_type(token) == KEYWORD_FALSE) ||
+                             (is_keyword(token) && get_keyword_type(token) == KEYWORD_UNDEFINED) ||
                              (is_keyword(token) && get_keyword_type(token) == KEYWORD_NULL));
 }
 
@@ -2056,6 +2060,8 @@ void brama_run(t_context_ptr context) {
         return;
 
     compile(context);
+    COMPILE_CHECK();
+
     run(context);
 }
 
@@ -2766,6 +2772,22 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                     }
                     break;
 
+                case PRIMATIVE_UNDEFINED:
+                    vec_find(&storage->variables, UNDEFINED_VAL, index);
+                    if (index == -1) {
+                        vec_push(&storage->variables, UNDEFINED_VAL);
+                        ++storage->constant_count;
+                    }
+                    break;
+
+                case PRIMATIVE_NULL:
+                    vec_find(&storage->variables, NULL_VAL, index);
+                    if (index == -1) {
+                        vec_push(&storage->variables, NULL_VAL);
+                        ++storage->constant_count;
+                    }
+                    break;
+
                 case PRIMATIVE_BOOL:
                     vec_find(&storage->variables, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL), index);
                     if (index == -1) {
@@ -2775,6 +2797,15 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                     break;
 
                 case PRIMATIVE_STRING: {
+                    t_brama_value tmp_value;
+                    int index = -1;
+                    vec_foreach(&storage->variables, tmp_value, index) {
+                        if (IS_STRING(tmp_value) && strcmp(ast->char_ptr, AS_OBJ(tmp_value)->char_ptr) == 0)
+                            /* Text found, exit */
+                            return;
+                    }
+
+                    /* Text not in list */
                     t_brama_value value;
                     t_vm_object_ptr object = new_vm_object(context);
                     object->type           = CONST_STRING;
@@ -2782,10 +2813,11 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                     vec_push(&storage->variables, GET_VALUE_FROM_OBJ(object));
                     ++storage->constant_count;
                 }
-                    break;
+                break;
             }
 
             *temps = 0;
+            break;
         }
 
         default:
@@ -2811,9 +2843,11 @@ void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr
         dest_id = storage->constant_count + storage->temp_counter++;
 
     compile_internal(context, ast->left, storage, compile_info, AST_NONE);
+    COMPILE_CHECK();
     int left_index = compile_info->index;
 
     compile_internal(context, ast->right, storage, compile_info, AST_NONE);
+    COMPILE_CHECK();
     int right_index = compile_info->index;
 
     t_brama_vmdata code;
@@ -2880,9 +2914,11 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
         dest_id = storage->constant_count + storage->temp_counter++;
 
     compile_internal(context, ast->left, storage, compile_info, AST_NONE);
+    COMPILE_CHECK();
     int left_index = compile_info->index;
 
     compile_internal(context, ast->right, storage, compile_info, AST_NONE);
+    COMPILE_CHECK();
     int right_index = compile_info->index;
 
     t_brama_vmdata code;
@@ -2900,9 +2936,9 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
             code.op = VM_OPT_AND;
             break;
 
-            case OPERATOR_OR:
-                code.op = VM_OPT_OR;
-                break;
+        case OPERATOR_OR:
+            code.op = VM_OPT_OR;
+            break;
 
         case OPERATOR_LESS_THAN:
             code.op = VM_OPT_LT;
@@ -2925,7 +2961,7 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
             break;
 
         case OPERATOR_NOT_EQUAL_VALUE:
-            code.op = VM_OPT_EQ;
+            code.op = VM_OPT_NEQV;
             break;
 
         case OPERATOR_EQUAL:
@@ -2933,7 +2969,7 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
             break;
 
         case OPERATOR_EQUAL_VALUE:
-            code.op = VM_OPT_EQ; // todo: fix me !!!!!
+            code.op = VM_OPT_EQV;
             break;
     }
 
@@ -2968,6 +3004,7 @@ void compile_symbol(t_context_ptr context, char_ptr const ast, t_storage_ptr sto
     if (index == NULL) {
         /* We did not found variable */
         compile_info->index = 0;
+        context->status = BRAMA_CONSTANT_NOT_FOUND;
     } else
         /* Return back variable index */
         compile_info->index = *index;
@@ -2999,6 +3036,7 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
 
         /* Opcode generation for assignment */
         compile_internal(context, ast->assignment, storage, compile_info, AST_ASSIGNMENT);
+        COMPILE_CHECK();
 
         if (ast->assignment->type == AST_SYMBOL) {
             t_brama_vmdata code;
@@ -3043,6 +3081,7 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
 
 void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     compile_internal(context, ast->condition, storage, compile_info, AST_IF_STATEMENT);
+    COMPILE_CHECK();
     size_t condition = compile_info->index;
 
 
@@ -3083,6 +3122,7 @@ void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr st
 
         /* Build 'true' block */
         compile_internal(context, ast->true_body, storage, compile_info, AST_IF_STATEMENT);
+        COMPILE_CHECK();
         vec_push(context->compiler->op_codes, NULL); // Put 'true' jmp code
 
         jmp_true_location = context->compiler->op_codes->length - 1;
@@ -3097,6 +3137,7 @@ void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr st
 
         /* Build 'false' block */
         compile_internal(context, ast->false_body, storage, compile_info, AST_IF_STATEMENT);
+        COMPILE_CHECK();
 
         /* Configure 'true' block jmp opcode */
         code.op = VM_OPT_JMP;
@@ -3124,6 +3165,7 @@ void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr st
 
         /* Build 'true' block */
         compile_internal(context, ast->true_body, storage, compile_info, AST_IF_STATEMENT);
+        COMPILE_CHECK();
 
         /* Configure 'false' block jmp opcode */
         code.op = VM_OPT_JMP;
@@ -3147,6 +3189,7 @@ void compile_block(t_context_ptr context, vec_ast_ptr const ast, t_storage_ptr s
 
     vec_foreach(ast, ast_item, index) {
         compile_internal(context, ast_item, storage, compile_info, upper_ast);
+        COMPILE_CHECK();
 
         /* For unary operation. Example: my_var++ */
         if (compile_info->post_opcode != NULL) {
@@ -3160,6 +3203,7 @@ void compile_block(t_context_ptr context, vec_ast_ptr const ast, t_storage_ptr s
 void compile_unary(t_context_ptr context, t_unary_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     int dest_id = compile_info->index;
     compile_internal(context, ast->content, storage, compile_info, AST_UNARY);
+    COMPILE_CHECK();
 
     t_brama_vmdata_ptr code = BRAMA_MALLOC(sizeof(t_brama_vmdata));
     code->reg1 = compile_info->index;
@@ -3194,6 +3238,7 @@ void compile_unary(t_context_ptr context, t_unary_ptr const ast, t_storage_ptr s
         }
 
         case OPERATOR_NOT:
+            code->op = VM_OPT_NOT;
             break;
 
         case OPERATOR_BITWISE_NOT:
@@ -3249,6 +3294,7 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     assign->assignment           = ast->condition;
 
     compile_assignment(context, assign, storage, compile_info, AST_WHILE);
+    COMPILE_CHECK();
 
     /* Build if statement */
     t_if_stmt_ptr if_stmt = BRAMA_MALLOC(sizeof(t_if_stmt));
@@ -3258,6 +3304,7 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
 
     size_t jmp_compare_location = context->compiler->op_codes->length - 1;
     compile_if(context, if_stmt, storage, compile_info, AST_WHILE);
+    COMPILE_CHECK();
 
     int begin_of_while_loc = jmp_compare_location - context->compiler->op_codes->length - 1;
 
@@ -3318,7 +3365,6 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
 
 void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     int index = -1;
-    compile_info->status = BRAMA_OK;
 
     switch (ast->type) {
         case PRIMATIVE_INTEGER:
@@ -3327,8 +3373,23 @@ void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_stora
             if (index == -1)
                 context->status = BRAMA_CONSTANT_NOT_FOUND;
             else
-                compile_info->index = index++;
+                compile_info->index = index;
+            break;
 
+        case PRIMATIVE_NULL:
+            vec_find(&storage->variables, NULL_VAL, index);
+            if (index == -1)
+                context->status = BRAMA_CONSTANT_NOT_FOUND;
+            else
+                compile_info->index = index;
+            break;
+
+        case PRIMATIVE_UNDEFINED:
+            vec_find(&storage->variables, UNDEFINED_VAL, index);
+            if (index == -1)
+                context->status = BRAMA_CONSTANT_NOT_FOUND;
+            else
+                compile_info->index = index;
             break;
 
         case PRIMATIVE_BOOL:
@@ -3336,18 +3397,20 @@ void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_stora
             if (index == -1) 
                 context->status = BRAMA_CONSTANT_NOT_FOUND;
             else
-                compile_info->index = index++;
+                compile_info->index = index;
             break;
 
         case PRIMATIVE_STRING: {
             t_brama_value value;
-            compile_info->index = 0;
+            compile_info->index = -1;
             vec_foreach(&storage->variables, value, index) {
-                if (IS_STRING(value) && strcmp(ast->char_ptr, AS_OBJ(value)->char_ptr) == 0)
+                if (IS_STRING(value) && strcmp(ast->char_ptr, AS_OBJ(value)->char_ptr) == 0) {
                     compile_info->index = index;
+                    return;
+                }
             }
 
-            if (compile_info->index == 0) {
+            if (compile_info->index == -1) {
                 t_vm_object_ptr object = new_vm_object(context);
                 object->type           = CONST_STRING;
                 object->char_ptr       = strdup(ast->char_ptr);
@@ -3447,7 +3510,9 @@ void compile(t_context_ptr context) {
     /* Calculate total temporary variable in time */
     size_t max_temp   = 0;
     prepare_variable_memory(context, main, NULL, context->compiler->global_storage, &max_temp);
+    COMPILE_CHECK();
     compile_internal(context, main, context->compiler->global_storage, compile_info, AST_NONE);
+    COMPILE_CHECK();
     vec_push(context->compiler->op_codes, NULL);
 
     /* Clear */
@@ -3592,6 +3657,7 @@ void brama_compile_dump(t_context_ptr context) {
                 break;
 
             /* Print reg1*/
+            case VM_OPT_NOT:
             case VM_OPT_INC:
             case VM_OPT_DINC:
             case VM_OPT_IF_EQ:
@@ -3604,9 +3670,9 @@ void brama_compile_dump(t_context_ptr context) {
                 printf ("%8d    %-10s %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2);
                 break;
 
-            /* Print reg1 and scal */
+            /* Print scal */
             case VM_OPT_JMP:
-                printf ("%8d    %-10s %2d %2d     ; -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.scal, index + vmdata.scal);
+                printf ("%8d    %-10s %2d     ; -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.scal, index + vmdata.scal);
                 break;
 
             /* Print reg1, reg2 and  reg3*/
@@ -3812,6 +3878,65 @@ void run(t_context_ptr context) {
 
                 if (IS_NUM(left) && IS_NUM(right))
                     *(variables + vmdata.reg1) = valueToNumber(left) == valueToNumber(right) ? TRUE_VAL : FALSE_VAL;
+                else if (IS_STRING(left) && IS_STRING(right))
+                    *(variables + vmdata.reg1) = strcmp(AS_STRING(left), AS_STRING(right)) == 0 ? TRUE_VAL : FALSE_VAL;
+                else
+                    *(variables + vmdata.reg1) = FALSE_VAL;
+                break;
+            }
+
+                /* '===' operator */
+            case VM_OPT_EQV: {
+                t_brama_value left  = *(variables + vmdata.reg2);
+                t_brama_value right = *(variables + vmdata.reg3);
+
+                if (IS_NUM(left) && IS_NUM(right))
+                    *(variables + vmdata.reg1) = valueToNumber(left) == valueToNumber(right) ? TRUE_VAL : FALSE_VAL;
+                else if (IS_BOOL(left) && IS_BOOL(right))
+                    *(variables + vmdata.reg1) = valueToNumber(left) == valueToNumber(right) ? TRUE_VAL : FALSE_VAL;
+                else if (IS_STRING(left) && IS_STRING(right))
+                    *(variables + vmdata.reg1) = strcmp(AS_STRING(left), AS_STRING(right)) == 0 ? TRUE_VAL : FALSE_VAL;
+                else if (IS_NULL(left) && IS_NULL(right))
+                    *(variables + vmdata.reg1) = TRUE_VAL;
+                else if (IS_UNDEFINED(left) && IS_UNDEFINED(right))
+                    *(variables + vmdata.reg1) = TRUE_VAL;
+                else
+                    *(variables + vmdata.reg1) = FALSE_VAL;
+                break;
+            }
+
+                /* '!==' operator */
+            case VM_OPT_NEQV: {
+                t_brama_value left  = *(variables + vmdata.reg2);
+                t_brama_value right = *(variables + vmdata.reg3);
+
+                if (IS_NUM(left) && IS_NUM(right))
+                    *(variables + vmdata.reg1) = valueToNumber(left) == valueToNumber(right) ? FALSE_VAL: TRUE_VAL;
+                else if (IS_BOOL(left) && IS_BOOL(right))
+                    *(variables + vmdata.reg1) = valueToNumber(left) == valueToNumber(right) ? FALSE_VAL : TRUE_VAL;
+                else if (IS_STRING(left) && IS_STRING(right))
+                    *(variables + vmdata.reg1) = strcmp(AS_STRING(left), AS_STRING(right)) == 0 ? FALSE_VAL : TRUE_VAL;
+                else if (IS_NULL(left) && IS_NULL(right))
+                    *(variables + vmdata.reg1) = FALSE_VAL;
+                else if (IS_UNDEFINED(left) && IS_UNDEFINED(right))
+                    *(variables + vmdata.reg1) = FALSE_VAL;
+                else
+                    *(variables + vmdata.reg1) = TRUE_VAL;
+                break;
+            }
+
+                /* '!' operator */
+            case VM_OPT_NOT: {
+                t_brama_value var  = *(variables + vmdata.reg2);
+
+                if (IS_NUM(var))
+                    *(variables + vmdata.reg1) = valueToNumber(var) > -1;
+                else if (IS_BOOL(var))
+                    *(variables + vmdata.reg1) = !IS_TRUE(var);
+                else if (IS_STRING(var)) {
+                    t_vm_object_ptr obj = AS_OBJ(var);
+                    *(variables + vmdata.reg1) = strlen(obj->char_ptr) == 0 ? TRUE_VAL : FALSE_VAL;
+                }
                 break;
             }
 

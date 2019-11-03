@@ -106,8 +106,8 @@ MunitResult string_token_4(const MunitParameter params[], void* user_data_or_fix
 
 MunitResult keyword_token_1(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init();
-    brama_compile(context, "do if in for let new try var case else enum eval null this true void with break catch class const false super throw while yield delete export import public return static switch typeof default extends finally package private continue debugger function arguments interface protected implements instanceof");
-    munit_assert_int (context->tokinizer->tokens->length, ==, 47);
+    brama_compile(context, "do if in for let new try var case else enum eval null this true void with break catch class const false super throw while yield delete export import public return static switch typeof default extends finally package private continue debugger function arguments interface protected implements instanceof undefined");
+    munit_assert_int (context->tokinizer->tokens->length, ==, 48);
     KEYWORD_EQUAL    (0,  KEYWORD_DO);
     KEYWORD_EQUAL    (1,  KEYWORD_IF);
     KEYWORD_EQUAL    (2,  KEYWORD_IN);
@@ -155,6 +155,7 @@ MunitResult keyword_token_1(const MunitParameter params[], void* user_data_or_fi
     KEYWORD_EQUAL    (44, KEYWORD_PROTECTED);
     KEYWORD_EQUAL    (45, KEYWORD_IMPLEMENTS);
     KEYWORD_EQUAL    (46, KEYWORD_INSTANCEOF);
+    KEYWORD_EQUAL    (47, KEYWORD_UNDEFINED);
 
     brama_destroy(context);
     return MUNIT_OK;

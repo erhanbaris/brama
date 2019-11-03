@@ -54,7 +54,8 @@ typedef enum brama_primative_type {
     PRIMATIVE_BOOL       ,
     PRIMATIVE_ARRAY      ,
     PRIMATIVE_DICTIONARY ,
-    PRIMATIVE_NULL
+    PRIMATIVE_NULL       ,
+    PRIMATIVE_UNDEFINED
 } brama_primative_type;
 
 /* TOKEN TYPES */
@@ -118,7 +119,8 @@ typedef enum brama_keyword_type {
     KEYWORD_INTERFACE  ,
     KEYWORD_PROTECTED  ,
     KEYWORD_IMPLEMENTS ,
-    KEYWORD_INSTANCEOF
+    KEYWORD_INSTANCEOF ,
+    KEYWORD_UNDEFINED
 } brama_keyword_type;
 
 /* OPERATOR TYPES */
@@ -218,7 +220,9 @@ enum brama_vm_operator {
     VM_OPT_BITWISE_RIGHT_SHIFT     ,
     VM_OPT_BITWISE_UNSIGNED_RIGHT_SHIFT,
     VM_OPT_EQ,
+    VM_OPT_EQV,
     VM_OPT_NEQ,
+    VM_OPT_NEQV,
     VM_OPT_LT,
     VM_OPT_LTE,
     VM_OPT_GT,
@@ -243,7 +247,8 @@ enum brama_vm_operator {
     VM_OPT_NOT_EQ,
     VM_OPT_APPEND,
     VM_OPT_LOOP,
-    VM_OPT_COPY
+    VM_OPT_COPY,
+    VM_OPT_NOT
 };
 
 /* VM CONST TYPE */
@@ -380,7 +385,9 @@ static OperatorPair VM_OPCODES[] =  {
         { "SHIFTR", ">>"},
         { "SHIFTUR", ">>>"},
         { "EQ", "=="},
+        { "EQV", "==="},
         { "NEQ", "!="},
+        { "NEQV", "!=="},
         { "LT", "<"},
         { "LTE", "<="},
         { "GT", ">"},
@@ -405,7 +412,8 @@ static OperatorPair VM_OPCODES[] =  {
         { "NOT_EQ", "!="},
         { "APPEND", ""},
         { "LOOP", ""},
-        { "COPY", ""}
+        { "LOOP", ""},
+        { "NOT", "!"}
 };
 
 static char* KEYWORDS[] = {
@@ -456,7 +464,8 @@ static char* KEYWORDS[] = {
     "INTERFACE",
     "PROTECTED",
     "IMPLEMENTS",
-    "INSTANCEOF"
+    "INSTANCEOF",
+    "UNDEFINED"
 };
 
 /* STRUCTS */
@@ -735,7 +744,6 @@ typedef struct _t_vm_object {
 
 typedef struct _t_compile_info {
     int                index;
-    brama_status       status;
     t_brama_vmdata_ptr post_opcode;
 } t_compile_info;
 
@@ -890,7 +898,8 @@ static KeywordPair KEYWORDS_PAIR[] = {
    { "interface",  KEYWORD_INTERFACE },
    { "protected",  KEYWORD_PROTECTED },
    { "implements",  KEYWORD_IMPLEMENTS },
-   { "instanceof",  KEYWORD_INSTANCEOF }
+   { "instanceof",  KEYWORD_INSTANCEOF },
+   { "undefined",   KEYWORD_UNDEFINED}
  };
 
 t_context_ptr brama_init       ();

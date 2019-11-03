@@ -67,6 +67,11 @@ case OPERATOR_1_SYMBOL :                     \
         return RESULT;\
     }
 
+#define COMPILE_CHECK()\
+    if (context->status != BRAMA_OK) {\
+        return ;\
+    }
+
 #define get_operator_type(token) token->opt
 #define get_keyword_type(token) token->keyword
 
@@ -82,13 +87,14 @@ case OPERATOR_1_SYMBOL :                     \
         return token-> TYPE ;\
     }
 
-#define new_primative_ast_int(DATA)    new_primative_ast_int_internal( DATA , __FILE__, __LINE__ )
-#define new_primative_ast_double(DATA) new_primative_ast_double_internal( DATA , __FILE__, __LINE__ )
-#define new_primative_ast_text(DATA)   new_primative_ast_text_internal( DATA , __FILE__, __LINE__ )
-#define new_primative_ast_bool(DATA)   new_primative_ast_bool_internal( DATA , __FILE__, __LINE__ )
-#define new_primative_ast_empty(DATA)  new_primative_ast_empty_internal( DATA , __FILE__, __LINE__ )
-#define new_primative_ast_array(DATA)  new_primative_ast_array_internal( DATA , __FILE__, __LINE__ )
-#define new_primative_ast_dict(DATA)   new_primative_ast_dict_internal( DATA , __FILE__, __LINE__ )
+#define new_primative_ast_int(DATA)        new_primative_ast_int_internal( DATA , __FILE__, __LINE__ )
+#define new_primative_ast_double(DATA)     new_primative_ast_double_internal( DATA , __FILE__, __LINE__ )
+#define new_primative_ast_text(DATA)       new_primative_ast_text_internal( DATA , __FILE__, __LINE__ )
+#define new_primative_ast_bool(DATA)       new_primative_ast_bool_internal( DATA , __FILE__, __LINE__ )
+#define new_primative_ast_null(DATA)       new_primative_ast_null_internal( DATA , __FILE__, __LINE__ )
+#define new_primative_ast_undefined(DATA)  new_primative_ast_undefined_internal( DATA , __FILE__, __LINE__ )
+#define new_primative_ast_array(DATA)      new_primative_ast_array_internal( DATA , __FILE__, __LINE__ )
+#define new_primative_ast_dict(DATA)       new_primative_ast_dict_internal( DATA , __FILE__, __LINE__ )
 
 #define NEW_PRIMATIVE_DEF(EXT, TYPE, PRI_TYPE, STR_TYPE)       \
     t_ast* new_primative_ast_##EXT##_internal ( TYPE value, int FILE__ , char_ptr LINE__ ) {         \

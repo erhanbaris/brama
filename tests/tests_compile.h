@@ -381,6 +381,30 @@ MunitResult ast_compile_12(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+MunitResult ast_compile_13(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context, "var test = 'erhan' + undefined; // Undefined/null from http://en.wikipedia.org/wiki/JavaScript_syntax\n"
+                           "var testUndefined;        // variable declared but not defined, set to value of undefined\n"
+                           "\n"
+                           "result = 1;\n"
+                           "if ((\"\"+testUndefined) != \"undefined\") result = 0; // test variable exists but value not defined, displays undefined\n"
+                           "if (!(undefined == null)) result = 0;  // unenforced type during check, displays true\n"
+                           "if (undefined === null) result = 0;// enforce type during check, displays false\n"
+                           "\n"
+                           "\n"
+                           "if (null != undefined) result = 0;  // unenforced type during check, displays true\n"
+                           "if (null === undefined) result = 0; // enforce type during check, displays false");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,            == , BRAMA_OK);
+    munit_assert_int   (var_info->type,    == , CONST_INTEGER);
+    munit_assert_int   (var_info->double_, == , 1.0);
+    brama_destroy_get_var(context, &var_info);
+    return MUNIT_OK;
+}
+
 MunitTest COMPILE_TESTS[] = {
 
         ADD_TEST(ast_compile_1),
@@ -394,6 +418,7 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_9),
         ADD_TEST(ast_compile_10),
         ADD_TEST(ast_compile_11),
+        ADD_TEST(ast_compile_12),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
