@@ -141,16 +141,22 @@ case OPERATOR_1_SYMBOL :                     \
 
 #define BACKUP_PARSER_INDEX()                        size_t parser_index = context->parser->index;
 #define RESTORE_PARSER_INDEX()                       context->parser->index = parser_index;
-#define RESTORE_PARSER_INDEX_AND_RETURN(RETURN_CODE) { RESTORE_PARSER_INDEX(); return RETURN_CODE ; }
+#define RESTORE_PARSER_INDEX_AND_RETURN(RETURN_CODE) \
+do {\
+    if ( RETURN_CODE != BRAMA_DOES_NOT_MATCH_AST) \
+        context->error_location_on_code = __LINE__; \
+    RESTORE_PARSER_INDEX(); \
+    return RETURN_CODE ;\
+} while(0)
 #define DESTROY_AST_AND_RETURN(RETURN_CODE, VAR) \
-{                          \
+do { \
     RESTORE_PARSER_INDEX();\
     CLEAR_AST( VAR );    \
     return RETURN_CODE ;   \
-}
+} while(0)
 
-#define CLEAR_AST(AST)       if ( AST    != NULL ) { destroy_ast   ( AST );        BRAMA_FREE( AST );    AST    = NULL; }
-#define CLEAR_VECTOR(VECTOR) if ( VECTOR != NULL ) { destroy_ast_vector( VECTOR ); BRAMA_FREE( VECTOR ); VECTOR = NULL; }
+#define CLEAR_AST(AST)       if ( AST    != NULL ) do { destroy_ast   ( AST );        BRAMA_FREE( AST );    AST    = NULL; } while(0)
+#define CLEAR_VECTOR(VECTOR) if ( VECTOR != NULL ) do { destroy_ast_vector( VECTOR ); BRAMA_FREE( VECTOR ); VECTOR = NULL; } while(0)
 
 #define vector_get(VECTOR, INDEX) VECTOR ->data[ INDEX ]
 

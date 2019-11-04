@@ -43,7 +43,8 @@ typedef enum brama_status  {
     BRAMA_ILLEGAL_FUNCTION_ARGUMENT      = 23,
     BRAMA_CONSTANT_NOT_FOUND             = 24,
     BRAMA_CASE_KEYWORD_NOT_FOUND         = 25,
-    BRAMA_SWITCH_NOT_VALID               = 26
+    BRAMA_SWITCH_NOT_VALID               = 26,
+    BRAMA_DEFAULT_CASE_USED              = 27
 
 } brama_status;
 
@@ -205,6 +206,14 @@ typedef enum brama_ast_type {
     AST_ACCESSOR             = 21,
     AST_KEYWORD              = 22
 } brama_ast_type;
+
+/* COMPILE BLOCK TYPES */
+typedef enum brama_compile_block_type {
+    COMPILE_BLOCK_NONE        = 0,
+    COMPILE_BLOCK_WHILE       = 1,
+    COMPILE_BLOCK_SWITCH      = 2,
+    COMPILE_BLOCK_SWITCH_CASE = 3,
+} brama_compile_block_type;
 
 /* VM Operators */
 enum brama_vm_operator {
@@ -500,6 +509,8 @@ typedef struct _t_compile_info    t_compile_info;
 typedef struct _t_get_var_info    t_get_var_info;
 typedef struct _t_compile_stack   t_compile_stack;
 typedef struct _t_compile_while   t_compile_while;
+typedef struct _t_compile_switch  t_compile_switch;
+typedef struct _t_compile_switch_case  t_compile_switch_case;
 
 typedef t_vm_object*       t_vm_object_ptr;
 typedef t_tokinizer*       t_tokinizer_ptr;
@@ -527,6 +538,8 @@ typedef t_storage*         t_storage_ptr;
 typedef t_compile_info*    t_compile_info_ptr;
 typedef t_get_var_info*    t_get_var_info_ptr;
 typedef t_compile_while*   t_compile_while_ptr;
+typedef t_compile_switch*  t_compile_switch_ptr;
+typedef t_compile_switch_case*  t_compile_switch_case_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
@@ -743,6 +756,7 @@ typedef struct _t_context {
 
     char*        error_message;
     brama_status status;
+    size_t       error_location_on_code;
 } t_context;
 
 typedef struct _t_brama_vmdata {
@@ -780,9 +794,15 @@ typedef struct _t_get_var_info {
 typedef struct _t_compile_stack {
     size_t         start_address;
     size_t         end_address;
-    brama_ast_type ast_type;
+    brama_compile_block_type compile_stack_type;
     void*          ast;
-    void*          compile_obj;
+    union
+    {
+        void*                     compile_obj;
+        t_compile_while_ptr       while_ptr;
+        t_compile_switch_ptr      switch_ptr;
+        t_compile_switch_case_ptr switch_case_ptr;
+    };
 } t_compile_stack;
 
 typedef struct _t_compile_block {
@@ -794,6 +814,15 @@ typedef struct _t_compile_while {
     vec_int_t breaks;
     vec_int_t continues;
 } t_compile_while;
+
+typedef struct _t_compile_switch {
+    vec_int_t breaks;
+} t_compile_switch;
+
+typedef struct _t_compile_switch_case {
+    size_t    index;
+    vec_int_t breaks;
+} t_compile_switch_case;
 
 
 /* VM Defs */
