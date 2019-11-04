@@ -606,7 +606,7 @@ t_context* context = brama_init();
 }
 
 MunitResult ast_switch_3(const MunitParameter params[], void* user_data_or_fixture) {
-t_context* context = brama_init();
+    t_context* context = brama_init();
     brama_compile(context, "var a1=5;\n"
                            "var b1=6;\n"
                            "var r1=0;\n"
@@ -628,6 +628,130 @@ t_context* context = brama_init();
     munit_assert_int   (status,            == , BRAMA_OK);
     munit_assert_int   (var_info->type,    == , CONST_INTEGER);
     munit_assert_int   (var_info->double_, == , 42);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_switch_4(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context, "var a1=5;\n"
+                           "var b1=6;\n"
+                           "var r1=0;\n"
+                           "\n"
+                           "switch(6){\n"
+                           "  case 6:\n"
+                           "    r1 = 4;\n"
+                           "  case 4:\n"
+                           "    r1 = 42;\n"
+                           "    break;\n"
+                           "  case 7:\n"
+                           "    r1 = 22;\n"
+                           "    break;\n"
+                           "}");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "r1", &var_info);
+    munit_assert_int   (status,            == , BRAMA_OK);
+    munit_assert_int   (var_info->type,    == , CONST_INTEGER);
+    munit_assert_int   (var_info->double_, == , 42);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_switch_5(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context, "// switch-case-tests\n"
+                           "\n"
+                           "////////////////////////////////////////////////////\n"
+                           "// switch-test 1: case with break;\n"
+                           "////////////////////////////////////////////////////\n"
+                           "var a1=5;\n"
+                           "var b1=6;\n"
+                           "var r1=0;\n"
+                           "\n"
+                           "switch(a1+5){\n"
+                           "  case 6:\n"
+                           "    r1 = 2;\n"
+                           "    break;\n"
+                           "  case b1+4:\n"
+                           "    r1 = 42;\n"
+                           "    break;\n"
+                           "  case 7:\n"
+                           "    r1 = 2;\n"
+                           "    break;\n"
+                           "}\n"
+                           "\n"
+                           "////////////////////////////////////////////////////\n"
+                           "// switch-test 2: case with out break;\n"
+                           "////////////////////////////////////////////////////\n"
+                           "var a2=5;\n"
+                           "var b2=6;\n"
+                           "var r2=0;\n"
+                           "\n"
+                           "switch(a2+4){\n"
+                           "  case 6:\n"
+                           "    r2 = 2;\n"
+                           "    break;\n"
+                           "  case b2+3:\n"
+                           "    r2 = 40;\n"
+                           "    //break;\n"
+                           "  case 7:\n"
+                           "    r2 += 2;\n"
+                           "    break;\n"
+                           "}\n"
+                           "\n"
+                           "////////////////////////////////////////////////////\n"
+                           "// switch-test 3: case with default;\n"
+                           "////////////////////////////////////////////////////\n"
+                           "var a3=5;\n"
+                           "var b3=6;\n"
+                           "var r3=0;\n"
+                           "\n"
+                           "switch(a3+44){\n"
+                           "  case 6:\n"
+                           "    r3 = 2;\n"
+                           "    break;\n"
+                           "  case b3+3:\n"
+                           "    r3 = 1;\n"
+                           "    break;\n"
+                           "  default:\n"
+                           "    r3 = 42;\n"
+                           "    break;\n"
+                           "}\n"
+                           "\n"
+                           "////////////////////////////////////////////////////\n"
+                           "// switch-test 4: case default before case;\n"
+                           "////////////////////////////////////////////////////\n"
+                           "var a4=5;\n"
+                           "var b4=6;\n"
+                           "var r4=0;\n"
+                           "\n"
+                           "switch(a4+44){\n"
+                           "  default:\n"
+                           "    r4 = 42;\n"
+                           "    break;\n"
+                           "  case 6:\n"
+                           "    r4 = 2;\n"
+                           "    break;\n"
+                           "  case b4+3:\n"
+                           "    r4 = 1;\n"
+                           "    break;\n"
+                           "}\n"
+                           "\n"
+                           "\n"
+                           "result = r1 == 42 && r2 == 42 && r3 == 42 && r4 == 42;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,            == , BRAMA_OK);
+    munit_assert_int   (var_info->type,    == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_,   == , true);
     brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
@@ -667,6 +791,8 @@ MunitTest AST_TESTS_2[] = {
     ADD_TEST(ast_switch_1),
     ADD_TEST(ast_switch_2),
     ADD_TEST(ast_switch_3),
+    ADD_TEST(ast_switch_4),
+    ADD_TEST(ast_switch_5),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 

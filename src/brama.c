@@ -1735,8 +1735,8 @@ brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
             case_item->body           = NULL;
 
             if(parsing_default_case == false) {
-                brama_status condition_status = as_primative(ast_peek(context), &case_item->key);
-                if (condition_status != BRAMA_OK) {
+                brama_status case_status = ast_assignable(context, &case_item->key, extra_data);
+                if (case_status != BRAMA_OK) {
                     CLEAR_AST(condition);
                     CLEAR_AST(case_item->key);
                     BRAMA_FREE(case_item);
@@ -1744,8 +1744,6 @@ brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
                     BRAMA_FREE(cases);
                     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CASE_KEYWORD_NOT_FOUND);
                 }
-
-                ast_consume(context);
             }
 
             if (ast_consume_operator(context, OPERATOR_COLON_MARK) == NULL) {
@@ -3337,11 +3335,41 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
             /* Last opcode not assigned to variable */
             if (opcode_need) {
                 t_brama_vmdata code;
-                code.op = VM_OPT_INIT_VAR;
+                code.op   = 0;
                 code.reg1 = variable_index;
-                code.reg2 = compile_info->index;
-                code.reg3 = 0;
+                code.reg2 = variable_index;
+                code.reg3 = compile_info->index;
                 code.scal = 0;
+
+                switch (ast->opt) {
+                    case OPERATOR_ASSIGN:
+                        code.op   = VM_OPT_INIT_VAR;
+                        code.reg1 = variable_index;
+                        code.reg2 = compile_info->index;
+                        code.reg3 = 0;
+                        break;
+
+                    case OPERATOR_ASSIGN_ADDITION:
+                        code.op = VM_OPT_ADDITION;
+                        break;
+
+                    case OPERATOR_ASSIGN_DIVISION:
+                        code.op = VM_OPT_DIVISION;
+                        break;
+
+                    case OPERATOR_ASSIGN_MODULUS:
+                        code.op = VM_OPT_MODULES;
+                        break;
+
+                    case OPERATOR_ASSIGN_MULTIPLICATION:
+                        code.op = VM_OPT_MULTIPLICATION;
+                        break;
+
+                    case OPERATOR_ASSIGN_SUBTRACTION:
+                        code.op = VM_OPT_SUBTRACTION;
+                        break;
+                }
+
                 vec_push(context->compiler->op_codes, vm_encode(&code));
             }
         }
@@ -3641,8 +3669,22 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
 void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     size_t temp_counter = storage->temp_counter;
 
+    /* Define new variable to store condition information */
+    t_assign_ptr assign      = BRAMA_MALLOC(sizeof(t_assign));
+    assign->opt              = OPERATOR_ASSIGN;
+    assign->def_type         = KEYWORD_VAR;
+    assign->new_def          = true;
+    assign->object           = BRAMA_MALLOC(sizeof(t_ast));
+    assign->object->type     = AST_SYMBOL;
+    assign->object->char_ptr = BRAMA_MALLOC(sizeof(char) * 20);
+    assign->object->create_new_storage = false;
+
     /* Build switch condition for compare in cases */
-    compile_internal(context, ast->condition, storage, compile_info, AST_SWITCH);
+    sprintf(assign->object->char_ptr, "(switch #%zu)", ++storage->loop_counter);
+    assign->object->char_ptr[19] = '\0';
+    assign->assignment           = ast->condition;
+
+    compile_assignment(context, assign, storage, compile_info, AST_SWITCH);
     COMPILE_CHECK();
 
     /* Case compare variable */
@@ -3701,7 +3743,9 @@ void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storag
 
         /* If key is NULL, it means default case. We do not need to do compare operation for default case, system should jump to case block */
         if (value->key != NULL) {
+            temp_counter = storage->temp_counter;
             compile_internal(context, value->key, storage, compile_info, AST_SWITCH);
+            storage->temp_counter = temp_counter;
             COMPILE_CHECK();
 
             t_brama_vmdata code;
@@ -3757,17 +3801,13 @@ void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storag
         vec_push(&context->compiler->compile_stack, stack_info);
 
         /* Compile case block */
+        temp_counter = storage->temp_counter;
         compile_internal(context, value->body, storage, compile_info, AST_SWITCH);
+        storage->temp_counter = temp_counter;
         COMPILE_CHECK();
 
         if (stack_info->switch_case_ptr->breaks.length == 0) {
-            /* Oppsss, there is not break command so we need to jmp to next case condition block. */
-            
-            if (ast->cases->length > index + 1) {
-                /* Last switch case not needed */
-                code.scal = case_address.data[index + 1] - context->compiler->op_codes->length - 1;
-                vec_push(context->compiler->op_codes, vm_encode(&code));
-            }
+            /* Oppsss, there is not break command so we need to jmp to next case block. */
         }
         else {
             int break_location;
@@ -3789,7 +3829,7 @@ void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storag
         code.reg1 = 0;
         code.reg2 = 0;
         code.reg3 = 0;
-        code.scal = context->compiler->op_codes->length - location;
+        code.scal = context->compiler->op_codes->length - location - 1;
         context->compiler->op_codes->data[location] = vm_encode(&code);
     }
 
@@ -3806,6 +3846,12 @@ void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storag
     vec_deinit(&exit_jmp_address);
     vec_deinit(&case_jmp_address);
     vec_deinit(&case_address);
+
+    /* Remove all references */
+    BRAMA_FREE(assign->object->char_ptr);
+    assign->assignment = NULL;
+    destroy_ast_assignment(assign);
+    BRAMA_FREE(assign);
 }
 
 void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
