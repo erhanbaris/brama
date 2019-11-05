@@ -2841,8 +2841,8 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             map_init(&new_storage->variable_names);
             vec_push(&context->compiler->storages, new_storage);
 
-            ++storage->variable_count; /* '(return)' variable */
-            storage->variable_count += ast->func_decl_ptr->args->length; /* Add all function parameters to variable list */
+            ++new_storage->variable_count; /* '(return)' variable */
+            new_storage->variable_count += ast->func_decl_ptr->args->length; /* Add all function parameters to variable list */
 
             size_t in_function = 0;
             prepare_variable_memory(context, ast->func_decl_ptr->body, NULL, new_storage, &in_function);            
@@ -3516,10 +3516,10 @@ void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr st
 }
 
 void compile_block(t_context_ptr context, vec_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
-    int index;
+    int block_index;
     t_ast_ptr ast_item = NULL;
 
-    vec_foreach(ast, ast_item, index) {
+    vec_foreach(ast, ast_item, block_index) {
         compile_internal(context, ast_item, storage, compile_info, upper_ast);
         COMPILE_CHECK();
 
@@ -3700,6 +3700,7 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
     t_storage_ptr func_storage           = context->compiler->storages.data[context->compiler->storage_index];
     t_compile_info_ptr func_compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
     func_compile_info->post_opcode       = NULL;
+    func_compile_info->index             = 0;
 
     /* Insert function decleration opcodes */
     t_brama_vmdata code;
@@ -3718,16 +3719,17 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
     /* Variable name linked to variable index */
     map_set(&func_storage->variable_names, "(return)", func_storage->variables.length - 1);
 
+    /* Build function variables
+     * Todo: Not working without below code. Fix it. */
+    compile_block(context, ast->args, func_storage, compile_info, AST_FUNCTION_DECLARATION);
+
     /* Add all variables to variable list */
     t_ast_ptr arg   = NULL;
-    int       index = -1;
+    int       index;
     vec_foreach(ast->args, arg, index) {
         vec_push(&func_storage->variables, UNDEFINED_VAL);
         map_set(&func_storage->variable_names, arg->char_ptr, func_storage->variables.length - 1);
     }
-    
-    /* Build function variables */
-    compile_block(context, ast->args, func_storage, compile_info, AST_FUNCTION_DECLARATION);
 
     t_compile_func_decl_ptr compile_obj = BRAMA_MALLOC(sizeof(t_compile_func_decl));
     vec_init(&compile_obj->returns);
@@ -4253,8 +4255,6 @@ void brama_compile_dump_memory(t_storage_ptr storage) {
     printf("######################################################\r\n\r\n");
     
     int            index          = 0;
-    vec_value_ptr  variables      = &storage->variables;
-    map_size_t_ptr variable_names = &storage->variable_names;
     size_t         total_variable = storage->constant_count + storage->temp_count;
     char_ptr       tmp_var        = NULL;
     t_brama_value  tmp_val;
@@ -4262,7 +4262,7 @@ void brama_compile_dump_memory(t_storage_ptr storage) {
     printf(" # STORAGE ID          = %zu\r\n", storage->id);
     printf(" # CONSTANTS SIZE      = %zu\r\n", storage->constant_count);
     printf(" # TEMP VARIABLES SIZE = %zu\r\n", storage->temp_count);
-    printf(" # VARIABLES SIZE      = %zu\r\n\r\n", variables->length);
+    printf(" # VARIABLES SIZE      = %zu\r\n\r\n", storage->variables.length);
 
 
     if (storage->constant_count > 0) {
@@ -4287,16 +4287,16 @@ void brama_compile_dump_memory(t_storage_ptr storage) {
         }
     }
 
-    if (variables->length > 0) {
+    if (storage->variables.length > 0) {
         //printf ("\r\n----------------------------------------\r\n");
         printf ("\r\n Index   | Variable         |    Data\r\n");
         printf ("--------------------------------------------------\r\n");
-        char_ptr* variable_infos = BRAMA_CALLOC(variables->length, sizeof(char_ptr));
+        char_ptr* variable_infos = BRAMA_CALLOC(storage->variables.length, sizeof(char_ptr));
 
-        map_iter_t iter = map_iter(variable_names);
+        map_iter_t iter = map_iter(&storage->variable_names);
         index           = 0;
-        while ((tmp_var = map_next(variable_names, &iter))) {
-            variable_infos[(*map_get(variable_names, tmp_var))] = tmp_var;
+        while ((tmp_var = map_next(&storage->variable_names, &iter))) {
+            variable_infos[(*map_get(&storage->variable_names, tmp_var))] = tmp_var;
         }
 
         index           = 0;
