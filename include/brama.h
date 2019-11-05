@@ -44,7 +44,8 @@ typedef enum brama_status  {
     BRAMA_CONSTANT_NOT_FOUND             = 24,
     BRAMA_CASE_KEYWORD_NOT_FOUND         = 25,
     BRAMA_SWITCH_NOT_VALID               = 26,
-    BRAMA_DEFAULT_CASE_USED              = 27
+    BRAMA_DEFAULT_CASE_USED              = 27,
+    BRAMA_AST_NOT_COMPILED               = 28
 
 } brama_status;
 
@@ -213,6 +214,7 @@ typedef enum brama_compile_block_type {
     COMPILE_BLOCK_WHILE       = 1,
     COMPILE_BLOCK_SWITCH      = 2,
     COMPILE_BLOCK_SWITCH_CASE = 3,
+    COMPILE_BLOCK_FUNC_DECL   = 4,
 } brama_compile_block_type;
 
 /* VM Operators */
@@ -244,7 +246,7 @@ enum brama_vm_operator {
     VM_OPT_UNDEFINED,
     VM_OPT_DELETE,
     VM_OPT_JMP,
-    VM_OPT_IF_EQ,
+    VM_OPT_IF,
     VM_OPT_INC,
     VM_OPT_DINC,
     VM_OPT_INIT_VAR,
@@ -260,7 +262,9 @@ enum brama_vm_operator {
     VM_OPT_LOOP,
     VM_OPT_COPY,
     VM_OPT_NOT,
-    VM_OPT_CASE
+    VM_OPT_CASE,
+    VM_OPT_FUNC,
+    VM_OPT_STORAGE_ID,
 };
 
 /* VM CONST TYPE */
@@ -410,7 +414,7 @@ static OperatorPair VM_OPCODES[] =  {
         { "UNDEFINED", "undefined"},
         { "DELETE", ""},
         { "JMP", ""},
-        { "IF_EQ", ""},
+        { "IF", ""},
         { "INC", "++"},
         { "DINC", "--"},
         { "INIT_VAR", ""},
@@ -426,7 +430,9 @@ static OperatorPair VM_OPCODES[] =  {
         { "LOOP", ""},
         { "LOOP", ""},
         { "NOT", "!"},
-        { "CASE", ""}
+        { "CASE", ""},
+        { "FUNC", ""},
+        { "STORAGE_ID", ""}
 };
 
 static char* KEYWORDS[] = {
@@ -511,6 +517,7 @@ typedef struct _t_compile_stack   t_compile_stack;
 typedef struct _t_compile_while   t_compile_while;
 typedef struct _t_compile_switch  t_compile_switch;
 typedef struct _t_compile_switch_case  t_compile_switch_case;
+typedef struct _t_compile_func_decl  t_compile_func_decl;
 
 typedef t_vm_object*       t_vm_object_ptr;
 typedef t_tokinizer*       t_tokinizer_ptr;
@@ -540,6 +547,7 @@ typedef t_get_var_info*    t_get_var_info_ptr;
 typedef t_compile_while*   t_compile_while_ptr;
 typedef t_compile_switch*  t_compile_switch_ptr;
 typedef t_compile_switch_case*  t_compile_switch_case_ptr;
+typedef t_compile_func_decl*    t_compile_func_decl_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
@@ -618,6 +626,7 @@ typedef struct _t_compiler {
     vec_storage       storages;
     t_vm_object_ptr   head;
     size_t            total_object;
+    size_t            storage_index;
 } t_compiler;
 
 typedef struct _t_storage {
@@ -802,6 +811,7 @@ typedef struct _t_compile_stack {
         t_compile_while_ptr       while_ptr;
         t_compile_switch_ptr      switch_ptr;
         t_compile_switch_case_ptr switch_case_ptr;
+        t_compile_func_decl_ptr   func_decl_ptr;
     };
 } t_compile_stack;
 
@@ -824,6 +834,9 @@ typedef struct _t_compile_switch_case {
     vec_int_t breaks;
 } t_compile_switch_case;
 
+typedef struct _t_compile_func_decl{
+    vec_int_t returns;
+} t_compile_func_decl;
 
 /* VM Defs */
 

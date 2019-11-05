@@ -2203,6 +2203,7 @@ t_context_ptr brama_init() {
     context->compiler                 = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
     context->compiler->head           = NULL;
     context->compiler->total_object   = 0;
+    context->compiler->storage_index  = 0;
     context->compiler->op_codes       = BRAMA_MALLOC(sizeof (vec_opcode));
     vec_init(&context->compiler->compile_stack);
     context->compiler->global_storage = BRAMA_MALLOC(sizeof (t_storage));
@@ -2819,15 +2820,37 @@ void remove_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack)
     vec_remove(&context->compiler->compile_stack, stack);
 }
 
-/* Calculate max temporary assignment in one ast. We need to allocate that mount of memory for operations.
-   Todo : Extend that function to find all valid assignments */
+/* Calculate max temporary and normal assignment in ast. We need to allocate that mount of memory for operations. */
 void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upper_ast, t_storage_ptr storage, size_t* temps) {
-    if (ast == NULL) {
+    if (ast == NULL)
         return;
-    }
 
     switch (ast->type)
     {
+        case AST_FUNCTION_DECLARATION: {
+            t_storage_ptr new_storage         = BRAMA_MALLOC(sizeof(t_storage));
+            new_storage->id                   = ++context->compiler->storage_index;
+            new_storage->previous_storage     = storage;
+            new_storage->loop_counter         = 0;
+            new_storage->constant_count       = 0;
+            new_storage->temp_count           = 0;
+            new_storage->variable_count       = 0;
+            new_storage->temp_counter         = 0;
+            new_storage->variable_counter     = 0;
+            vec_init(&new_storage->variables);
+            map_init(&new_storage->variable_names);
+            vec_push(&context->compiler->storages, new_storage);
+
+            ++storage->variable_count; /* '(return)' variable */
+
+            size_t in_function = 0;
+
+            prepare_variable_memory(context, ast->func_decl_ptr->body, NULL, new_storage, &in_function);            
+            *temps = 0;
+
+            break;
+        }
+
         case AST_UNARY: {
             switch (ast->unary_ptr->opt) {
                 case OPERATOR_SUBTRACTION: {
@@ -3396,7 +3419,7 @@ void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr st
 
     /* Add IF opcode */
     t_brama_vmdata code;
-    code.op = VM_OPT_IF_EQ;
+    code.op = VM_OPT_IF;
     code.reg1 = condition;
     code.reg2 = 0;
     code.reg3 = 0;
@@ -3672,6 +3695,72 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
     }
 }
 
+void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    size_t function_location_start       = context->compiler->op_codes->length;
+    t_storage_ptr func_storage           = context->compiler->storages.data[context->compiler->storage_index];
+    t_compile_info_ptr func_compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
+    func_compile_info->post_opcode       = NULL;
+
+    /* Insert function decleration opcodes */
+    t_brama_vmdata code;
+    code.op   = VM_OPT_FUNC;
+    code.reg1 = 0;
+    code.reg2 = 0;
+    code.reg3 = 0;
+    code.scal = context->compiler->storage_index; /* Tell functions memory address*/
+    vec_push(context->compiler->op_codes, vm_encode(&code));
+
+    ++context->compiler->storage_index;
+
+    /* Create a new variable corresponding to return value */
+    vec_push(&func_storage->variables, UNDEFINED_VAL);
+
+    /* Variable name linked to variable index */
+    map_set(&func_storage->variable_names, "(return)", func_storage->variables.length - 1);
+    
+    /* Build function variables */
+    compile_block(context, ast->args, func_storage, compile_info, AST_FUNCTION_DECLARATION);
+
+    t_compile_func_decl_ptr compile_obj = BRAMA_MALLOC(sizeof(t_compile_func_decl));
+    vec_init(&compile_obj->returns);
+
+    t_compile_stack_ptr stack_info = new_compile_stack(context, COMPILE_BLOCK_FUNC_DECL, ast, compile_obj);
+    vec_push(&context->compiler->compile_stack, stack_info);
+
+    /* Build function body */
+    compile_internal(context, ast->body, func_storage, func_compile_info, AST_FUNCTION_DECLARATION);
+
+    size_t function_location_end = context->compiler->op_codes->length - 1;
+    vec_push(context->compiler->op_codes, NULL);
+
+    destroy_from_compile_stack(context, stack_info);
+    BRAMA_FREE(func_compile_info);
+}
+
+void compile_return(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    t_compile_stack_ptr compile_stack = NULL;
+
+    /* return statement should be used in function */
+    if (find_compile_stack(context, COMPILE_BLOCK_FUNC_DECL, &compile_stack) != BRAMA_OK) {
+        context->status = BRAMA_ILLEGAL_RETURN_STATEMENT;
+        return;
+    }
+
+    if (ast->ast_ptr != NULL) {
+        compile_info->index = 0; /* Function return variable is located at 0 */
+        compile_internal(context, ast->ast_ptr, storage, compile_info, AST_FUNCTION_DECLARATION);
+    }
+
+    t_brama_vmdata code;
+    code.op   = VM_OPT_RETURN;
+    code.reg1 = 0;
+    code.reg2 = 0;
+    code.reg3 = 0;
+    code.scal = 0;
+    vec_push(context->compiler->op_codes, vm_encode(&code));
+    size_t function_location_end = context->compiler->op_codes->length - 1;
+}
+
 /* Nice document http://www.eecg.toronto.edu/~moshovos/ECE243-07/l09-switch.html */
 void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     size_t temp_counter = storage->temp_counter;
@@ -3932,25 +4021,7 @@ void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_stora
 
 
 void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
-
-    if (ast->create_new_storage) {
-        t_storage_ptr new_storage = BRAMA_MALLOC(sizeof(t_storage));
-        vec_push(&context->compiler->storages, new_storage);
-
-        new_storage->id                   = context->compiler->storages.length;
-        new_storage->previous_storage     = storage;
-        new_storage->loop_counter         = 0;
-        new_storage->constant_count       = 0;
-        new_storage->temp_count           = 0;
-        new_storage->variable_count       = 0;
-        new_storage->temp_counter         = 0;
-        new_storage->variable_counter     = 0;
-        vec_init(&new_storage->variables);
-        map_init(&new_storage->variable_names);
-
-        storage = new_storage;
-    }
-
+    
     switch (ast->type) {
         case AST_PRIMATIVE:
             compile_primative(context, ast->primative_ptr, storage, compile_info, upper_ast);
@@ -3996,19 +4067,27 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
             compile_func_call(context, ast->func_call_ptr, storage, compile_info, upper_ast);
             break;
 
+        case AST_FUNCTION_DECLARATION:
+            compile_func_decl(context, ast->func_call_ptr, storage, compile_info, upper_ast);
+            break;
+
         case AST_SWITCH:
             compile_switch(context, ast->switch_stmt_ptr, storage, compile_info, upper_ast);
             break;
 
+        case AST_RETURN:
+            compile_return(context, ast, storage, compile_info, upper_ast);
+            break;
+
         default:
-            printf("Unknown AST: %d\r\n", ast->type);
+            context->status = BRAMA_AST_NOT_COMPILED;
             break;
     }
 }
 
 void compile(t_context_ptr context) {
     t_compile_info_ptr compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
-    compile_info->post_opcode = NULL;
+    compile_info->post_opcode       = NULL;
 
     /* Main application */
     t_ast_ptr main = new_block_ast(context->parser->asts);
@@ -4017,6 +4096,8 @@ void compile(t_context_ptr context) {
     size_t max_temp   = 0;
     prepare_variable_memory(context, main, NULL, context->compiler->global_storage, &max_temp);
     COMPILE_CHECK();
+
+    context->compiler->storage_index = 0;
     compile_internal(context, main, context->compiler->global_storage, compile_info, AST_NONE);
     COMPILE_CHECK();
     vec_push(context->compiler->op_codes, NULL);
@@ -4095,105 +4176,154 @@ brama_status brama_destroy_get_var(t_context_ptr context, t_get_var_info** var_i
 }
 
 void brama_compile_dump(t_context_ptr context) {
+
+    /* Print main(global) memory */
+    brama_compile_dump_memory(context->compiler->global_storage);
+
+    /* Print function storages */
+    t_storage_ptr func_storage = NULL;
+    int index                  = -1;
+    vec_foreach(&context->compiler->storages, func_storage, index) {
+        brama_compile_dump_memory(func_storage);
+    }
+
+    /* Print all opcodes */
+    brama_compile_dump_codes(context);
+}
+
+void brama_compile_dump_memory(t_storage_ptr storage) {
+    printf("######################################################\r\n\r\n");
+    
     int            index          = 0;
-    vec_byte_ptr   bytes          = context->compiler->op_codes;
-    vec_value_ptr  variables      = &context->compiler->global_storage->variables;
-    map_size_t_ptr variable_names = &context->compiler->global_storage->variable_names;
-    size_t         total_variable = context->compiler->global_storage->constant_count + context->compiler->global_storage->temp_count;
+    vec_value_ptr  variables      = &storage->variables;
+    map_size_t_ptr variable_names = &storage->variable_names;
+    size_t         total_variable = storage->constant_count + storage->temp_count;
     char_ptr       tmp_var        = NULL;
     t_brama_value  tmp_val;
 
-    printf ("[CONSTANTS] [%zu]\r\n", context->compiler->global_storage->constant_count);
-    for (int i = 0; i < context->compiler->global_storage->constant_count; ++i) {
-        tmp_val = context->compiler->global_storage->variables.data[i];
+    printf(" # STORAGE ID          = %zu\r\n", storage->id);
+    printf(" # CONSTANTS SIZE      = %zu\r\n", storage->constant_count);
+    printf(" # TEMP VARIABLES SIZE = %zu\r\n", storage->temp_count);
+    printf(" # VARIABLES SIZE      = %zu\r\n\r\n", variables->length);
 
-        if (IS_BOOL(tmp_val))
-            printf ("%8d    %s\r\n", i, IS_FALSE(tmp_val) ? "false" : "true");
-        else if (IS_NUM(tmp_val))
-            printf ("%8d    %f\r\n", i, valueToNumber(tmp_val));
-        else if (IS_STRING(tmp_val))
-            printf ("%8d    '%s'\r\n", i, AS_STRING(tmp_val));
-        else if (IS_UNDEFINED(tmp_val))
-            printf ("%8d    undefined\r\n", i);
-        else if (IS_NULL(tmp_val))
-            printf ("%8d    null\r\n", i);
-    }
 
-    printf ("\r\n[TEMPORARY VARIABLES] [%zu]\r\n", context->compiler->global_storage->temp_count);
-    printf ("\r\n[VARIABLES] [%zu]\r\n", context->compiler->global_storage->variable_count);
-    char_ptr* variable_infos = BRAMA_CALLOC(variables->length, sizeof(char_ptr));
+    if (storage->constant_count > 0) {
+        //printf ("\r\n----------------------------------------\r\n");
+        printf ("\r\n Index   | Constant         \r\n");
+        printf ("--------------------------------------------------\r\n");
 
-    map_iter_t iter = map_iter(variable_names);
-    index           = 0;
-    while ((tmp_var = map_next(variable_names, &iter))) {
-        variable_infos[(*map_get(variable_names, tmp_var))] = tmp_var;
-    }
+        for (int i = 0; i < storage->constant_count; ++i) {
+            tmp_val = storage->variables.data[i];
 
-    index           = 0;
-    for (int i = total_variable; i < context->compiler->global_storage->variables.length; ++i) {
-        tmp_val = context->compiler->global_storage->variables.data[i];
-
-        if (IS_BOOL(tmp_val)) {
-            printf ("%8d    %-15s %s\r\n", i, variable_infos[i], IS_FALSE(tmp_val) ? "false" : "true");
-        } else if (IS_NUM(tmp_val)) {
-            printf ("%8d    %-15s %f\r\n", i, variable_infos[i], valueToNumber(tmp_val));
-        } else if (IS_UNDEFINED(tmp_val)) {
-            printf ("%8d    %-15s undefined\r\n", i, variable_infos[i]);
-        } else if (IS_NULL(tmp_val)) {
-            printf ("%8d    %-15s null\r\n", i, variable_infos[i]);
-        } else if (IS_STRING(tmp_val)) {
-            printf ("%8d    %-15s '%s'\r\n", i, variable_infos[i], AS_STRING(tmp_val));
+            if (IS_BOOL(tmp_val))
+                printf ("%8d |  %s\r\n", i, IS_FALSE(tmp_val) ? "false" : "true");
+            else if (IS_NUM(tmp_val))
+                printf ("%8d |  %f\r\n", i, valueToNumber(tmp_val));
+            else if (IS_STRING(tmp_val))
+                printf ("%8d |  '%s'\r\n", i, AS_STRING(tmp_val));
+            else if (IS_UNDEFINED(tmp_val))
+                printf ("%8d |  undefined\r\n", i);
+            else if (IS_NULL(tmp_val))
+                printf ("%8d |  null\r\n", i);
+            printf ("--------------------------------------------------\r\n");
         }
     }
 
-    index = 0;
+    if (variables->length > 0) {
+        //printf ("\r\n----------------------------------------\r\n");
+        printf ("\r\n Index   | Variable         |    Data\r\n");
+        printf ("--------------------------------------------------\r\n");
+        char_ptr* variable_infos = BRAMA_CALLOC(variables->length, sizeof(char_ptr));
+
+        map_iter_t iter = map_iter(variable_names);
+        index           = 0;
+        while ((tmp_var = map_next(variable_names, &iter))) {
+            variable_infos[(*map_get(variable_names, tmp_var))] = tmp_var;
+        }
+
+        index           = 0;
+        for (int i = total_variable; i < storage->variables.length; ++i) {
+            tmp_val = storage->variables.data[i];
+
+            if (IS_BOOL(tmp_val)) {
+                printf ("%8d |  %-15s | %s\r\n", i, variable_infos[i], IS_FALSE(tmp_val) ? "false" : "true");
+            } else if (IS_NUM(tmp_val)) {
+                printf ("%8d |  %-15s | %f\r\n", i, variable_infos[i], valueToNumber(tmp_val));
+            } else if (IS_UNDEFINED(tmp_val)) {
+                printf ("%8d |  %-15s | undefined\r\n", i, variable_infos[i]);
+            } else if (IS_NULL(tmp_val)) {
+                printf ("%8d |  %-15s | null\r\n", i, variable_infos[i]);
+            } else if (IS_STRING(tmp_val)) {
+                printf ("%8d |  %-15s | '%s'\r\n", i, variable_infos[i], AS_STRING(tmp_val));
+            }
+            printf ("--------------------------------------------------\r\n");
+        }
+
+        BRAMA_FREE(variable_infos);
+    }
+
+    printf("\r\n######################################################\r\n\r\n\r\n");
+}
+
+void brama_compile_dump_codes(t_context_ptr context) {
+    int          index = 0;
+    vec_byte_ptr bytes = context->compiler->op_codes;
     t_brama_byte val;
 
-    printf ("\r\n[OPCODES] [%d]\r\n", bytes->length - 1);
+    printf (" # OPCODE  SIZE = %d\r\n", bytes->length);
+    printf (" # STORAGE SIZE = %d\r\n", context->compiler->storages.length);
+    //printf ("----------------------------------------\r\n");
+    printf (" Index   |   Opcode      |    Data\r\n");
+    printf ("--------------------------------------------------\r\n");
+
     vec_foreach(bytes, val, index) {
         t_brama_vmdata vmdata;
         vm_decode(val, &vmdata);
 
         switch (vmdata.op) {
             /* Print just operator name */
+            case VM_OPT_RETURN:
             case VM_OPT_HALT:
-                printf ("%8d    %-10s\r\n", index, VM_OPCODES[(int)vmdata.op].name);
+                printf ("%8d |    %-10s |\r\n", index, VM_OPCODES[(int)vmdata.op].name);
                 break;
 
             /* Print reg1*/
             case VM_OPT_NOT:
             case VM_OPT_INC:
             case VM_OPT_DINC:
-            case VM_OPT_IF_EQ:
-                printf ("%8d    %-10s %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1);
+            case VM_OPT_IF:
+                printf ("%8d |    %-10s | Reg1: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1);
                 break;
 
             /* Print reg1 and reg2 */
             case VM_OPT_COPY:
             case VM_OPT_CASE:
             case VM_OPT_INIT_VAR:
-                printf ("%8d    %-10s %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2);
+                printf ("%8d |    %-10s | Reg1: %-3d  Reg2: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2);
                 break;
 
-            /* Print scal */
+            /* Print jump */
             case VM_OPT_JMP:
-                printf ("%8d    %-10s %2d     ; -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.scal, index + vmdata.scal);
+                printf ("%8d |    %-10s | Scal: %-4d -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.scal, index + vmdata.scal);
+                break;
+
+                 /* Print scal */
+            case VM_OPT_FUNC:
+                printf ("%8d |    %-10s | Scal: %-4d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.scal);
                 break;
 
             /* Print reg1, reg2 and  reg3*/
             default:
-                printf ("%8d    %-10s %2d %2d %2d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
+                printf ("%8d |    %-10s | Reg1: %-3d  Reg2: %-3d  Reg3: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
                 break;
         }
+        printf ("--------------------------------------------------\r\n");
     }
-            
-    BRAMA_FREE(variable_infos);
 }
 
 void run(t_context_ptr context) {
     vec_byte_ptr bytes       = context->compiler->op_codes;
     t_brama_value* variables = context->compiler->global_storage->variables.data;
-
     t_brama_byte* ipc        = &bytes->data[0];
 
     while (*ipc != NULL) {
@@ -4208,7 +4338,7 @@ void run(t_context_ptr context) {
                 break;
             }
 
-            case VM_OPT_IF_EQ: {
+            case VM_OPT_IF: {
                 t_brama_value variable = *(variables + vmdata.reg1);
                 if (IS_TRUE(variable))
                     ++ipc;

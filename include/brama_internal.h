@@ -79,8 +79,10 @@ bool destroy_ast_switch_stmt    (t_switch_stmt_ptr switch_stmt_ptr);
 void brama_dump_vector_internal (vec_ast_ptr vector, size_t level);
 void brama_dump_ast_internal    (t_ast_ptr ast, size_t level);
 
-void run                          (t_context_ptr context);
-void brama_compile_dump           (t_context_ptr context);
+void run                        (t_context_ptr context);
+void brama_compile_dump         (t_context_ptr context);
+void brama_compile_dump_memory  (t_storage_ptr storage);
+void brama_compile_dump_codes   (t_context_ptr context);
 
 brama_status brama_get_var        (t_context_ptr context, char_ptr var_name, t_get_var_info** var_info);
 brama_status brama_destroy_get_var(t_context_ptr context, t_get_var_info** var_info);
@@ -98,6 +100,8 @@ void compile_unary              (t_context_ptr context, t_unary_ptr const ast,  
 void compile_assignment         (t_context_ptr context, t_assign_ptr const ast,     t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_keyword            (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_func_call          (t_context_ptr context, t_func_call_ptr const ast,  t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_func_decl          (t_context_ptr context, t_func_call_ptr const ast,  t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_return             (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_switch             (t_context_ptr context, t_switch_stmt_ptr const ast,t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 
 t_compile_stack_ptr new_compile_stack         (t_context_ptr context, brama_compile_block_type ast_type, void_ptr ast, void_ptr compile_obj) ;
