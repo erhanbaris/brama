@@ -758,6 +758,36 @@ MunitResult ast_switch_5(const MunitParameter params[], void* user_data_or_fixtu
     return MUNIT_OK;
 }
 
+MunitResult ast_switch_6(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context, "var a1=5;\n"
+                           "var b1=6;\n"
+                           "var r1=0;\n"
+                           "\n"
+                           "switch(4){\n"
+                           "  case 4:\n"
+                           "  case 6:\n"
+                           "    r1 = 123;\n"
+                           "    break;\n"
+                           "  case 7:\n"
+                           "    break;\n"
+                           "  default:\n"
+                           "    r1 = 321;\n"
+                           "    break;\n"
+                           "}");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "r1", &var_info);
+    munit_assert_int   (status,            == , BRAMA_OK);
+    munit_assert_int   (var_info->type,    == , CONST_INTEGER);
+    munit_assert_int   (var_info->double_, == , 123);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitTest AST_TESTS_2[] = {
 
     ADD_TEST(ast_while_loop_1),
@@ -793,6 +823,7 @@ MunitTest AST_TESTS_2[] = {
     ADD_TEST(ast_switch_3),
     ADD_TEST(ast_switch_4),
     ADD_TEST(ast_switch_5),
+    ADD_TEST(ast_switch_6),
   { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
 

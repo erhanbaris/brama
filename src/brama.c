@@ -1758,6 +1758,13 @@ brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
                 RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CASE_KEYWORD_NOT_FOUND);
             }
 
+            check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+
+            if (ast_check_keyword(context, KEYWORD_CASE) || ast_check_keyword(context, KEYWORD_DEFAULT)) {
+                vec_push(cases, case_item);
+                continue;
+            }
+
             brama_status body_status = ast_block_multiline_stmt(context, &case_item->body, extra_data | AST_IN_SWITCH);
             if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
                 vec_ast_ptr blocks = BRAMA_MALLOC(sizeof (vec_ast));
@@ -3774,7 +3781,7 @@ void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storag
         general_exit_jmp = context->compiler->op_codes->length - 1;
     }
 
-    /* Condition blocks */
+    /* Case blocks */
     index = 0;
     
     /* jmp code location to case code block in case condition */
@@ -3801,22 +3808,26 @@ void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storag
         vec_push(&context->compiler->compile_stack, stack_info);
 
         /* Compile case block */
-        temp_counter = storage->temp_counter;
-        compile_internal(context, value->body, storage, compile_info, AST_SWITCH);
-        storage->temp_counter = temp_counter;
-        COMPILE_CHECK();
+        if (value->body != NULL) {
+            /* Case condition has code block */
 
-        if (stack_info->switch_case_ptr->breaks.length == 0) {
-            /* Oppsss, there is not break command so we need to jmp to next case block. */
-        }
-        else {
+            temp_counter = storage->temp_counter;
+            compile_internal(context, value->body, storage, compile_info, AST_SWITCH);
+            storage->temp_counter = temp_counter;
+            COMPILE_CHECK();
+
+        } /* else case condition without code block, continue to execute next code block */
+
+        if (stack_info->switch_case_ptr->breaks.length != 0) {
             int break_location;
             int break_index;
             vec_foreach(&stack_info->switch_case_ptr->breaks, break_location, break_index) {
                 vec_push(&exit_jmp_address, break_location);
             }
-        }
+        } 
+        /* else there is not break command so we need to jmp to next case block. */
 
+        vec_deinit(&compile_obj->breaks);
         destroy_from_compile_stack(context, stack_info);
     }
 
