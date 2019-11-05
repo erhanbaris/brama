@@ -2842,9 +2842,9 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             vec_push(&context->compiler->storages, new_storage);
 
             ++storage->variable_count; /* '(return)' variable */
+            storage->variable_count += ast->func_decl_ptr->args->length; /* Add all function parameters to variable list */
 
             size_t in_function = 0;
-
             prepare_variable_memory(context, ast->func_decl_ptr->body, NULL, new_storage, &in_function);            
             *temps = 0;
 
@@ -3127,7 +3127,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
  * Example : 10 + 20 - 10 * 5.5 */
 void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     size_t dest_id = 0;
-    if (upper_ast == AST_ASSIGNMENT)
+    if (upper_ast == AST_ASSIGNMENT || upper_ast == AST_RETURN)
         dest_id = compile_info->index;
     else        
         dest_id = storage->constant_count + storage->temp_counter++;
@@ -3198,7 +3198,7 @@ void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr
 
 void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     size_t dest_id = 0;
-    if (upper_ast == AST_ASSIGNMENT)
+    if (upper_ast == AST_ASSIGNMENT || upper_ast == AST_RETURN)
         dest_id = compile_info->index;
     else 
         dest_id = storage->constant_count + storage->temp_counter++;
@@ -3717,6 +3717,14 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
 
     /* Variable name linked to variable index */
     map_set(&func_storage->variable_names, "(return)", func_storage->variables.length - 1);
+
+    /* Add all variables to variable list */
+    t_ast_ptr arg   = NULL;
+    int       index = -1;
+    vec_foreach(ast->args, arg, index) {
+        vec_push(&func_storage->variables, UNDEFINED_VAL);
+        map_set(&func_storage->variable_names, arg->char_ptr, func_storage->variables.length - 1);
+    }
     
     /* Build function variables */
     compile_block(context, ast->args, func_storage, compile_info, AST_FUNCTION_DECLARATION);
@@ -3729,6 +3737,20 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
 
     /* Build function body */
     compile_internal(context, ast->body, func_storage, func_compile_info, AST_FUNCTION_DECLARATION);
+
+    /* All functions last opcode should be return */
+    t_brama_byte   last_byte = context->compiler->op_codes->data[context->compiler->op_codes->length - 1];
+    t_brama_vmdata last_code;
+    vm_decode(last_byte, &last_code);
+
+    if (last_code.op != VM_OPT_RETURN) {
+        code.op   = VM_OPT_RETURN;
+        code.reg1 = 0;
+        code.reg2 = 0;
+        code.reg3 = 0;
+        code.scal = context->compiler->storage_index;
+        vec_push(context->compiler->op_codes, vm_encode(&code));
+    }
 
     size_t function_location_end = context->compiler->op_codes->length - 1;
     vec_push(context->compiler->op_codes, NULL);
@@ -3747,8 +3769,44 @@ void compile_return(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
     }
 
     if (ast->ast_ptr != NULL) {
-        compile_info->index = 0; /* Function return variable is located at 0 */
-        compile_internal(context, ast->ast_ptr, storage, compile_info, AST_FUNCTION_DECLARATION);
+        size_t opcode_count  = context->compiler->op_codes->length;
+        size_t* return_index = map_get(&storage->variable_names, "(return)");
+        compile_info->index  = *return_index; 
+        compile_internal(context, ast->ast_ptr, storage, compile_info, AST_RETURN);
+
+        if (ast->ast_ptr->type == AST_SYMBOL) {
+            t_brama_vmdata code;
+            code.op = VM_OPT_COPY;
+            code.reg1 = *return_index;
+            code.reg2 = compile_info->index;
+            code.reg3 = 0;
+            code.scal = 0;
+            vec_push(context->compiler->op_codes, vm_encode(&code));
+
+        }
+        else {
+            bool opcode_need = true;
+            if (context->compiler->op_codes->length > 0 && opcode_count != context->compiler->op_codes->length) {
+                t_brama_byte   last_byte = context->compiler->op_codes->data[context->compiler->op_codes->length - 1];
+                t_brama_vmdata last_code;
+                vm_decode(last_byte, &last_code);
+
+                /* Last opcode not assigned to variable */
+                if (last_code.reg1 == *return_index)
+                    opcode_need = false;
+            }
+
+            /* Last opcode not assigned to variable */
+            if (opcode_need) {
+                t_brama_vmdata code;
+                code.op   = VM_OPT_INIT_VAR;
+                code.reg1 = *return_index;
+                code.reg2 = compile_info->index;
+                code.reg3 = 0;
+                code.scal = 0;
+                vec_push(context->compiler->op_codes, vm_encode(&code));
+            }
+        }
     }
 
     t_brama_vmdata code;

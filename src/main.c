@@ -14,30 +14,9 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init();
-    brama_compile(context, "var a1=5;\n"
-                           "var b1=6;\n"
-                           "var r1=0;\n"
-                           "\n"
-                           "switch(7){\n"
-                           "  case 6:\n"
-                           "    r1 = 2;\n"
-                           "    break;\n"
-                           "  case 4:\n"
-                           "    r1 = 42;\n"
-                           "    break;\n"
-                           "  case 7:\n"
-                           "    r1 = 22;\n"
-                           "    break;\n"
-                           "}");
+    brama_compile(context, "test = function(test1, test2) { return test1 + 1 }");
     brama_run(context);
     brama_compile_dump(context);
-
-    t_get_var_info_ptr var_info = NULL;
-    brama_status status = brama_get_var(context, "r1", &var_info);
-    munit_assert_int   (status,            == , BRAMA_OK);
-    munit_assert_int   (var_info->type,    == , CONST_INTEGER);
-    munit_assert_int   (var_info->double_, == , 1.0);
-    brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
 #ifdef _WIN32
