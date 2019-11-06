@@ -2840,9 +2840,32 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                     func_decl = ast->func_call_ptr->func_decl_ptr;
                 }
                 
-                size_t in_args = 0;
-                prepare_variable_memory(context, ast->func_call_ptr->args, ast, storage, &in_args);
-                *temps = in_args;
+                size_t in_function = 0;
+                size_t in_property = 0;
+                int max            = 0;
+                int index          = 0;
+                t_ast_ptr ast_item = NULL;
+                size_t total_temp  = 0;
+                *temps = ast->func_call_ptr->args->length;
+
+                if (ast->func_call_ptr->type == FUNC_CALL_NORMAL) {
+                    prepare_variable_memory(context, ast->func_call_ptr->function, ast, storage, &in_function);
+                    vec_foreach(ast->func_call_ptr->args, ast_item, index) {
+                        prepare_variable_memory(context, ast_item, ast, storage, &total_temp);
+                        max = FAST_MAX(total_temp, max);
+                    }
+                }
+                else {
+                    prepare_variable_memory(context, ast->func_call_ptr->func_decl_ptr->body, ast, storage, &in_function);
+                    vec_foreach(ast->func_call_ptr->func_decl_ptr->args, ast_item, index) {
+                        prepare_variable_memory(context, ast_item, ast, storage, &total_temp);
+                        max = FAST_MAX(total_temp, max);
+                    }
+                }
+                
+                *temps = FAST_MAX((*temps), in_property);
+                *temps = FAST_MAX((*temps), max);
+                *temps = FAST_MAX((*temps), in_function);
             }
             else 
                 func_decl = ast->func_decl_ptr;
@@ -2871,7 +2894,6 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
 
                 size_t in_function = 0;
                 prepare_variable_memory(context, func_decl->body, NULL, new_storage, &in_function);
-                *temps = 0;
             }
 
             break;
@@ -3384,7 +3406,7 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
                 vm_decode(last_byte, &last_code);
 
                 /* Last opcode not assigned to variable */
-                if (last_code.reg1 == variable_index)
+                if (last_code.reg1 == variable_index || ast->assignment->type == AST_FUNCTION_DECLARATION)
                     opcode_need = false;
             }
 
@@ -3716,12 +3738,40 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
 }
 
 void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
-    if (ast->type == FUNC_CALL_NORMAL) {
-
-    }
-    else {
+    if (ast->type == FUNC_CALL_ANONY)
         compile_func_decl(context, ast->func_decl_ptr, storage, compile_info, upper_ast);
+    else {
+        size_t* index = map_get_(&storage->variable_names, ast->function->char_ptr);
+        if (index == NULL) {
+            context->status = BRAMA_FUNCTION_NOT_FOUND;
+            return;
+        }
+        compile_info->index = *index;
     }
+
+    size_t    variable_index = compile_info->index;
+    t_ast_ptr arg;
+    size_t    index;
+    vec_foreach(ast->args, arg, index) {
+        compile_internal(context, arg, storage, compile_info, AST_FUNCTION_CALL);
+        COMPILE_CHECK();
+
+        t_brama_vmdata code;
+        code.op   = VM_OPT_INIT_VAR;
+        code.reg1 = storage->constant_count + storage->temp_counter++;
+        code.reg2 = compile_info->index;
+        code.reg3 = 0;
+        code.scal = 0;
+        vec_push(context->compiler->op_codes, vm_encode(&code));
+    }
+
+    t_brama_vmdata code;
+    code.op   = VM_OPT_CALL;
+    code.reg1 = ast->args->length;
+    code.reg2 = 0;
+    code.reg3 = 0;
+    code.scal = variable_index;
+    vec_push(context->compiler->op_codes, vm_encode(&code));
 }
 
 void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -3730,14 +3780,20 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
 
     /* Function referance */
     t_function_referance_ptr function_referance = BRAMA_MALLOC(sizeof(t_function_referance));
-    
+
     /* Anony function*/
     bool is_anony = false;
     if (ast->name == NULL) {
         ast->name = BRAMA_MALLOC(sizeof(char) * 20);
-        sprintf(ast->name, "$$$$func_%zu", ++storage->loop_counter);
+        sprintf(ast->name, "!func_%zu", ++storage->loop_counter);
         ast->name[19] = NULL;
         is_anony = true;
+
+        /* Fully anony function, we need to create variable */
+        if (compile_info->index == -1) {
+            vec_push(&storage->variables, UNDEFINED_VAL);
+            compile_info->index = storage->variables.length - 1;
+        }
     }
     else {
         size_t* index = map_get(&storage->variable_names, ast->name);
@@ -3760,7 +3816,7 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
 
     function_referance->name = ast->name;
     function_referance->hash = MurmurHash64B(ast->name, strlen(ast->name), 2224);
-    function_referance->storage_id  = storage->id;
+    function_referance->storage_id  = func_storage->id;
     function_referance->location    = function_location_start;
     function_referance->args_length = ast->args->length;
     function_referance->args        = BRAMA_MALLOC(sizeof(char*) * function_referance->args_length);
@@ -3775,7 +3831,7 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
 
     t_compile_info_ptr func_compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
     func_compile_info->post_opcode       = NULL;
-    func_compile_info->index             = 0;
+    func_compile_info->index             = -1;
 
     /* Insert function decleration opcodes-
      * VM_OPT_FUNC opcode
@@ -3842,7 +3898,6 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
         storage->variables.data[compile_info->index] = GET_VALUE_FROM_OBJ(object);
 
         /* Sub operation need to know which slot it need to use */
-        compile_info->index = index;
         context->status = BRAMA_OK;
     }
 }
@@ -4234,6 +4289,7 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
 void compile(t_context_ptr context) {
     t_compile_info_ptr compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
     compile_info->post_opcode       = NULL;
+    compile_info->index             = -1;
 
     /* Main application */
     t_ast_ptr main = new_block_ast(context->parser->asts);
@@ -4473,9 +4529,16 @@ void brama_compile_dump_codes(t_context_ptr context) {
 }
 
 void run(t_context_ptr context) {
-    vec_byte_ptr bytes       = context->compiler->op_codes;
-    t_brama_value* variables = context->compiler->global_storage->variables.data;
-    t_brama_byte* ipc        = &bytes->data[0];
+    t_storage_ptr  storage          = context->compiler->global_storage;
+    t_storage_ptr  previous_storage = NULL;
+    t_storage_ptr* storages         = context->compiler->storages.data;
+
+
+    vec_byte_ptr   bytes              = context->compiler->op_codes;
+    t_brama_value* variables          = context->compiler->global_storage->variables.data;
+    t_brama_value* previous_variables = NULL;
+    t_brama_byte*  ipc                = &bytes->data[0];
+    t_brama_byte*  location_zero      = &bytes->data[0];
 
     while (*ipc != NULL) {
         t_brama_vmdata vmdata;
@@ -4871,6 +4934,41 @@ void run(t_context_ptr context) {
                 size_t memory_address = vmdata.reg1;
                 size_t end_location   = vmdata.scal;
                 ipc += vmdata.scal;
+                break;
+            }
+
+            case VM_OPT_CALL: {
+                size_t args_length    = vmdata.reg1;
+                size_t function_index = vmdata.scal;
+
+                t_brama_value function_value = *(variables + function_index);
+                t_function_referance_ptr obj = AS_FUNCTION(function_value);
+
+                previous_storage   = storage;
+                previous_variables = variables;
+                storage            = storages[obj->storage_id];
+
+                size_t array_size = storage->variables.length;
+                variables         = BRAMA_MALLOC(sizeof(t_brama_value) * array_size);
+                memcpy(variables, storage->variables.data, array_size * sizeof(t_brama_value));
+
+                /* Copy function arguments */
+                size_t function_args_location = ((previous_storage->constant_count + previous_storage->temp_count) - obj->args_length);
+                memcpy(variables + storage->temp_count + storage->constant_count + 1, previous_storage->variables.data + function_args_location, obj->args_length * sizeof(t_brama_value));
+
+                variables[array_size] = ipc;
+
+                ipc = location_zero + obj->location;
+                break;
+            }
+
+            case VM_OPT_RETURN: {
+                t_brama_value function_value = *(variables + storage->constant_count + storage->temp_count);
+                storage   = previous_storage;
+                variables = previous_variables;
+                //ipc = location_zero + obj->location;
+                return;
+
                 break;
             }
         }

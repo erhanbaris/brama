@@ -45,7 +45,8 @@ typedef enum brama_status  {
     BRAMA_CASE_KEYWORD_NOT_FOUND         = 25,
     BRAMA_SWITCH_NOT_VALID               = 26,
     BRAMA_DEFAULT_CASE_USED              = 27,
-    BRAMA_AST_NOT_COMPILED               = 28
+    BRAMA_AST_NOT_COMPILED               = 28,
+    BRAMA_FUNCTION_NOT_FOUND             = 29
 
 } brama_status;
 
