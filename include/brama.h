@@ -274,7 +274,8 @@ typedef enum _brama_vm_const_type {
     CONST_INTEGER   = 2,
     CONST_DOUBLE    = 3,
     CONST_STRING    = 4,
-    CONST_BOOL      = 5
+    CONST_BOOL      = 5,
+    CONST_FUNCTION  = 6
 } brama_vm_const_type;
 
 typedef enum _brama_ast_extra_data_type {
@@ -428,7 +429,7 @@ static OperatorPair VM_OPCODES[] =  {
         { "NOT_EQ", "!="},
         { "APPEND", ""},
         { "LOOP", ""},
-        { "LOOP", ""},
+        { "COPY", ""},
         { "NOT", "!"},
         { "CASE", ""},
         { "FUNC", ""},
@@ -518,6 +519,7 @@ typedef struct _t_compile_while   t_compile_while;
 typedef struct _t_compile_switch  t_compile_switch;
 typedef struct _t_compile_switch_case  t_compile_switch_case;
 typedef struct _t_compile_func_decl  t_compile_func_decl;
+typedef struct _t_function_referance t_function_referance;
 
 typedef t_vm_object*       t_vm_object_ptr;
 typedef t_tokinizer*       t_tokinizer_ptr;
@@ -548,6 +550,7 @@ typedef t_compile_while*   t_compile_while_ptr;
 typedef t_compile_switch*  t_compile_switch_ptr;
 typedef t_compile_switch_case*  t_compile_switch_case_ptr;
 typedef t_compile_func_decl*    t_compile_func_decl_ptr;
+typedef t_function_referance*   t_function_referance_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
@@ -572,6 +575,8 @@ typedef vec_t(t_brama_value)    vec_value;
 typedef vec_value*              vec_value_ptr;
 typedef map_t(size_t)           map_size_t;
 typedef map_size_t*             map_size_t_ptr;
+typedef map_t(t_function_referance_ptr) map_function_referance;
+typedef map_function_referance* map_function_referance_ptr;
 typedef vec_t(t_storage*)       vec_storage;
 typedef vec_storage*            vec_storage_ptr;
 typedef t_brama_vmdata*         t_brama_vmdata_ptr;
@@ -595,9 +600,8 @@ typedef struct _t_token {
     size_t           current;
     brama_token_type type;
     union {
-        char*  char_ptr;
-        char   char_;
-        double double_;
+        char_ptr            char_ptr;
+        double              double_;
         brama_keyword_type  keyword;
         brama_operator_type opt;
     };
@@ -608,7 +612,7 @@ typedef struct _t_tokinizer {
     size_t    column;
     size_t    index;
     size_t    contentLength;
-    char*     content;
+    char_ptr  content;
     vec_t(t_token*)* tokens;
     map_int_t keywords;
 } t_tokinizer;
@@ -642,6 +646,7 @@ typedef struct _t_storage {
     size_t        temp_counter;    
     size_t        variable_counter;
 
+    map_function_referance functions;
     vec_value     variables;
     map_size_t    variable_names;
     t_storage_ptr previous_storage;
@@ -662,47 +667,47 @@ typedef struct _t_primative {
 typedef struct _t_unary {
     brama_operator_type      opt;
     brama_unary_operant_type operand_type;
-    struct _t_ast*           content;
+    t_ast_ptr                content;
 } t_unary;
 
 typedef struct _t_binary {
     brama_operator_type opt;
-    struct _t_ast*      right;
-    struct _t_ast*      left;
+    t_ast_ptr           right;
+    t_ast_ptr           left;
 } t_binary;
 
 typedef struct _t_assign {
     brama_operator_type opt;
     brama_keyword_type  def_type;
     bool                new_def;
-    struct _t_ast*      assignment;
-    struct _t_ast*      object;
+    t_ast_ptr           assignment;
+    t_ast_ptr           object;
 } t_assign;
 
 typedef struct _t_control {
     brama_operator_type opt;
-    struct _t_ast*      right;
-    struct _t_ast*      left;
+    t_ast_ptr           right;
+    t_ast_ptr           left;
 } t_control;
 
 typedef struct _t_func_call {
     union {
-        struct _t_ast*       function;
-        struct _t_func_decl* func_decl_ptr;
+        t_ast_ptr       function;
+        t_func_decl_ptr func_decl_ptr;
     };
-    brama_func_call_type     type;
-    vec_t(struct _t_ast*)*   args;
+    brama_func_call_type type;
+    vec_ast_ptr          args;
 } t_func_call;
 
 typedef struct _t_func_decl {
-    char*          name;
-    vec_t(struct _t_ast*)* args;
-    struct _t_ast* body;
+    char_ptr    name;
+    vec_ast_ptr args;
+    t_ast_ptr   body;
 } t_func_decl;
 
 typedef struct _t_object_creation {
-    char*     object_name;
-    vec_t(struct _t_ast*)* args;
+    char_ptr    object_name;
+    vec_ast_ptr args;
 } t_object_creation;
 
 typedef struct _t_accessor{
@@ -782,7 +787,8 @@ typedef struct _t_vm_object {
     bool                marked;
     t_vm_object_ptr     next;
     union {
-        char* char_ptr; 
+        char_ptr                 char_ptr;
+        t_function_referance_ptr function;
     };
 } t_vm_object;
 
@@ -796,7 +802,7 @@ typedef struct _t_get_var_info {
     union {
         double     double_;
         bool       bool_;
-        char*      char_ptr;
+        char_ptr   char_ptr;
     };
 } t_get_var_info;
 
@@ -834,9 +840,18 @@ typedef struct _t_compile_switch_case {
     vec_int_t breaks;
 } t_compile_switch_case;
 
-typedef struct _t_compile_func_decl{
+typedef struct _t_compile_func_decl {
     vec_int_t returns;
 } t_compile_func_decl;
+
+typedef struct _t_function_referance {
+    size_t   location;
+    char_ptr name;
+    uint64_t hash;
+    char_ptr* args;
+    size_t   args_length;
+    size_t   storage_id;
+} t_function_referance;
 
 /* VM Defs */
 
@@ -852,7 +867,8 @@ typedef struct _t_compile_func_decl{
 // An object pointer is a NaN with a set sign bit.
 #define IS_OBJ(value) (((value) & (QNAN | SIGN_BIT)) == (QNAN | SIGN_BIT))
 
-#define IS_STRING(value) (IS_OBJ(value) && AS_OBJ(value)->type == CONST_STRING)
+#define IS_STRING(value)   (IS_OBJ(value) && AS_OBJ(value)->type == CONST_STRING)
+#define IS_FUNCTION(value) (IS_OBJ(value) && AS_OBJ(value)->type == CONST_FUNCTION)
 
 #define IS_FALSE(value)     ((value) == FALSE_VAL)
 #define IS_TRUE(value)      ((value) == TRUE_VAL)
@@ -879,6 +895,7 @@ typedef struct _t_compile_func_decl{
 // Value -> Obj*.
 #define AS_OBJ(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
 #define AS_STRING(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))->char_ptr
+#define AS_FUNCTION(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))->function
 
 // Singleton values.
 #define NULL_VAL      ((t_brama_value)(uint64_t)(QNAN | TAG_NULL))

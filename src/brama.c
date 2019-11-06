@@ -2214,11 +2214,15 @@ t_context_ptr brama_init() {
     context->compiler->global_storage->variable_count       = 0;
     context->compiler->global_storage->temp_counter         = 0;
     context->compiler->global_storage->variable_counter     = 0;
+    map_init(&context->compiler->global_storage->functions);
     vec_init(&context->compiler->global_storage->variables);
     map_init(&context->compiler->global_storage->variable_names);
 
     vec_init(&context->compiler->storages);
     vec_init(context->compiler->op_codes);
+
+    /* Add global memory to memory list */
+    vec_push(&context->compiler->storages, context->compiler->global_storage);
 
     return context;
 }
@@ -2827,26 +2831,48 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
 
     switch (ast->type)
     {
+        case AST_FUNCTION_CALL:
         case AST_FUNCTION_DECLARATION: {
-            t_storage_ptr new_storage         = BRAMA_MALLOC(sizeof(t_storage));
-            new_storage->id                   = ++context->compiler->storage_index;
-            new_storage->previous_storage     = storage;
-            new_storage->loop_counter         = 0;
-            new_storage->constant_count       = 0;
-            new_storage->temp_count           = 0;
-            new_storage->variable_count       = 0;
-            new_storage->temp_counter         = 0;
-            new_storage->variable_counter     = 0;
-            vec_init(&new_storage->variables);
-            map_init(&new_storage->variable_names);
-            vec_push(&context->compiler->storages, new_storage);
+            t_func_decl_ptr func_decl = NULL;
 
-            ++new_storage->variable_count; /* '(return)' variable */
-            new_storage->variable_count += ast->func_decl_ptr->args->length; /* Add all function parameters to variable list */
+            if (ast->type == AST_FUNCTION_CALL) {
+                if (FUNC_CALL_ANONY == ast->func_call_ptr->type) {
+                    func_decl = ast->func_call_ptr->func_decl_ptr;
+                }
+                
+                size_t in_args = 0;
+                prepare_variable_memory(context, ast->func_call_ptr->args, ast, storage, &in_args);
+                *temps = in_args;
+            }
+            else 
+                func_decl = ast->func_decl_ptr;
 
-            size_t in_function = 0;
-            prepare_variable_memory(context, ast->func_decl_ptr->body, NULL, new_storage, &in_function);            
-            *temps = 0;
+            if (func_decl != NULL) {
+                t_storage_ptr new_storage         = BRAMA_MALLOC(sizeof(t_storage));
+                new_storage->id                   = ++context->compiler->storage_index;
+                new_storage->previous_storage     = storage;
+                new_storage->loop_counter         = 0;
+                new_storage->constant_count       = 0;
+                new_storage->temp_count           = 0;
+                new_storage->variable_count       = 0;
+                new_storage->temp_counter         = 0;
+
+                new_storage->variable_counter     = 0;
+                vec_init(&new_storage->functions);
+                vec_init(&new_storage->variables);
+                map_init(&new_storage->variable_names);
+                vec_push(&context->compiler->storages, new_storage);
+
+                if (ast->func_decl_ptr->name != NULL)
+                    ++storage->variable_count;
+
+                ++new_storage->variable_count; /* '(return)' variable */
+                new_storage->variable_count += func_decl->args->length; /* Add all function parameters to variable list */
+
+                size_t in_function = 0;
+                prepare_variable_memory(context, func_decl->body, NULL, new_storage, &in_function);
+                *temps = 0;
+            }
 
             break;
         }
@@ -3001,7 +3027,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             break;
         }
 
-        case AST_FUNCTION_CALL: {
+        /*case AST_FUNCTION_CALL: {
             size_t in_function = 0;
             size_t in_property = 0;
             int max            = 0;
@@ -3026,7 +3052,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             *temps = FAST_MAX(max,    in_function);
             *temps = FAST_MAX(*temps, in_property);
             break;
-        }
+        }*/
 
         case AST_OBJECT_CREATION: {
             int max            = 0;
@@ -3693,25 +3719,69 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
     if (ast->type == FUNC_CALL_NORMAL) {
 
     }
+    else {
+        compile_func_decl(context, ast->func_decl_ptr, storage, compile_info, upper_ast);
+    }
 }
 
 void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     size_t function_location_start       = context->compiler->op_codes->length;
-    t_storage_ptr func_storage           = context->compiler->storages.data[context->compiler->storage_index];
+    t_storage_ptr func_storage           = context->compiler->storages.data[++context->compiler->storage_index];
+
+    /* Function referance */
+    t_function_referance_ptr function_referance = BRAMA_MALLOC(sizeof(t_function_referance));
+    
+    /* Anony function*/
+    bool is_anony = false;
+    if (ast->name == NULL) {
+        ast->name = BRAMA_MALLOC(sizeof(char) * 20);
+        sprintf(ast->name, "$$$$func_%zu", ++storage->loop_counter);
+        ast->name[19] = NULL;
+        is_anony = true;
+    }
+    else {
+        size_t* index = map_get(&storage->variable_names, ast->name);
+
+        if (index == NULL) {
+            /* Variable not defined before, create new variable slot */
+            vec_push(&storage->variables, UNDEFINED_VAL);
+
+            /* Variable name linked to variable index */
+            map_set(&storage->variable_names, ast->name, storage->variables.length - 1);
+
+            /* Sub operation need to know which slot it need to use */
+            compile_info->index = storage->variables.length - 1;
+
+            ++storage->variable_count;
+        } else
+            /* Assign previous variable index */
+            compile_info->index = *index;
+    }
+
+    function_referance->name = ast->name;
+    function_referance->hash = MurmurHash64B(ast->name, strlen(ast->name), 2224);
+    function_referance->storage_id  = storage->id;
+    function_referance->location    = function_location_start;
+    function_referance->args_length = ast->args->length;
+    function_referance->args        = BRAMA_MALLOC(sizeof(char*) * function_referance->args_length);
+
+    map_set(&storage->functions, function_referance->name, function_referance);
+
+    t_ast_ptr arg   = NULL;
+    int       index;
+    vec_foreach(ast->args, arg, index) {
+        function_referance->args[index] = arg->char_ptr;
+    }
+
     t_compile_info_ptr func_compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
     func_compile_info->post_opcode       = NULL;
     func_compile_info->index             = 0;
 
-    /* Insert function decleration opcodes */
+    /* Insert function decleration opcodes-
+     * VM_OPT_FUNC opcode
+     */
     t_brama_vmdata code;
-    code.op   = VM_OPT_FUNC;
-    code.reg1 = 0;
-    code.reg2 = 0;
-    code.reg3 = 0;
-    code.scal = context->compiler->storage_index; /* Tell functions memory address*/
-    vec_push(context->compiler->op_codes, vm_encode(&code));
-
-    ++context->compiler->storage_index;
+    vec_push(context->compiler->op_codes, NULL);
 
     /* Create a new variable corresponding to return value */
     vec_push(&func_storage->variables, UNDEFINED_VAL);
@@ -3721,11 +3791,10 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
 
     /* Build function variables
      * Todo: Not working without below code. Fix it. */
-    compile_block(context, ast->args, func_storage, compile_info, AST_FUNCTION_DECLARATION);
+    compile_block(context, ast->args, func_storage, func_compile_info, AST_FUNCTION_DECLARATION);
+    context->status = BRAMA_OK;
 
     /* Add all variables to variable list */
-    t_ast_ptr arg   = NULL;
-    int       index;
     vec_foreach(ast->args, arg, index) {
         vec_push(&func_storage->variables, UNDEFINED_VAL);
         map_set(&func_storage->variable_names, arg->char_ptr, func_storage->variables.length - 1);
@@ -3754,11 +3823,28 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
         vec_push(context->compiler->op_codes, vm_encode(&code));
     }
 
-    size_t function_location_end = context->compiler->op_codes->length - 1;
-    vec_push(context->compiler->op_codes, NULL);
+    code.op   = VM_OPT_FUNC;
+    code.reg1 = context->compiler->storage_index; /* Function memory block */
+    code.reg2 = 0;
+    code.reg3 = 0;
+    code.scal = context->compiler->op_codes->length - function_location_start - 1; /* Tell functions end address*/
+    context->compiler->op_codes->data[function_location_start] = vm_encode(&code);
 
     destroy_from_compile_stack(context, stack_info);
     BRAMA_FREE(func_compile_info);
+
+    if (compile_info->index > -1) {
+        /* Variable not defined before, create new variable slot */
+        t_vm_object_ptr object = new_vm_object(context);
+        object->type           = CONST_FUNCTION;
+        object->function       = function_referance;
+
+        storage->variables.data[compile_info->index] = GET_VALUE_FROM_OBJ(object);
+
+        /* Sub operation need to know which slot it need to use */
+        compile_info->index = index;
+        context->status = BRAMA_OK;
+    }
 }
 
 void compile_return(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -4238,7 +4324,7 @@ brama_status brama_destroy_get_var(t_context_ptr context, t_get_var_info** var_i
 void brama_compile_dump(t_context_ptr context) {
 
     /* Print main(global) memory */
-    brama_compile_dump_memory(context->compiler->global_storage);
+    //brama_compile_dump_memory(context->compiler->global_storage);
 
     /* Print function storages */
     t_storage_ptr func_storage = NULL;
@@ -4283,6 +4369,10 @@ void brama_compile_dump_memory(t_storage_ptr storage) {
                 printf ("%8d |  undefined\r\n", i);
             else if (IS_NULL(tmp_val))
                 printf ("%8d |  null\r\n", i);
+            else if (IS_FUNCTION(tmp_val))
+                printf ("%8d |  (%s)\r\n", i, AS_FUNCTION(tmp_val)->name);
+            else
+                printf ("%8d |  ERROR!\r\n", i);
             printf ("--------------------------------------------------\r\n");
         }
     }
@@ -4303,17 +4393,20 @@ void brama_compile_dump_memory(t_storage_ptr storage) {
         for (int i = total_variable; i < storage->variables.length; ++i) {
             tmp_val = storage->variables.data[i];
 
-            if (IS_BOOL(tmp_val)) {
+            if (IS_BOOL(tmp_val))
                 printf ("%8d |  %-15s | %s\r\n", i, variable_infos[i], IS_FALSE(tmp_val) ? "false" : "true");
-            } else if (IS_NUM(tmp_val)) {
+            else if (IS_NUM(tmp_val))
                 printf ("%8d |  %-15s | %f\r\n", i, variable_infos[i], valueToNumber(tmp_val));
-            } else if (IS_UNDEFINED(tmp_val)) {
+            else if (IS_UNDEFINED(tmp_val))
                 printf ("%8d |  %-15s | undefined\r\n", i, variable_infos[i]);
-            } else if (IS_NULL(tmp_val)) {
+            else if (IS_NULL(tmp_val))
                 printf ("%8d |  %-15s | null\r\n", i, variable_infos[i]);
-            } else if (IS_STRING(tmp_val)) {
+            else if (IS_STRING(tmp_val)) 
                 printf ("%8d |  %-15s | '%s'\r\n", i, variable_infos[i], AS_STRING(tmp_val));
-            }
+            else if (IS_FUNCTION(tmp_val))
+                printf ("%8d |  %-15s | (%s)\r\n", i, variable_infos[i], AS_FUNCTION(tmp_val)->name);
+            else
+                printf ("%8d |  ERROR!\r\n", i);
             printf ("--------------------------------------------------\r\n");
         }
 
@@ -4367,7 +4460,7 @@ void brama_compile_dump_codes(t_context_ptr context) {
 
                  /* Print scal */
             case VM_OPT_FUNC:
-                printf ("%8d |    %-10s | Scal: %-4d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.scal);
+                printf ("%8d |    %-10s | Reg1: %-3d  Scal: %-4d -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.scal, index + vmdata.scal);
                 break;
 
             /* Print reg1, reg2 and  reg3*/
@@ -4771,6 +4864,13 @@ void run(t_context_ptr context) {
                 else if (IS_UNDEFINED(left) || IS_UNDEFINED(right)) {
                     *(variables + vmdata.reg1) = UNDEFINED_VAL;
                 }
+                break;
+            }
+
+            case VM_OPT_FUNC: {
+                size_t memory_address = vmdata.reg1;
+                size_t end_location   = vmdata.scal;
+                ipc += vmdata.scal;
                 break;
             }
         }

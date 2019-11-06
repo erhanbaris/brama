@@ -14,11 +14,13 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init();
-    brama_compile(context, "test = function(test1, test2) { return test1 + 1 }");
+    brama_compile(context, "(function(test1, test2) { return test1 + 1 })(1, 2)");
     brama_run(context);
     brama_compile_dump(context);
 
     brama_destroy(context);
+    getchar();
+    return 0;
 #ifdef _WIN32
     int test_status = munit_suite_main(&ALL_SUITE, (void*) "µnit", NULL, NULL);
     getchar();
