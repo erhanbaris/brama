@@ -110,8 +110,8 @@ void                remove_from_compile_stack (t_context_ptr context, t_compile_
 void                destroy_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack);
 
 t_vm_object_ptr new_vm_object(t_context_ptr context);
-void            vm_decode(t_brama_byte instr, t_brama_vmdata_ptr t);
-t_brama_byte    vm_encode(t_brama_vmdata_ptr t);
+void            vm_decode    (t_brama_byte instr, t_brama_vmdata_ptr t);
+t_brama_byte    vm_encode    (t_brama_vmdata_ptr t);
 t_brama_value   numberToValue(double num);
 double          valueToNumber(t_brama_value num);
 

@@ -567,6 +567,7 @@ typedef int8_t             t_brama_char;
 typedef union              _t_brama_double { t_brama_byte bytes[8];  double double_; } t_brama_double;
 typedef union              _t_brama_int    { t_brama_byte bytes[4];  int int_; } t_brama_int;
 typedef bool               t_brama_bool;
+typedef float(*brama_function_callback)(t_context_ptr context, size_t param_size, t_brama_value* params);
 
 typedef map_t(struct _t_ast *)  map_ast_t;
 typedef map_ast_t*              map_ast_t_ptr;
@@ -846,13 +847,20 @@ typedef struct _t_compile_func_decl {
 } t_compile_func_decl;
 
 typedef struct _t_function_referance {
-    size_t   location;
-    char_ptr name;
-    uint64_t hash;
+    size_t    location;
+    char_ptr  name;
+    uint64_t  hash;
     char_ptr* args;
-    size_t   args_length;
-    size_t   storage_id;
+    size_t    args_length;
+    size_t    storage_id;
+    bool      is_native;
 } t_function_referance;
+
+typedef struct _t_brama_native_function {
+    char_ptr                _class;
+    char_ptr                function;
+    brama_function_callback callback;
+} t_brama_native_function;
 
 /* VM Defs */
 

@@ -2245,6 +2245,14 @@ char_ptr brama_set_error(t_context_ptr context, int error) {
     return NULL;
 }
 
+void brama_func_console_log(t_context_ptr context, size_t param_size, t_brama_value* params);
+
+static t_brama_native_function SYSTEM_FUNCTIONS[] = {
+    {"console", "log", brama_func_console_log}
+};
+
+
+
 void brama_compile(t_context_ptr context, char_ptr data) {
     brama_status tokinizer_status = brama_tokinize(context, data);
     if (tokinizer_status != BRAMA_OK) {
@@ -3741,12 +3749,28 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
     if (ast->type == FUNC_CALL_ANONY)
         compile_func_decl(context, ast->func_decl_ptr, storage, compile_info, upper_ast);
     else {
-        size_t* index = map_get_(&storage->variable_names, ast->function->char_ptr);
-        if (index == NULL) {
+        compile_info->index          = -1;
+        t_storage_ptr search_storage = storage;
+        while (search_storage != NULL) {
+            size_t* index = map_get_(&search_storage->variable_names, ast->function->char_ptr);
+            if (index == NULL) {
+                search_storage = storage->previous_storage;
+                continue;
+            }
+            compile_info->index = *index;
+            break;
+        }
+
+        if (compile_info->index == -1) {
+            for (size_t i = 0; i < sizeof(SYSTEM_FUNCTIONS) / sizeof(*SYSTEM_FUNCTIONS); ++i) {
+                if (!strcmp(SYSTEM_FUNCTIONS[i].function, ast->function->char_ptr)) {
+                    printf("Found");
+                }
+            }
+
             context->status = BRAMA_FUNCTION_NOT_FOUND;
             return;
         }
-        compile_info->index = *index;
     }
 
     size_t    variable_index = compile_info->index;
@@ -3772,6 +3796,10 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
     code.reg3 = 0;
     code.scal = variable_index;
     vec_push(context->compiler->op_codes, vm_encode(&code));
+}
+
+void brama_func_console_log(t_context_ptr context, size_t param_size, t_brama_value* params) {
+    printf("console.log Function\r\n");
 }
 
 void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -3814,8 +3842,9 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
             compile_info->index = *index;
     }
 
-    function_referance->name = ast->name;
-    function_referance->hash = MurmurHash64B(ast->name, strlen(ast->name), 2224);
+    function_referance->name        = ast->name;
+    function_referance->is_native   = false;
+    function_referance->hash        = MurmurHash64B(ast->name, strlen(ast->name), 2224);
     function_referance->storage_id  = func_storage->id;
     function_referance->location    = function_location_start;
     function_referance->args_length = ast->args->length;
@@ -4949,14 +4978,15 @@ void run(t_context_ptr context) {
                 storage            = storages[obj->storage_id];
 
                 size_t array_size = storage->variables.length;
-                variables         = BRAMA_MALLOC(sizeof(t_brama_value) * array_size);
+                variables         = BRAMA_MALLOC(sizeof(t_brama_value) * (array_size  + 1));
                 memcpy(variables, storage->variables.data, array_size * sizeof(t_brama_value));
 
                 /* Copy function arguments */
                 size_t function_args_location = ((previous_storage->constant_count + previous_storage->temp_count) - obj->args_length);
-                memcpy(variables + storage->temp_count + storage->constant_count + 1, previous_storage->variables.data + function_args_location, obj->args_length * sizeof(t_brama_value));
+                memcpy(variables + storage->temp_count + storage->constant_count + 2, previous_storage->variables.data + function_args_location, obj->args_length * sizeof(t_brama_value));
 
-                variables[array_size] = ipc;
+                variables[0] = (t_brama_value)ipc;
+                variables = &variables[1];
 
                 ipc = location_zero + obj->location;
                 break;
@@ -4966,9 +4996,7 @@ void run(t_context_ptr context) {
                 t_brama_value function_value = *(variables + storage->constant_count + storage->temp_count);
                 storage   = previous_storage;
                 variables = previous_variables;
-                //ipc = location_zero + obj->location;
-                return;
-
+                ipc       = &variables[-1];
                 break;
             }
         }
