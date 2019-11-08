@@ -859,8 +859,8 @@ brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, 
                 }
 
                 vec_push(blocks, block);
-                ends_with_semicolon = block->ends_with_semicolon;
-                ends_with_newline   = block->ends_with_newline;
+                ends_with_semicolon = true;
+                ends_with_newline   = true;
             } while (!ast_is_at_end(context) && !ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_END));
 
             if (!is_operator(ast_previous(context)) || ast_previous(context)->opt != OPERATOR_CURVE_BRACKET_END) {
@@ -2980,18 +2980,18 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
         }
 
         case AST_BLOCK: {
-            int index = 0;
-            int max   = 0;
+            int index    = 0;
+            int max_temp = 0;
             t_ast_ptr ast_item = NULL;
 
             vec_foreach(ast->vector_ptr, ast_item, index) {
-                size_t total_temp;
+                size_t total_temp = 0;
                 prepare_variable_memory(context, ast_item, ast, storage, &total_temp);
 
-                max = FAST_MAX(total_temp, max);
+                max_temp = FAST_MAX(total_temp, max_temp);
             }
 
-            *temps = max;
+            *temps = max_temp;
             break;
         }
 
@@ -3414,7 +3414,7 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
                 vm_decode(last_byte, &last_code);
 
                 /* Last opcode not assigned to variable */
-                if (last_code.reg1 == variable_index || ast->assignment->type == AST_FUNCTION_DECLARATION)
+                if (last_code.reg1 == variable_index || ast->assignment->type == AST_FUNCTION_DECLARATION || ast->assignment->type == AST_FUNCTION_CALL)
                     opcode_need = false;
             }
 
@@ -3576,6 +3576,7 @@ void compile_block(t_context_ptr context, vec_ast_ptr const ast, t_storage_ptr s
     t_ast_ptr ast_item = NULL;
 
     vec_foreach(ast, ast_item, block_index) {
+        compile_info->index = -1;
         compile_internal(context, ast_item, storage, compile_info, upper_ast);
         COMPILE_CHECK();
 
@@ -3746,6 +3747,8 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
 }
 
 void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    int assignment_variable_index = compile_info->index;
+
     if (ast->type == FUNC_CALL_ANONY)
         compile_func_decl(context, ast->func_decl_ptr, storage, compile_info, upper_ast);
     else {
@@ -3791,10 +3794,10 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
 
     t_brama_vmdata code;
     code.op   = VM_OPT_CALL;
-    code.reg1 = ast->args->length;
-    code.reg2 = 0;
-    code.reg3 = 0;
-    code.scal = variable_index;
+    code.reg1 = assignment_variable_index == -1 ? storage->constant_count + storage->temp_counter++ : assignment_variable_index;
+    code.reg2 = ast->args->length;
+    code.reg3 = variable_index;
+    code.scal = 0;
     vec_push(context->compiler->op_codes, vm_encode(&code));
 }
 
@@ -4967,8 +4970,8 @@ void run(t_context_ptr context) {
             }
 
             case VM_OPT_CALL: {
-                size_t args_length    = vmdata.reg1;
-                size_t function_index = vmdata.scal;
+                size_t args_length    = vmdata.reg2;
+                size_t function_index = vmdata.reg3;
 
                 t_brama_value function_value = *(variables + function_index);
                 t_function_referance_ptr obj = AS_FUNCTION(function_value);
@@ -4994,9 +4997,15 @@ void run(t_context_ptr context) {
 
             case VM_OPT_RETURN: {
                 t_brama_value function_value = *(variables + storage->constant_count + storage->temp_count);
+                ipc       = (t_brama_byte*)variables[-1];
                 storage   = previous_storage;
                 variables = previous_variables;
-                ipc       = &variables[-1];
+                
+                t_brama_vmdata tmp_vmdata;
+                vm_decode(ipc[0], &tmp_vmdata);
+                *(variables + tmp_vmdata.reg1) = function_value;
+
+                printf("");
                 break;
             }
         }

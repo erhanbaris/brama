@@ -14,7 +14,12 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init();
-    brama_compile(context, "func = (function(test1, test2) { return test1 + test2 }); func(10, 2)");
+    brama_compile(context, "function fib(n) { "
+"  if (n < 2){ "
+"    return n "
+"  } "
+"  return fib(n - 1) + fib (n - 2) "
+"}; var test = fib(10);");
     brama_run(context);
     brama_compile_dump(context);
 
