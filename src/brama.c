@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdint.h>
-#include <brama.h>
+#include <stdlib.h>
 #include "murmur3.h"
 
 
@@ -892,7 +892,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
             function_name = get_symbol(ast_consume(context));
         }
 
-        if ((extra_data == NULL || (int*)extra_data != FUNC_DEF_ASSIGNMENT) && !anony_func && (function_name == NULL || strlen(function_name) == 0))
+        if ((extra_data == AST_IN_NONE || extra_data != FUNC_DEF_ASSIGNMENT) && !anony_func && (function_name == NULL || strlen(function_name) == 0))
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_FUNCTION_NAME_REQUIRED);
 
         if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
@@ -2213,12 +2213,13 @@ t_context_ptr brama_init() {
     context->compiler->global_storage->temp_count           = 0;
     context->compiler->global_storage->variable_count       = 0;
     context->compiler->global_storage->temp_counter         = 0;
-    context->compiler->global_storage->variable_counter     = 0;
+    context->compiler->global_storage->previous_storage     = NULL;
     map_init(&context->compiler->global_storage->functions);
     vec_init(&context->compiler->global_storage->variables);
     map_init(&context->compiler->global_storage->variable_names);
 
     vec_init(&context->compiler->storages);
+    vec_init(&context->compiler->links);
     vec_init(context->compiler->op_codes);
 
     /* Add global memory to memory list */
@@ -2280,7 +2281,7 @@ void brama_run(t_context_ptr context) {
 
     compile(context);
     COMPILE_CHECK();
-
+    
     run(context);
 }
 
@@ -2299,7 +2300,7 @@ void brama_dump(t_context_ptr context) {
         else if (token->type == TOKEN_KEYWORD)
             printf("KEYWORD  = '%s'\r\n", KEYWORDS[(int)token->keyword]);
         else if (token->type == TOKEN_INTEGER)
-            printf("INTEGER  = '%d'\r\n", token->double_);
+            printf("INTEGER  = '%f'\r\n", token->double_);
         else if (token->type == TOKEN_DOUBLE)
             printf("DOUBLE   = '%f'\r\n", token->double_);
     }
@@ -2311,11 +2312,12 @@ void brama_dump(t_context_ptr context) {
 #define AST_DUMP_AST(AST)                          brama_dump_ast_internal( AST , level + 1)
 #define AST_PRINT_PROPERTY(PROPERTY, DATA)         printf("\r\n%*s%s : '%s'", (level + 1) * LEVEL_PADDING, "", PROPERTY , DATA )
 #define AST_PRINT_PROPERTY_DECIMAL(PROPERTY, DATA) printf("\r\n%*s%s : '%d'", (level + 1) * LEVEL_PADDING, "", PROPERTY , DATA )
+#define AST_PRINT_PROPERTY_STRING(PROPERTY, DATA)  printf("\r\n%*s%s : '%s'", (level + 1) * LEVEL_PADDING, "", PROPERTY , DATA )
 #define AST_PRINT_PROPERTY_FLOAT(PROPERTY, DATA)   printf("\r\n%*s%s : '%f'", (level + 1) * LEVEL_PADDING, "", PROPERTY , DATA )
 #define AST_PRINT_SECTION(PROPERTY)                printf("\r\n%*s%s : ", (level + 1) * LEVEL_PADDING, "", PROPERTY)
 #define AST_PRINT_SIMPLE(PROPERTY)                 printf("%s", PROPERTY)
 
-void brama_dump_vector_internal(vec_ast_ptr vector, size_t level) {
+void brama_dump_vector_internal(vec_ast_ptr vector, int level) {
     int i     = 0;
     int total = vector->length;
     AST_PRINT_SIMPLE("[");
@@ -2326,7 +2328,7 @@ void brama_dump_vector_internal(vec_ast_ptr vector, size_t level) {
     AST_PRINT_SIMPLE("]");
 }
 
-void brama_dump_ast_internal(t_ast_ptr ast, size_t level) {
+void brama_dump_ast_internal(t_ast_ptr ast, int level) {
     brama_ast_type type = ast->type;
     switch (type)
     {
@@ -2380,7 +2382,7 @@ void brama_dump_ast_internal(t_ast_ptr ast, size_t level) {
     case AST_BINARY_OPERATION:
         AST_DUMP_START();
         AST_PRINT_PROPERTY("type", "BINARY");
-        AST_PRINT_PROPERTY("opt", OPERATORS[(int)ast->binary_ptr->opt]);
+        AST_PRINT_PROPERTY("opt", OPERATORS[(int)ast->binary_ptr->opt].name);
         AST_PRINT_SECTION("left");
         AST_DUMP_AST(ast->binary_ptr->left);
         AST_PRINT_SECTION("right");
@@ -2391,7 +2393,7 @@ void brama_dump_ast_internal(t_ast_ptr ast, size_t level) {
     case AST_ASSIGNMENT:
         AST_DUMP_START();
         AST_PRINT_PROPERTY("type", "ASSIGN");
-        AST_PRINT_PROPERTY("opt", OPERATORS[(int)ast->assign_ptr->opt]);
+        AST_PRINT_PROPERTY("opt", OPERATORS[(int)ast->assign_ptr->opt].name);
         AST_PRINT_SECTION("object");
         AST_DUMP_AST(ast->assign_ptr->object);
         AST_PRINT_SECTION("assignment");
@@ -2414,11 +2416,11 @@ void brama_dump_ast_internal(t_ast_ptr ast, size_t level) {
             break;
 
         case PRIMATIVE_STRING:
-            AST_PRINT_PROPERTY_DECIMAL("string", ast->primative_ptr->char_ptr);
+            AST_PRINT_PROPERTY_STRING("string", ast->primative_ptr->char_ptr);
             break;
 
         case PRIMATIVE_NULL:
-            AST_PRINT_PROPERTY_DECIMAL("null", "null");
+            AST_PRINT_PROPERTY_STRING("null", "null");
             break;
 
         case PRIMATIVE_DOUBLE:
@@ -2847,7 +2849,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                 if (FUNC_CALL_ANONY == ast->func_call_ptr->type) {
                     func_decl = ast->func_call_ptr->func_decl_ptr;
                 }
-                
+
                 size_t in_function = 0;
                 size_t in_property = 0;
                 int max            = 0;
@@ -2870,7 +2872,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                         max = FAST_MAX(total_temp, max);
                     }
                 }
-                
+
                 *temps = FAST_MAX((*temps), in_property);
                 *temps = FAST_MAX((*temps), max);
                 *temps = FAST_MAX((*temps), in_function);
@@ -2888,20 +2890,43 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                 new_storage->variable_count       = 0;
                 new_storage->temp_counter         = 0;
 
-                new_storage->variable_counter     = 0;
                 vec_init(&new_storage->functions);
                 vec_init(&new_storage->variables);
                 map_init(&new_storage->variable_names);
                 vec_push(&context->compiler->storages, new_storage);
 
                 if (ast->func_decl_ptr->name != NULL)
-                    ++storage->variable_count;
+                    add_variable(context, storage, ast->func_decl_ptr->name, UNDEFINED_VAL);
 
-                ++new_storage->variable_count; /* '(return)' variable */
-                new_storage->variable_count += func_decl->args->length; /* Add all function parameters to variable list */
+                /* Create a new variable corresponding to return value */
+                add_variable(context, new_storage, RETURN_VAR, UNDEFINED_VAL);
+
+                add_variable(context, new_storage, TOTAL_ARGS_VAR, numberToValue(0)); /* Total passed function parameters */
+                //new_storage->variable_count += func_decl->args->length; /* Add all function parameters to variable list */
+                
+                map_iter_t iter  = map_iter(&storage->variable_names);
+                int index        = 0;
+                char_ptr tmp_var = NULL;
+                while ((tmp_var = map_next(&storage->variable_names, &iter))) {
+                    add_variable(context, storage, tmp_var, UNDEFINED_VAL);
+                }
+
+                /* Add all variables to variable list */
+                index         = 0;
+                t_ast_ptr arg = NULL;
+                vec_foreach(func_decl->args, arg, index) {
+                    add_variable(context, storage, arg->char_ptr, UNDEFINED_VAL);
+                }
 
                 size_t in_function = 0;
                 prepare_variable_memory(context, func_decl->body, NULL, new_storage, &in_function);
+
+                /* Sort memory */
+                sort_variables(context, new_storage);
+
+                /* create empty slots for temp variable counter */
+                for (size_t i = 0; i < new_storage->temp_count; ++i)
+                    vec_push(&new_storage->variables, UNDEFINED_VAL);
             }
 
             break;
@@ -2910,13 +2935,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
         case AST_UNARY: {
             switch (ast->unary_ptr->opt) {
                 case OPERATOR_SUBTRACTION: {
-                    int index         = 0;
-                    t_brama_value num = numberToValue(-1);
-                    vec_find(&storage->variables, num, index);
-                    if (index == -1) {
-                        vec_push(&storage->variables, num);
-                        ++storage->constant_count;
-                    }
+                    add_constant(context, storage, numberToValue(-1));
                     break;
                 }
 
@@ -2924,6 +2943,9 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                 case OPERATOR_DECCREMENT:
                 case OPERATOR_NOT:
                 case OPERATOR_BITWISE_NOT:
+                    break;
+
+                default:
                     break;
             }
 
@@ -3006,7 +3028,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             vec_foreach(ast->switch_stmt_ptr->cases, case_item, index) {
                 size_t total_temp = 0;
 
-                if (context, case_item->key != NULL) {
+                if (case_item->key != NULL) {
                     prepare_variable_memory(context, case_item->key, ast, storage, &total_temp);
                     max_item = FAST_MAX(total_temp, max_item);
                 }
@@ -3039,6 +3061,14 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             size_t in_condition  = 0;
             size_t in_body       = 0;
 
+            char_ptr var_name = BRAMA_MALLOC(sizeof(char) * 20);
+
+            /* Store loop status */
+            sprintf(var_name, "(loop #%zu)", ++storage->loop_counter);
+            var_name[19] = '\0';
+
+            add_variable(context, storage, var_name, UNDEFINED_VAL);
+
             prepare_variable_memory(context, ast->while_ptr->condition, ast, storage, &in_condition);
             prepare_variable_memory(context, ast->while_ptr->body,      ast, storage, &in_body);
 
@@ -3056,33 +3086,6 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             *temps = FAST_MAX(in_body, in_property);
             break;
         }
-
-        /*case AST_FUNCTION_CALL: {
-            size_t in_function = 0;
-            size_t in_property = 0;
-            int max            = 0;
-            int index          = 0;
-            t_ast_ptr ast_item = NULL;
-            size_t total_temp  = 0;
-
-            if (ast->func_call_ptr->type == FUNC_CALL_NORMAL)
-                prepare_variable_memory(context, ast->func_call_ptr->function, ast, storage, &in_function);
-            else {
-                prepare_variable_memory(context, ast->func_call_ptr->func_decl_ptr->body, ast, storage, &in_function);
-                vec_foreach(ast->func_call_ptr->func_decl_ptr->args, ast_item, index) {
-                    prepare_variable_memory(context, ast_item, ast, storage, &total_temp);
-                    max = FAST_MAX(total_temp, max);
-                }
-            }
-            vec_foreach(ast->func_call_ptr->func_decl_ptr->args, ast_item, index) {
-                prepare_variable_memory(context, ast_item, ast, storage, &total_temp);
-                max = FAST_MAX(total_temp, max);
-            }
-
-            *temps = FAST_MAX(max,    in_function);
-            *temps = FAST_MAX(*temps, in_property);
-            break;
-        }*/
 
         case AST_OBJECT_CREATION: {
             int max            = 0;
@@ -3106,40 +3109,29 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             break;
         }
 
+        case AST_SYMBOL: {
+            add_variable(context, storage, ast->char_ptr, UNDEFINED_VAL);
+            break;
+        }
+
         case AST_PRIMATIVE: {
             int index = 0;
             switch (ast->primative_ptr->type) {
                 case PRIMATIVE_INTEGER:
                 case PRIMATIVE_DOUBLE:
-                    vec_find(&storage->variables, numberToValue(ast->primative_ptr->double_), index);
-                    if (index == -1) {
-                        vec_push(&storage->variables, numberToValue(ast->primative_ptr->double_));
-                        ++storage->constant_count;
-                    }
+                    add_constant(context, storage, numberToValue(ast->primative_ptr->double_));
                     break;
 
                 case PRIMATIVE_UNDEFINED:
-                    vec_find(&storage->variables, UNDEFINED_VAL, index);
-                    if (index == -1) {
-                        vec_push(&storage->variables, UNDEFINED_VAL);
-                        ++storage->constant_count;
-                    }
+                    add_constant(context, storage, UNDEFINED_VAL);
                     break;
 
                 case PRIMATIVE_NULL:
-                    vec_find(&storage->variables, NULL_VAL, index);
-                    if (index == -1) {
-                        vec_push(&storage->variables, NULL_VAL);
-                        ++storage->constant_count;
-                    }
+                    add_constant(context, storage, NULL_VAL);
                     break;
 
                 case PRIMATIVE_BOOL:
-                    vec_find(&storage->variables, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL), index);
-                    if (index == -1) {
-                        vec_push(&storage->variables, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL));
-                        ++storage->constant_count;
-                    }
+                    add_constant(context, storage, ast->primative_ptr->bool_ ? (TRUE_VAL) : (FALSE_VAL));
                     break;
 
                 case PRIMATIVE_STRING: {
@@ -3152,14 +3144,15 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                     }
 
                     /* Text not in list */
-                    t_brama_value value;
                     t_vm_object_ptr object = new_vm_object(context);
                     object->type           = CONST_STRING;
                     object->char_ptr       = strdup(ast->primative_ptr->char_ptr);
-                    vec_push(&storage->variables, GET_VALUE_FROM_OBJ(object));
-                    ++storage->constant_count;
+                    add_constant(context, storage, GET_VALUE_FROM_OBJ(object));
+                    break;
                 }
-                break;
+
+                default:
+                    break;
             }
 
             *temps = 0;
@@ -3170,12 +3163,9 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             *temps = 0;
     }
 
-    /* We are at top level and there is no more searching so update temp variable counter */
     if (upper_ast == NULL) {
-        storage->temp_count           = *temps;
-
-        for (size_t i = 0; i < storage->temp_count; ++i)
-            vec_push(&storage->variables, UNDEFINED_VAL);
+        storage->temp_count   = *temps;
+        storage->loop_counter = 0;
     }
 }
 
@@ -3183,10 +3173,10 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
  * Example : 10 + 20 - 10 * 5.5 */
 void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     size_t dest_id = 0;
-    if (upper_ast == AST_ASSIGNMENT || upper_ast == AST_RETURN)
+    if (upper_ast == AST_ASSIGNMENT)
         dest_id = compile_info->index;
     else        
-        dest_id = storage->constant_count + storage->temp_counter++;
+        dest_id = storage->constant_count + storage->variable_count + storage->temp_counter++;
 
     compile_internal(context, ast->left, storage, compile_info, AST_NONE);
     COMPILE_CHECK();
@@ -3246,6 +3236,9 @@ void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr
         case OPERATOR_BITWISE_UNSIGNED_RIGHT_SHIFT:
             code.op = VM_OPT_BITWISE_UNSIGNED_RIGHT_SHIFT;
             break;
+
+        default:
+            break;
     }
 
     compile_info->index       = dest_id;
@@ -3257,7 +3250,7 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
     if (upper_ast == AST_ASSIGNMENT || upper_ast == AST_RETURN)
         dest_id = compile_info->index;
     else 
-        dest_id = storage->constant_count + storage->temp_counter++;
+        dest_id = storage->constant_count + storage->variable_count + storage->temp_counter++;
 
     compile_internal(context, ast->left, storage, compile_info, AST_NONE);
     COMPILE_CHECK();
@@ -3317,6 +3310,9 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
         case OPERATOR_EQUAL_VALUE:
             code.op = VM_OPT_EQV;
             break;
+
+        default:
+            context->status = BRAMA_NOK;
     }
 
     compile_info->index       = dest_id;
@@ -3339,6 +3335,9 @@ void compile_keyword(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr s
                 vec_push(&compile_stack->while_ptr->continues, context->compiler->op_codes->length - 1);
                 break;
             }
+
+            default:
+                context->status = BRAMA_NOK;
         }
     }
 
@@ -3349,6 +3348,9 @@ void compile_keyword(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr s
                 vec_push(&compile_stack->switch_case_ptr->breaks, context->compiler->op_codes->length - 1);
                 break;
             }
+
+            default:
+                context->status = BRAMA_NOK;
         }
     }
 }
@@ -3366,22 +3368,17 @@ void compile_symbol(t_context_ptr context, char_ptr const ast, t_storage_ptr sto
         compile_info->index = *index;
 }
 
+/**
+* Compile assignment ast to opcode
+* @param context Brama context
+* @param ast AST variable for assignment
+* @compile_info memory store information
+* @upper_ast Parent ast, it is NULL when ast is root
+* @param storage Stack memory storage
+*/
 void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     /* We need to check variable that used on scope before */
-    size_t* index = map_get(&storage->variable_names, ast->object->char_ptr);
-
-    if (index == NULL) {
-        /* Variable not defined before, create new variable slot */
-        vec_push(&storage->variables, UNDEFINED_VAL);
-
-        /* Variable name linked to variable index */
-        map_set(&storage->variable_names, ast->object->char_ptr, storage->variables.length - 1);
-
-        /* Sub operation need to know which slot it need to use */
-        compile_info->index = storage->variables.length - 1;
-    } else
-        /* Assign previous variable index */
-        compile_info->index = *index;
+    compile_info->index = get_variable_address(context, storage, ast->object->char_ptr);
 
     size_t temp_counter = storage->temp_counter;
 
@@ -3454,6 +3451,9 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
                     case OPERATOR_ASSIGN_SUBTRACTION:
                         code.op = VM_OPT_SUBTRACTION;
                         break;
+
+                    default:
+                        context->status = BRAMA_NOK;
                 }
 
                 vec_push(context->compiler->op_codes, vm_encode(&code));
@@ -3616,13 +3616,7 @@ void compile_unary(t_context_ptr context, t_unary_ptr const ast, t_storage_ptr s
             code->reg2 = compile_info->index;
 
             int index;
-            vec_find(&storage->variables, numberToValue(-1), index);
-            if (index == -1) {
-                vec_push(&storage->variables, numberToValue(-1));
-                code->reg3 = storage->variables.length - 1;
-            }
-            else
-                code->reg3 = index++;
+            code->reg3 = get_constant_address(context, storage, numberToValue(-1));
             break;
         }
 
@@ -3632,6 +3626,9 @@ void compile_unary(t_context_ptr context, t_unary_ptr const ast, t_storage_ptr s
 
         case OPERATOR_BITWISE_NOT:
             break;
+
+        default:
+            context->status = BRAMA_NOK;
     }
 
     if (ast->operand_type == UNARY_OPERAND_BEFORE) {
@@ -3748,55 +3745,68 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
 
 void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     int assignment_variable_index = compile_info->index;
+    size_t function_variable_index = -1;
 
     if (ast->type == FUNC_CALL_ANONY)
         compile_func_decl(context, ast->func_decl_ptr, storage, compile_info, upper_ast);
     else {
-        compile_info->index          = -1;
-        t_storage_ptr search_storage = storage;
-        while (search_storage != NULL) {
-            size_t* index = map_get_(&search_storage->variable_names, ast->function->char_ptr);
-            if (index == NULL) {
-                search_storage = storage->previous_storage;
-                continue;
-            }
-            compile_info->index = *index;
-            break;
-        }
+        
+        /* Check function for referance delageted
+         * If variable not referanced to function location, prepare it */
+        function_variable_index = *map_get(&storage->variable_names, ast->function->char_ptr);
+        if (!IS_FUNCTION(storage->variables.data[function_variable_index])) {
+            t_storage_ptr search_storage = storage;
+            bool          function_found = false;
 
-        if (compile_info->index == -1) {
-            for (size_t i = 0; i < sizeof(SYSTEM_FUNCTIONS) / sizeof(*SYSTEM_FUNCTIONS); ++i) {
-                if (!strcmp(SYSTEM_FUNCTIONS[i].function, ast->function->char_ptr)) {
-                    printf("Found");
+            while (search_storage != NULL) {
+                void** func_ptr = map_get(&search_storage->functions, ast->function->char_ptr);
+
+                if (func_ptr != NULL) {
+                    t_function_referance_ptr func = *func_ptr;
+
+                    t_vm_object_ptr object = new_vm_object(context);
+                    object->type           = CONST_FUNCTION;
+                    object->function       = func;
+
+                    storage->variables.data[function_variable_index] = GET_VALUE_FROM_OBJ(object);
+                    function_found = true;
+                    break;
                 }
+                else
+                    search_storage     = search_storage->previous_storage;
             }
 
-            context->status = BRAMA_FUNCTION_NOT_FOUND;
-            return;
+            if (function_found == false) {
+                context->status = BRAMA_FUNCTION_NOT_FOUND;
+                return;
+            }
         }
     }
 
-    size_t    variable_index = compile_info->index;
     t_ast_ptr arg;
     size_t    index;
     vec_foreach(ast->args, arg, index) {
         compile_internal(context, arg, storage, compile_info, AST_FUNCTION_CALL);
         COMPILE_CHECK();
 
-        t_brama_vmdata code;
-        code.op   = VM_OPT_INIT_VAR;
-        code.reg1 = storage->constant_count + storage->temp_counter++;
-        code.reg2 = compile_info->index;
-        code.reg3 = 0;
-        code.scal = 0;
-        vec_push(context->compiler->op_codes, vm_encode(&code));
+        /* If arg not located at temp location, create new opcode */
+        if (storage->variables.length - storage->temp_count > compile_info->index) {
+
+            t_brama_vmdata code;
+            code.op   = VM_OPT_INIT_VAR;
+            code.reg1 = (storage->variables.length - storage->temp_count) + storage->temp_counter++;
+            code.reg2 = compile_info->index;
+            code.reg3 = 0;
+            code.scal = 0;
+            vec_push(context->compiler->op_codes, vm_encode(&code));
+        }
     }
 
     t_brama_vmdata code;
     code.op   = VM_OPT_CALL;
-    code.reg1 = assignment_variable_index == -1 ? storage->constant_count + storage->temp_counter++ : assignment_variable_index;
-    code.reg2 = ast->args->length;
-    code.reg3 = variable_index;
+    code.reg1 = assignment_variable_index == -1 ? storage->constant_count + storage->variable_count + storage->temp_counter++ : assignment_variable_index;
+    code.reg2 = ast->args->length;       /* Total passed arguments */
+    code.reg3 = function_variable_index; /* Function address */
     code.scal = 0;
     vec_push(context->compiler->op_codes, vm_encode(&code));
 }
@@ -3822,8 +3832,7 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
 
         /* Fully anony function, we need to create variable */
         if (compile_info->index == -1) {
-            vec_push(&storage->variables, UNDEFINED_VAL);
-            compile_info->index = storage->variables.length - 1;
+            compile_info->index = add_constant(context, storage, UNDEFINED_VAL);
         }
     }
     else {
@@ -3831,15 +3840,7 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
 
         if (index == NULL) {
             /* Variable not defined before, create new variable slot */
-            vec_push(&storage->variables, UNDEFINED_VAL);
-
-            /* Variable name linked to variable index */
-            map_set(&storage->variable_names, ast->name, storage->variables.length - 1);
-
-            /* Sub operation need to know which slot it need to use */
-            compile_info->index = storage->variables.length - 1;
-
-            ++storage->variable_count;
+            compile_info->index = get_variable_address(context, storage, ast->name);
         } else
             /* Assign previous variable index */
             compile_info->index = *index;
@@ -3871,22 +3872,10 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
     t_brama_vmdata code;
     vec_push(context->compiler->op_codes, NULL);
 
-    /* Create a new variable corresponding to return value */
-    vec_push(&func_storage->variables, UNDEFINED_VAL);
-
-    /* Variable name linked to variable index */
-    map_set(&func_storage->variable_names, "(return)", func_storage->variables.length - 1);
-
     /* Build function variables
      * Todo: Not working without below code. Fix it. */
     compile_block(context, ast->args, func_storage, func_compile_info, AST_FUNCTION_DECLARATION);
     context->status = BRAMA_OK;
-
-    /* Add all variables to variable list */
-    vec_foreach(ast->args, arg, index) {
-        vec_push(&func_storage->variables, UNDEFINED_VAL);
-        map_set(&func_storage->variable_names, arg->char_ptr, func_storage->variables.length - 1);
-    }
 
     t_compile_func_decl_ptr compile_obj = BRAMA_MALLOC(sizeof(t_compile_func_decl));
     vec_init(&compile_obj->returns);
@@ -3945,9 +3934,10 @@ void compile_return(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
 
     if (ast->ast_ptr != NULL) {
         size_t opcode_count  = context->compiler->op_codes->length;
-        size_t* return_index = map_get(&storage->variable_names, "(return)");
+        size_t* return_index = map_get(&storage->variable_names, RETURN_VAR);
         compile_info->index  = *return_index; 
         compile_internal(context, ast->ast_ptr, storage, compile_info, AST_RETURN);
+        COMPILE_CHECK();
 
         if (ast->ast_ptr->type == AST_SYMBOL) {
             t_brama_vmdata code;
@@ -3991,7 +3981,6 @@ void compile_return(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
     code.reg3 = 0;
     code.scal = 0;
     vec_push(context->compiler->op_codes, vm_encode(&code));
-    size_t function_location_end = context->compiler->op_codes->length - 1;
 }
 
 /* Nice document http://www.eecg.toronto.edu/~moshovos/ECE243-07/l09-switch.html */
@@ -4238,8 +4227,7 @@ void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_stora
                 t_vm_object_ptr object = new_vm_object(context);
                 object->type           = CONST_STRING;
                 object->char_ptr       = strdup(ast->char_ptr);
-                vec_push(&storage->variables, GET_VALUE_FROM_OBJ(object));
-                compile_info->index = storage->variables.length - 1;
+                compile_info->index    = add_constant(context, storage, GET_VALUE_FROM_OBJ(object));
             }
             else 
                 context->status = BRAMA_CONSTANT_NOT_FOUND;
@@ -4301,7 +4289,7 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
             break;
 
         case AST_FUNCTION_DECLARATION:
-            compile_func_decl(context, ast->func_call_ptr, storage, compile_info, upper_ast);
+            compile_func_decl(context, ast->func_decl_ptr, storage, compile_info, upper_ast);
             break;
 
         case AST_SWITCH:
@@ -4318,6 +4306,162 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
     }
 }
 
+/**
+* Find contant address, return -1, if not found
+* @param context Brama context
+* @param storage Stack memory storage
+* @param value Constant
+* @return Constant index in vector
+*/
+int get_constant_address(t_context_ptr context, t_storage_ptr storage, t_brama_value value) {
+    int index = -1;
+    vec_find(&storage->variables, value, index);
+    return index;
+}
+
+/**
+* Add new constant to variables vector and return back index
+* @param context Brama context
+* @param storage Stack memory storage
+* @param value Variable
+* @return Variable index in vector
+*/
+size_t add_constant(t_context_ptr context, t_storage_ptr storage, t_brama_value value) {
+    int index = -1;
+    vec_find(&storage->variables, value, index);
+    if (-1 == index) {
+        vec_push(&storage->variables, value);
+        ++storage->constant_count;
+        return storage->variables.length - 1;
+    }
+    return index;
+}
+
+/**
+* Find variable address, return -1, if not found
+* @param context Brama context
+* @param storage Stack memory storage
+* @param name Variable name
+* @return Value index in vector
+*/
+int get_variable_address(t_context_ptr context, t_storage_ptr storage, char_ptr name) {
+    size_t* variable_index = map_get(&storage->variable_names, name);
+
+    if (variable_index == NULL)
+        return -1;
+    return *variable_index;
+}
+
+/**
+* Add empty variable ith name to variables vector and return back index
+* @param context Brama context
+* @param storage Stack memory storage
+* @return Variable index in vector
+*/
+size_t add_variable(t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value) {
+    size_t* variable_index = map_get(&storage->variable_names, name);
+
+    if (variable_index == NULL) {
+        vec_push(&storage->variables, value);
+        ++storage->variable_count;
+        size_t index = storage->variables.length - 1;
+
+        map_set(&storage->variable_names, name, index);
+        return index;
+    } else
+        /* Assign previous variable index */
+        return *variable_index;
+}
+
+/**
+* Convert constant to variable by value
+* @param context Brama context
+* @param storage Stack memory storage
+* @param name Variable name
+* @param value Search value
+*/
+void convert_to_variable_by_value(t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value) {
+    int index = get_constant_address(context, storage, value);
+    convert_to_variable_by_index(context, storage, name, index);
+}
+
+/**
+* Sort  variable memory.
+* @param context Brama context
+* @param storage Stack memory storage
+* @param name Variable name
+* @param index Contant index
+*/
+void convert_to_variable_by_index(t_context_ptr context, t_storage_ptr storage, char_ptr name, size_t index) {
+    if (-1 != index)
+        map_set(&storage->variable_names, name, index);
+}
+
+int int_compare_function (const void * a, const void * b) {
+   return ( *(int*)a - *(int*)b );
+}
+
+typedef struct __sort_variable_item { int index; char_ptr variable; } __sort_variable_item;
+int __sort_var_compare_function (const void * a, const void * b) {
+    return ((__sort_variable_item*)a)->index - ((__sort_variable_item*)b)->index;
+}
+
+/**
+* Sort  variable memory.
+* @param context Brama context
+* @param storage Stack memory storage
+*/
+void sort_variables(t_context_ptr context, t_storage_ptr storage) {
+
+    vec_value*  variables      = &storage->variables;
+    map_size_t* variable_names = &storage->variable_names;
+
+    char_ptr var_name     = NULL; /* For iteration */
+    map_iter_t iter       = map_iter(variable_names);
+
+    unsigned total_variables = variable_names->base.nnodes;
+    size_t total_constant    = variables->length - total_variables;
+
+    /* Store all variables in array, than move back to memory */
+    //t_brama_value* tmp_variables = BRAMA_MALLOC(sizeof(t_brama_value)        * total_variables);
+    int*           remove_index  = BRAMA_MALLOC(sizeof(int)                  * total_variables);
+    __sort_variable_item* items  = BRAMA_MALLOC(sizeof(__sort_variable_item) * total_variables);
+    size_t tmp_vars_index        = 0;
+    
+    while ((var_name        = map_next(variable_names, &iter))) {
+        int index           = *map_get(variable_names, var_name);
+        t_brama_value value = variables->data[index];
+
+        /* Set new variable location */
+        //map_set(variable_names, var_name, total_constant + tmp_vars_index);
+        //tmp_variables[tmp_vars_index] = value;
+        remove_index[tmp_vars_index]  = index;
+        
+        items[tmp_vars_index].index    = index;
+        items[tmp_vars_index].variable = var_name;
+
+        ++tmp_vars_index;
+    }
+    
+    qsort(items       , total_variables, sizeof(__sort_variable_item), __sort_var_compare_function);
+    qsort(remove_index, total_variables, sizeof(int)                 , int_compare_function);
+    for (unsigned i = total_variables ; i-- > 0 ; )
+        vec_splice(&storage->variables, remove_index[i], 1);
+
+    //vec_pusharr(variables, tmp_variables, total_variables);
+    
+    for (int i = 0; i < total_variables; ++i) {
+        map_set(variable_names, items[i].variable, total_constant + i);
+        vec_push(variables, UNDEFINED_VAL);
+    }
+
+    BRAMA_FREE(remove_index);
+    //BRAMA_FREE(tmp_variables);
+}
+/**
+* Generate stack memory and build opcodes
+* @param context Brama context
+*/
 void compile(t_context_ptr context) {
     t_compile_info_ptr compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
     compile_info->post_opcode       = NULL;
@@ -4330,10 +4474,24 @@ void compile(t_context_ptr context) {
     size_t max_temp   = 0;
     prepare_variable_memory(context, main, NULL, context->compiler->global_storage, &max_temp);
     COMPILE_CHECK();
+    
+    /* Sort memory */
+    sort_variables(context, context->compiler->global_storage);
 
+    /* create empty slots for temp variable counter */
+    for (size_t i = 0; i < context->compiler->global_storage->temp_count; ++i)
+        vec_push(&context->compiler->global_storage->variables, UNDEFINED_VAL);
+    
     context->compiler->storage_index = 0;
     compile_internal(context, main, context->compiler->global_storage, compile_info, AST_NONE);
     COMPILE_CHECK();
+
+    t_brama_link_ptr link = NULL;
+    size_t link_index = -1;
+    vec_foreach(&context->compiler->links, link, link_index) {
+        *link->destination = *link->source;
+    }
+
     vec_push(context->compiler->op_codes, NULL);
 
     /* Clear */
@@ -4370,7 +4528,7 @@ brama_status brama_get_var(t_context_ptr context, char_ptr var_name, t_get_var_i
         double num = valueToNumber(value);
         double intpart;
         double fractpart = modf(num, &intpart);
- 
+
         if (fractpart == 0.0) {
             (*var_info)->type  = CONST_INTEGER;
             (*var_info)->double_  = num;
@@ -4418,18 +4576,17 @@ void brama_compile_dump(t_context_ptr context) {
     t_storage_ptr func_storage = NULL;
     int index                  = -1;
     vec_foreach(&context->compiler->storages, func_storage, index) {
-        brama_compile_dump_memory(func_storage);
+        brama_compile_dump_storage(func_storage);
     }
 
     /* Print all opcodes */
     brama_compile_dump_codes(context);
 }
 
-void brama_compile_dump_memory(t_storage_ptr storage) {
+void brama_compile_dump_storage(t_storage_ptr storage) {
     printf("######################################################\r\n\r\n");
-    
+
     int            index          = 0;
-    size_t         total_variable = storage->constant_count + storage->temp_count;
     char_ptr       tmp_var        = NULL;
     t_brama_value  tmp_val;
 
@@ -4478,7 +4635,7 @@ void brama_compile_dump_memory(t_storage_ptr storage) {
         }
 
         index           = 0;
-        for (int i = total_variable; i < storage->variables.length; ++i) {
+        for (int i = 0; i < storage->variables.length; ++i) {
             tmp_val = storage->variables.data[i];
 
             if (IS_BOOL(tmp_val))
@@ -4502,6 +4659,50 @@ void brama_compile_dump_memory(t_storage_ptr storage) {
     }
 
     printf("\r\n######################################################\r\n\r\n\r\n");
+}
+
+void brama_compile_dump_memory(t_brama_value* variables, map_size_t_ptr variable_names, size_t size) {
+    printf("######################################################\r\n");
+    printf("######################################################\r\n");
+    printf("######################################################\r\n\r\n");
+
+    //printf ("\r\n----------------------------------------\r\n");
+    printf ("\r\n Index   | Variable         |    Data\r\n");
+    printf ("--------------------------------------------------\r\n");
+    char_ptr* variable_infos = BRAMA_CALLOC(size, sizeof(char_ptr));
+
+    map_iter_t iter = map_iter(&storage->variable_names);
+    int            index   = 0;
+    char_ptr       tmp_var = NULL;
+    t_brama_value  tmp_val;
+    while ((tmp_var = map_next(variable_names, &iter))) {
+        variable_infos[(*map_get(variable_names, tmp_var))] = tmp_var;
+    }
+
+    index           = 0;
+    for (int i = 0; i < size; ++i) {
+        tmp_val = variables[i];
+
+        if (IS_BOOL(tmp_val))
+            printf ("%8d |  %-15s | %s\r\n", i, variable_infos[i], IS_FALSE(tmp_val) ? "false" : "true");
+        else if (IS_NUM(tmp_val))
+            printf ("%8d |  %-15s | %f\r\n", i, variable_infos[i], valueToNumber(tmp_val));
+        else if (IS_UNDEFINED(tmp_val))
+            printf ("%8d |  %-15s | undefined\r\n", i, variable_infos[i]);
+        else if (IS_NULL(tmp_val))
+            printf ("%8d |  %-15s | null\r\n", i, variable_infos[i]);
+        else if (IS_STRING(tmp_val))
+            printf ("%8d |  %-15s | '%s'\r\n", i, variable_infos[i], AS_STRING(tmp_val));
+        else if (IS_FUNCTION(tmp_val))
+            printf ("%8d |  %-15s | (%s)\r\n", i, variable_infos[i], AS_FUNCTION(tmp_val)->name);
+        else
+            printf ("%8d |  ERROR!\r\n", i);
+        printf ("--------------------------------------------------\r\n");
+    }
+    
+    printf("\r\n######################################################\r\n");
+    printf("######################################################\r\n");
+    printf("######################################################\r\n\r\n\r\n");
 }
 
 void brama_compile_dump_codes(t_context_ptr context) {
@@ -4546,11 +4747,16 @@ void brama_compile_dump_codes(t_context_ptr context) {
                 printf ("%8d |    %-10s | Scal: %-4d -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.scal, index + vmdata.scal);
                 break;
 
-                 /* Print scal */
+            /* Print scal */
             case VM_OPT_FUNC:
                 printf ("%8d |    %-10s | Reg1: %-3d  Scal: %-4d -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.scal, index + vmdata.scal);
                 break;
-
+            
+            /* Print scal */
+            case VM_OPT_CALL:
+                printf ("%8d |    %-10s | RetV: %-3d  Args: %-3d  Func: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
+                break;
+                
             /* Print reg1, reg2 and  reg3*/
             default:
                 printf ("%8d |    %-10s | Reg1: %-3d  Reg2: %-3d  Reg3: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
@@ -4572,7 +4778,7 @@ void run(t_context_ptr context) {
     t_brama_byte*  ipc                = &bytes->data[0];
     t_brama_byte*  location_zero      = &bytes->data[0];
 
-    while (*ipc != NULL) {
+    while (*ipc != (int)NULL) {
         t_brama_vmdata vmdata;
         vm_decode(*ipc, &vmdata);
 
@@ -4595,26 +4801,10 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg1);
                 t_brama_value right = *(variables + vmdata.reg2);
 
-                uint64_t left_val;
-                uint64_t right_val;
+                uint64_t left_val  = 0;
+                uint64_t right_val = 0;
 
-                if (IS_NUM(left))
-                    left_val = valueToNumber(left);
-                else if (IS_BOOL(left))
-                    left_val = IS_TRUE(left) ? 1 : 0;
-                else if (IS_STRING(left))
-                    left_val = MurmurHash64B(AS_STRING(left), strlen(AS_STRING(left)), 1024);
-                else if (IS_UNDEFINED(left) || IS_NULL(left))
-                    left_val = (QNAN | TAG_UNDEFINED);
-
-                if (IS_NUM(right))
-                    right_val = valueToNumber(right);
-                else if (IS_BOOL(right))
-                    right_val = IS_TRUE(right) ? 1 : 0;
-                else if (IS_STRING(right))
-                    right_val = MurmurHash64B(AS_STRING(right), strlen(AS_STRING(right)), 1024);
-                else if (IS_UNDEFINED(right) || IS_NULL(right))
-                    right_val = (QNAN | TAG_UNDEFINED);
+                TWO_VARIABLE_COMPARE();
 
                 if (left_val != right_val)
                     ++ipc;
@@ -4695,17 +4885,17 @@ void run(t_context_ptr context) {
             }
 
             /* CONTROLS */
-                
+
             case VM_OPT_AND: {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
                 bool status = false;
-                
+
                 if (IS_NUM(left))
                     status = (bool)left;
                 else if (IS_BOOL(left))
                     status = IS_TRUE(left);
-                
+
                 if (IS_NUM(right))
                     status = status && (bool)right;
                 else if (IS_BOOL(right))
@@ -4713,17 +4903,17 @@ void run(t_context_ptr context) {
                 *(variables + vmdata.reg1) = status ? TRUE_VAL : FALSE_VAL;
                 break;
             }
-                
+
             case VM_OPT_OR: {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
                 bool status = false;
-                
+
                 if (IS_NUM(left))
                     status = (bool)left;
                 else if (IS_BOOL(left))
                     status = IS_TRUE(left);
-                
+
                 if (IS_NUM(right))
                     status = status || (bool)right;
                 else if (IS_BOOL(right))
@@ -4732,15 +4922,19 @@ void run(t_context_ptr context) {
                 break;
                 break;
             }
-            
-            
+
+
             /* '<' operator */
             case VM_OPT_LT: {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
+                
+                uint64_t left_val  = 0;
+                uint64_t right_val = 0;
 
-                if (IS_NUM(left) && IS_NUM(right))
-                    *(variables + vmdata.reg1) = valueToNumber(left) < valueToNumber(right) ? TRUE_VAL : FALSE_VAL;
+                TWO_VARIABLE_COMPARE();
+
+                *(variables + vmdata.reg1) = left_val < right_val ? TRUE_VAL : FALSE_VAL;
                 break;
             }
 
@@ -4749,8 +4943,12 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                if (IS_NUM(left) && IS_NUM(right))
-                    *(variables + vmdata.reg1) = valueToNumber(left) <= valueToNumber(right) ? TRUE_VAL : FALSE_VAL;
+                uint64_t left_val  = 0;
+                uint64_t right_val = 0;
+
+                TWO_VARIABLE_COMPARE();
+
+                *(variables + vmdata.reg1) = left_val <= right_val ? TRUE_VAL : FALSE_VAL;
                 break;
             }
                 /* '>' operator */
@@ -4758,8 +4956,12 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                if (IS_NUM(left) && IS_NUM(right))
-                    *(variables + vmdata.reg1) = valueToNumber(left) > valueToNumber(right) ? TRUE_VAL : FALSE_VAL;
+                uint64_t left_val  = 0;
+                uint64_t right_val = 0;
+
+                TWO_VARIABLE_COMPARE();
+
+                *(variables + vmdata.reg1) = left_val > right_val ? TRUE_VAL : FALSE_VAL;
                 break;
             }
 
@@ -4768,8 +4970,12 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                if (IS_NUM(left) && IS_NUM(right))
-                    *(variables + vmdata.reg1) = numberToValue(valueToNumber(left) >= valueToNumber(right)) ? TRUE_VAL : FALSE_VAL;
+                uint64_t left_val  = 0;
+                uint64_t right_val = 0;
+
+                TWO_VARIABLE_COMPARE();
+
+                *(variables + vmdata.reg1) = left_val >= right_val ? TRUE_VAL : FALSE_VAL;
                 break;
             }
                 /* '!=' operator */
@@ -4777,26 +4983,10 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                uint64_t left_val;
-                uint64_t right_val;
+                uint64_t left_val  = 0;
+                uint64_t right_val = 0;
 
-                if (IS_NUM(left))
-                    left_val = valueToNumber(left);
-                else if (IS_BOOL(left))
-                    left_val = IS_TRUE(left) ? 1 : 0;
-                else if (IS_STRING(left))
-                    left_val = MurmurHash64B(AS_STRING(left), strlen(AS_STRING(left)), 1024);
-                else if (IS_UNDEFINED(left) || IS_NULL(left))
-                    left_val = (QNAN | TAG_UNDEFINED);
-
-                if (IS_NUM(right))
-                    right_val = valueToNumber(right);
-                else if (IS_BOOL(right))
-                    right_val = IS_TRUE(right) ? 1 : 0;
-                else if (IS_STRING(right))
-                    right_val = MurmurHash64B(AS_STRING(right), strlen(AS_STRING(right)), 1024);
-                else if (IS_UNDEFINED(right) || IS_NULL(right))
-                    right_val = (QNAN | TAG_UNDEFINED);
+                TWO_VARIABLE_COMPARE();
 
                 *(variables + vmdata.reg1) = left_val != right_val ? TRUE_VAL : FALSE_VAL;
                 break;
@@ -4807,26 +4997,10 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                uint64_t left_val;
-                uint64_t right_val;
+                uint64_t left_val  = 0;
+                uint64_t right_val = 0;
 
-                if (IS_NUM(left))
-                    left_val = valueToNumber(left);
-                else if (IS_BOOL(left))
-                    left_val = IS_TRUE(left) ? 1 : 0;
-                else if (IS_STRING(left))
-                    left_val = MurmurHash64B(AS_STRING(left), strlen(AS_STRING(left)), 1024);
-                else if (IS_UNDEFINED(left) || IS_NULL(left))
-                    left_val = (QNAN | TAG_UNDEFINED);
-
-                if (IS_NUM(right))
-                    right_val = valueToNumber(right);
-                else if (IS_BOOL(right))
-                    right_val = IS_TRUE(right) ? 1 : 0;
-                else if (IS_STRING(right))
-                    right_val = MurmurHash64B(AS_STRING(right), strlen(AS_STRING(right)), 1024);
-                else if (IS_UNDEFINED(right) || IS_NULL(right))
-                    right_val = (QNAN | TAG_UNDEFINED);
+                TWO_VARIABLE_COMPARE();
 
                 *(variables + vmdata.reg1) = left_val == right_val ? TRUE_VAL : FALSE_VAL;
                 break;
@@ -4970,41 +5144,65 @@ void run(t_context_ptr context) {
             }
 
             case VM_OPT_CALL: {
+                //brama_compile_dump(context);
+                
                 size_t args_length    = vmdata.reg2;
                 size_t function_index = vmdata.reg3;
 
                 t_brama_value function_value = *(variables + function_index);
                 t_function_referance_ptr obj = AS_FUNCTION(function_value);
-
+                
+                size_t arg_count = FAST_MIN((vmdata.reg2), (obj->args_length));
+                
                 previous_storage   = storage;
                 previous_variables = variables;
                 storage            = storages[obj->storage_id];
 
                 size_t array_size = storage->variables.length;
-                variables         = BRAMA_MALLOC(sizeof(t_brama_value) * (array_size  + 1));
-                memcpy(variables, storage->variables.data, array_size * sizeof(t_brama_value));
+                variables         = BRAMA_MALLOC(sizeof(t_brama_value) * (array_size  + 2));
+                memcpy(variables + 2, storage->variables.data, array_size * sizeof(t_brama_value));
 
-                /* Copy function arguments */
-                size_t function_args_location = ((previous_storage->constant_count + previous_storage->temp_count) - obj->args_length);
-                memcpy(variables + storage->temp_count + storage->constant_count + 2, previous_storage->variables.data + function_args_location, obj->args_length * sizeof(t_brama_value));
-
+                /* Find function argumen location */
+                size_t function_args_location = previous_storage->variables.length - previous_storage->temp_count;
+                
+                // size_t function_args_location = previous_storage->constant_count + 2; /* After !return and !total_args variable */
+                //size_t function_args_location = ((previous_storage->constant_count + previous_storage->variable_count) - obj->args_length);
+                
+                /* Save previous pointer location */
                 variables[0] = (t_brama_value)ipc;
-                variables = &variables[1];
+                
+                /* Save previous variable memory */
+                variables[1] = (t_brama_value)previous_variables;
+                
+                /* Real variable start location */
+                variables = &variables[2];
+                
+                /* Copy function arguments to new memory */
+                memcpy(variables + storage->constant_count + 2, previous_storage->variables.data + function_args_location, arg_count * sizeof(t_brama_value));
+                variables[storage->constant_count + 1] = numberToValue(arg_count);
+                
+                //brama_compile_dump_memory(variables, &storage->variable_names, array_size);
 
                 ipc = location_zero + obj->location;
                 break;
             }
 
             case VM_OPT_RETURN: {
-                t_brama_value function_value = *(variables + storage->constant_count + storage->temp_count);
-                ipc       = (t_brama_byte*)variables[-1];
-                storage   = previous_storage;
-                variables = previous_variables;
+                t_brama_value function_value = *(variables + storage->constant_count);
+                double return_data = valueToNumber(function_value);
+                //brama_compile_dump_memory(variables, &storage->variable_names, storage->variables.length);
                 
+                t_brama_value* memory_block = variables;
+                
+                ipc       = (t_brama_byte*)variables[-2];
+                variables = (t_brama_value*)variables[-1];
+                storage   = previous_storage;
+                //variables = previous_variables;
+
                 t_brama_vmdata tmp_vmdata;
                 vm_decode(ipc[0], &tmp_vmdata);
                 *(variables + tmp_vmdata.reg1) = function_value;
-
+            
                 printf("");
                 break;
             }
@@ -5084,12 +5282,19 @@ void brama_destroy(t_context_ptr context) {
     if (context->error_message != NULL)
         BRAMA_FREE(context->error_message);
 
+    t_brama_link_ptr link = NULL;
+    size_t link_index = -1;
+    vec_foreach(&context->compiler->links, link, link_index) {
+        BRAMA_FREE(link);
+    }
+
+    vec_deinit(&context->compiler->links);
     vec_deinit(context->compiler->op_codes);
     BRAMA_FREE(context->compiler->op_codes);
 
     vec_deinit(&context->compiler->storages);
     vec_deinit(&context->compiler->global_storage->variables);
-    map_deinit(&context->compiler->global_storage->variable_names);
+    //map_deinit(&context->compiler->global_storage->variable_names);
     BRAMA_FREE(context->compiler->global_storage);
     vec_deinit(&context->compiler->compile_stack);
 

@@ -305,11 +305,17 @@ typedef enum _brama_end_line_checker_type {
 } brama_end_line_checker_type;
 
 /* Function Definition Type */
-
 typedef enum func_def_type {
     FUNC_DEF_NORMAL     = (1<<0),
     FUNC_DEF_ASSIGNMENT = (1<<1)
 } func_def_type;
+
+typedef enum _memory_prototype_item_type {
+    MEMORY_PROTOTYPE_CONST,
+    MEMORY_PROTOTYPE_VARIABLE,
+    MEMORY_PROTOTYPE_TEMPORARY,
+    MEMORY_PROTOTYPE_RETURN_BACK
+} memory_prototype_item_type;
 
 typedef struct {
     brama_status status;
@@ -521,6 +527,7 @@ typedef struct _t_compile_switch  t_compile_switch;
 typedef struct _t_compile_switch_case  t_compile_switch_case;
 typedef struct _t_compile_func_decl  t_compile_func_decl;
 typedef struct _t_function_referance t_function_referance;
+typedef struct _t_brama_link         t_brama_link;
 
 typedef t_vm_object*       t_vm_object_ptr;
 typedef t_tokinizer*       t_tokinizer_ptr;
@@ -552,6 +559,7 @@ typedef t_compile_switch*  t_compile_switch_ptr;
 typedef t_compile_switch_case*  t_compile_switch_case_ptr;
 typedef t_compile_func_decl*    t_compile_func_decl_ptr;
 typedef t_function_referance*   t_function_referance_ptr;
+typedef t_brama_link*           t_brama_link_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
@@ -567,7 +575,7 @@ typedef int8_t             t_brama_char;
 typedef union              _t_brama_double { t_brama_byte bytes[8];  double double_; } t_brama_double;
 typedef union              _t_brama_int    { t_brama_byte bytes[4];  int int_; } t_brama_int;
 typedef bool               t_brama_bool;
-typedef float(*brama_function_callback)(t_context_ptr context, size_t param_size, t_brama_value* params);
+typedef void(*brama_function_callback)(t_context_ptr context, size_t param_size, t_brama_value* params);
 
 typedef map_t(struct _t_ast *)  map_ast_t;
 typedef map_ast_t*              map_ast_t_ptr;
@@ -595,6 +603,7 @@ typedef vec_t(t_brama_byte)*    vec_byte_ptr;
 typedef vec_t(char_ptr)         vec_string;
 typedef vec_t(char_ptr)*        vec_string_ptr;
 typedef vec_t(t_compile_stack*) vec_compile_stack;
+typedef vec_t(t_brama_link_ptr) vec_link;
 typedef vec_compile_stack*      vec_compile_stack_ptr;
 
 typedef struct _t_token {
@@ -631,13 +640,14 @@ typedef struct _t_compiler {
     t_storage_ptr     global_storage;
     vec_storage       storages;
     t_vm_object_ptr   head;
+    vec_link          links;
     size_t            total_object;
     size_t            storage_index;
 } t_compiler;
 
 typedef struct _t_storage {
     size_t        id;
-    
+
     /* Totals */
     size_t        temp_count;
     size_t        constant_count;
@@ -646,7 +656,6 @@ typedef struct _t_storage {
     /* Counters */
     size_t        loop_counter;
     size_t        temp_counter;    
-    size_t        variable_counter;
 
     map_function_referance functions;
     vec_value     variables;
@@ -657,12 +666,12 @@ typedef struct _t_storage {
 typedef struct _t_primative {
     brama_primative_type type;
     union {
-        int        int_;
-        double     double_;
-        bool       bool_;
-        char*      char_ptr;
-        vec_t(struct _t_ast*)*  array;
-        map_ast_t* dict;
+        int         int_;
+        double      double_;
+        bool        bool_;
+        char*       char_ptr;
+        vec_ast_ptr array;
+        map_ast_t*  dict;
     };
 } t_primative;
 
@@ -862,6 +871,11 @@ typedef struct _t_brama_native_function {
     brama_function_callback callback;
 } t_brama_native_function;
 
+typedef struct _t_brama_link {
+    t_brama_value* source;
+    t_brama_value* destination;
+} t_brama_link;
+
 /* VM Defs */
 
 // A mask that selects the sign bit.
@@ -920,12 +934,41 @@ typedef struct _t_brama_native_function {
 
 
 /*
+
+         STORAGE STRUCTURE
+ *--------------------------------*
+ * RETURN BACK ADDRESS (OPCODE)   *
+ *--------------------------------*
+ * RETURN BACK VARIABLES          *
+ *--------------------------------* --------
+ *     CONSTANT 1                 *         |
+ *--------------------------------*         |
+ *     CONSTANT 2                 *    CONSTANT DEFINITIONS
+ *--------------------------------*         |
+ *     CONSTANT 3                 *         |
+ *--------------------------------*---------
+ *     TEMPORARY 1                *         |
+ *--------------------------------*         |
+ *     TEMPORARY 2                *    TEMPORARY VARIABLES
+ *--------------------------------*         |
+ *     TEMPORARY 3                *         |
+ *--------------------------------*---------
+ *     VARIABLE 1                 *         |
+ *--------------------------------*         |
+ *     VARIABLE 2                 *    NORMAL VARIABLES
+ *--------------------------------*         |
+ *     VARIABLE 3                 *         |
+ *--------------------------------*---------
+
+
+
+ OPCODE STRUCTURE
 -------------------------------------------------------------------------------
  1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1   1 1 1 1
 -------------------------------------------------------------------------------
-|   OP CODE   |        REG1       |         REG2        |         REG3        |
+|   OP CODE        |   REG1            |    REG2           |      REG3        |
 -------------------------------------------------------------------------------
-|   OP CODE   |        REG1       |                    SCAL                   |
+|   OP CODE        |   REG1            |                SCAL                  |
 -------------------------------------------------------------------------------
 */
 

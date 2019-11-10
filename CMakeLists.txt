@@ -50,6 +50,8 @@ add_executable(brama
         src/brama.c
         include/brama.h
         include/tools.h
+        include/macros.h
+        include/brama_internal.h
         src/tools.c
         tests/tests.h
         tests/tests_core.h

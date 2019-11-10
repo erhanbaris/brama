@@ -76,16 +76,25 @@ bool destroy_ast_if_stmt        (t_if_stmt_ptr if_stmt_ptr);
 bool destroy_ast_accessor       (t_accessor_ptr accessor_ptr);
 bool destroy_ast_switch_stmt    (t_switch_stmt_ptr switch_stmt_ptr);
 
-void brama_dump_vector_internal (vec_ast_ptr vector, size_t level);
-void brama_dump_ast_internal    (t_ast_ptr ast, size_t level);
+void brama_dump_vector_internal (vec_ast_ptr vector, int level);
+void brama_dump_ast_internal    (t_ast_ptr ast, int level);
 
 void run                        (t_context_ptr context);
 void brama_compile_dump         (t_context_ptr context);
-void brama_compile_dump_memory  (t_storage_ptr storage);
+void brama_compile_dump_storage (t_storage_ptr storage);
+void brama_compile_dump_memory  (t_brama_value* variables, map_size_t_ptr variable_names, size_t size);
 void brama_compile_dump_codes   (t_context_ptr context);
 
 brama_status brama_get_var        (t_context_ptr context, char_ptr var_name, t_get_var_info** var_info);
 brama_status brama_destroy_get_var(t_context_ptr context, t_get_var_info** var_info);
+
+int    get_constant_address  (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
+size_t add_constant          (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
+int    get_variable_address  (t_context_ptr context, t_storage_ptr storage, char_ptr name);
+size_t add_variable          (t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value);
+void   convert_to_variable_by_value(t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value);
+void   convert_to_variable_by_index(t_context_ptr context, t_storage_ptr storage, char_ptr name, size_t index);
+void   sort_variables        (t_context_ptr context, t_storage_ptr storage);
 
 void compile                    (t_context_ptr context);
 void compile_internal           (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);

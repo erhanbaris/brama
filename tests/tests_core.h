@@ -36,7 +36,7 @@
 _CrtMemState *s1 = NULL;
 #endif
 
-void setUp(const MunitParameter params[], void* user_data) {
+static void* setUp(const MunitParameter params[], void* user_data) {
     #if defined(_WIN32)
     #pragma push_macro("malloc")
     #undef malloc
@@ -46,9 +46,10 @@ void setUp(const MunitParameter params[], void* user_data) {
 
     #pragma pop_macro("malloc")
     #endif
+    return NULL;
 }
 
-void tearDown(void* fixture) {
+static void tearDown(void* fixture) {
     #if defined(_WIN32)
         // Send all reports to STDOUT
     _CrtSetReportMode( _CRT_WARN, _CRTDBG_MODE_FILE );

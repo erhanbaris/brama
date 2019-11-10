@@ -1,4 +1,4 @@
-﻿#ifndef TESTS_AST_2_H
+#ifndef TESTS_AST_2_H
 #define TESTS_AST_2_H
 
 #include "tests_core.h"

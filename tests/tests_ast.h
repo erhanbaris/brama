@@ -1,4 +1,4 @@
-﻿#ifndef TESTS_AST_H
+#ifndef TESTS_AST_H
 #define TESTS_AST_H
 
 #include <brama.h>

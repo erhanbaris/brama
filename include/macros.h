@@ -13,6 +13,9 @@
 #define FAST_MAX(X, Y) X ^ (( X ^ Y ) & -( X < Y ));
 #define FAST_MIN(X, Y) Y ^ (( X ^ Y ) & -( X < Y ));
 
+#define TOTAL_ARGS_VAR "!total_args"
+#define RETURN_VAR "!return"
+
 #define OPERATOR_CASE_DOUBLE_START_WITH(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_3_SYMBOL, OPERATOR_1, OPERATOR_2, OPERATOR_3) \
     case OPERATOR_1_SYMBOL :                       \
         if (chNext == OPERATOR_2_SYMBOL ) {        \
@@ -86,6 +89,27 @@ case OPERATOR_1_SYMBOL :                     \
     {\
         return token-> TYPE ;\
     }
+
+#define TWO_VARIABLE_COMPARE() \
+do { \
+    if (IS_NUM(left))\
+        left_val = valueToNumber(left);\
+    else if (IS_BOOL(left))\
+        left_val = IS_TRUE(left) ? 1 : 0;\
+    else if (IS_STRING(left))\
+        left_val = MurmurHash64B(AS_STRING(left), strlen(AS_STRING(left)), 1024);\
+    else if (IS_UNDEFINED(left) || IS_NULL(left))\
+        left_val = (QNAN | TAG_UNDEFINED);\
+    if (IS_NUM(right))\
+        right_val = valueToNumber(right);\
+    else if (IS_BOOL(right))\
+        right_val = IS_TRUE(right) ? 1 : 0;\
+    else if (IS_STRING(right))\
+        right_val = MurmurHash64B(AS_STRING(right), strlen(AS_STRING(right)), 1024);\
+    else if (IS_UNDEFINED(right) || IS_NULL(right))\
+        right_val = (QNAN | TAG_UNDEFINED);\
+} while(false)
+
 
 #define new_primative_ast_int(DATA)        new_primative_ast_int_internal( DATA , __FILE__, __LINE__ )
 #define new_primative_ast_double(DATA)     new_primative_ast_double_internal( DATA , __FILE__, __LINE__ )

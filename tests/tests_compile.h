@@ -10,7 +10,6 @@ MunitResult ast_compile_1(const MunitParameter params[], void* user_data_or_fixt
     t_context* context = brama_init();
     brama_compile(context, "10 + 20");
     brama_run(context);
-    size_t opcode_index = 0;
     munit_assert_int(context->compiler->op_codes->length, == , 2);
     munit_assert_int(context->compiler->op_codes->data[1], == , NULL);
 
@@ -34,7 +33,7 @@ MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixt
     t_context* context = brama_init();
     brama_compile(context, "var test1; var test2 = 1024; test1 = 2048;");
     brama_run(context);
-    size_t opcode_index = 0;
+
     munit_assert_int(context->compiler->op_codes->length, == , 3);
 
     t_brama_vmdata vmdata;
@@ -54,11 +53,11 @@ MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixt
 
     munit_assert_int(context->compiler->global_storage->variables.length, ==, 4);
 
-    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 1024.0);
-    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 2048.0);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 1024);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 2048);
 
-    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[2]), ==, 2048.0);
-    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[3]), ==, 1024.0);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[2]), ==, 2048);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[3]), ==, 1024);
 
 
     t_get_var_info_ptr var_info = NULL;
@@ -85,7 +84,6 @@ MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixt
     t_context* context = brama_init();
     brama_compile(context, "var test_1 = 10; var test_2 = 20; var test_3 = test_1 < test_2;");
     brama_run(context);
-    size_t opcode_index = 0;
     munit_assert_int(context->compiler->op_codes->length, == , 4);
 
     t_brama_vmdata vmdata;
