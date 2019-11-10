@@ -2915,7 +2915,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                 index         = 0;
                 t_ast_ptr arg = NULL;
                 vec_foreach(func_decl->args, arg, index) {
-                    add_variable(context, storage, arg->char_ptr, UNDEFINED_VAL);
+                    add_variable(context, new_storage, arg->char_ptr, UNDEFINED_VAL);
                 }
 
                 size_t in_function = 0;
@@ -3754,33 +3754,6 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
         /* Check function for referance delageted
          * If variable not referanced to function location, prepare it */
         function_variable_index = *map_get(&storage->variable_names, ast->function->char_ptr);
-        if (!IS_FUNCTION(storage->variables.data[function_variable_index])) {
-            t_storage_ptr search_storage = storage;
-            bool          function_found = false;
-
-            while (search_storage != NULL) {
-                void** func_ptr = map_get(&search_storage->functions, ast->function->char_ptr);
-
-                if (func_ptr != NULL) {
-                    t_function_referance_ptr func = *func_ptr;
-
-                    t_vm_object_ptr object = new_vm_object(context);
-                    object->type           = CONST_FUNCTION;
-                    object->function       = func;
-
-                    storage->variables.data[function_variable_index] = GET_VALUE_FROM_OBJ(object);
-                    function_found = true;
-                    break;
-                }
-                else
-                    search_storage     = search_storage->previous_storage;
-            }
-
-            if (function_found == false) {
-                context->status = BRAMA_FUNCTION_NOT_FOUND;
-                return;
-            }
-        }
     }
 
     t_ast_ptr arg;
@@ -5066,7 +5039,9 @@ void run(t_context_ptr context) {
             case VM_OPT_ADDITION: {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
-
+                
+                brama_compile_dump_memory(variables, &storage->variable_names, storage->variables.length);
+                
                 if (IS_NUM(left) && IS_NUM(right))  {
                     *(variables + vmdata.reg1) = numberToValue(valueToNumber(left) + valueToNumber(right));
                 } else if (IS_UNDEFINED(left) || IS_UNDEFINED(right)) {
@@ -5144,12 +5119,43 @@ void run(t_context_ptr context) {
             }
 
             case VM_OPT_CALL: {
-                //brama_compile_dump(context);
                 
                 size_t args_length    = vmdata.reg2;
                 size_t function_index = vmdata.reg3;
 
                 t_brama_value function_value = *(variables + function_index);
+                if (IS_UNDEFINED(function_value)) {
+                    t_storage_ptr search_storage = storage;
+                    bool          function_found = false;
+                    
+                    map_iter_t iter  = map_iter(&search_storage->variable_names);
+                    size_t index     = 0;
+                    char_ptr tmp_var = NULL;
+                    while ((tmp_var  = map_next(&storage->variable_names, &iter))) {
+                        if (*map_get(&storage->variable_names, tmp_var) == vmdata.reg3)
+                            break;
+                    }
+
+                    while (search_storage != NULL) {
+                        void** func_ptr = map_get(&search_storage->functions, tmp_var);
+
+                        if (func_ptr != NULL) {
+                            t_function_referance_ptr func = *func_ptr;
+
+                            t_vm_object_ptr object = new_vm_object(context);
+                            object->type           = CONST_FUNCTION;
+                            object->function       = func;
+
+                            variables[function_index] = GET_VALUE_FROM_OBJ(object);
+                            function_value            = variables[function_index];
+                            function_found = true;
+                            break;
+                        }
+                        else
+                            search_storage = search_storage->previous_storage;
+                    }
+                }
+                
                 t_function_referance_ptr obj = AS_FUNCTION(function_value);
                 
                 size_t arg_count = FAST_MIN((vmdata.reg2), (obj->args_length));
@@ -5180,8 +5186,6 @@ void run(t_context_ptr context) {
                 /* Copy function arguments to new memory */
                 memcpy(variables + storage->constant_count + 2, previous_storage->variables.data + function_args_location, arg_count * sizeof(t_brama_value));
                 variables[storage->constant_count + 1] = numberToValue(arg_count);
-                
-                //brama_compile_dump_memory(variables, &storage->variable_names, array_size);
 
                 ipc = location_zero + obj->location;
                 break;
