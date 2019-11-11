@@ -91,10 +91,8 @@ brama_status brama_destroy_get_var(t_context_ptr context, t_get_var_info** var_i
 int    get_constant_address  (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
 size_t add_constant          (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
 int    get_variable_address  (t_context_ptr context, t_storage_ptr storage, char_ptr name);
-size_t add_variable          (t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value);
-void   convert_to_variable_by_value(t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value);
-void   convert_to_variable_by_index(t_context_ptr context, t_storage_ptr storage, char_ptr name, size_t index);
-void   sort_variables        (t_context_ptr context, t_storage_ptr storage);
+void   add_variable          (t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value, memory_prototype_item_type type);
+void   locate_variables_to_memory(t_context_ptr context, t_storage_ptr storage);
 
 void compile                    (t_context_ptr context);
 void compile_internal           (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);

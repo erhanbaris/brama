@@ -314,8 +314,19 @@ typedef enum _memory_prototype_item_type {
     MEMORY_PROTOTYPE_CONST,
     MEMORY_PROTOTYPE_VARIABLE,
     MEMORY_PROTOTYPE_TEMPORARY,
-    MEMORY_PROTOTYPE_RETURN_BACK
+    MEMORY_PROTOTYPE_RETURN_VAR,
+    MEMORY_PROTOTYPE_TOTAL_ARGS,
+    MEMORY_PROTOTYPE_FUNCTION_ARG,
 } memory_prototype_item_type;
+
+static memory_prototype_item_type MEMORY_SORT_INFO[] = {
+    MEMORY_PROTOTYPE_CONST,
+    MEMORY_PROTOTYPE_RETURN_VAR,
+    MEMORY_PROTOTYPE_TOTAL_ARGS,
+    MEMORY_PROTOTYPE_VARIABLE,
+    MEMORY_PROTOTYPE_FUNCTION_ARG,
+    MEMORY_PROTOTYPE_TEMPORARY
+};
 
 typedef struct {
     brama_status status;
@@ -528,6 +539,7 @@ typedef struct _t_compile_switch_case  t_compile_switch_case;
 typedef struct _t_compile_func_decl  t_compile_func_decl;
 typedef struct _t_function_referance t_function_referance;
 typedef struct _t_brama_link         t_brama_link;
+typedef struct _t_memory_prototype_item t_memory_prototype_item;
 
 typedef t_vm_object*       t_vm_object_ptr;
 typedef t_tokinizer*       t_tokinizer_ptr;
@@ -560,6 +572,7 @@ typedef t_compile_switch_case*  t_compile_switch_case_ptr;
 typedef t_compile_func_decl*    t_compile_func_decl_ptr;
 typedef t_function_referance*   t_function_referance_ptr;
 typedef t_brama_link*           t_brama_link_ptr;
+typedef t_memory_prototype_item* t_memory_prototype_item_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
 typedef int*               int_ptr;
@@ -639,7 +652,7 @@ typedef struct _t_compiler {
     vec_byte_ptr      op_codes;
     t_storage_ptr     global_storage;
     vec_storage       storages;
-    t_vm_object_ptr   head;
+    t_vm_object_ptr   object_head;
     vec_link          links;
     size_t            total_object;
     size_t            storage_index;
@@ -657,10 +670,11 @@ typedef struct _t_storage {
     size_t        loop_counter;
     size_t        temp_counter;    
 
-    map_function_referance functions;
-    vec_value     variables;
-    map_size_t    variable_names;
-    t_storage_ptr previous_storage;
+    map_function_referance      functions;
+    vec_value                   variables;
+    map_size_t                  variable_names;
+    t_storage_ptr               previous_storage;
+    t_memory_prototype_item_ptr memory_prototype_head;
 } t_storage;
 
 typedef struct _t_primative {
@@ -875,6 +889,13 @@ typedef struct _t_brama_link {
     t_brama_value* source;
     t_brama_value* destination;
 } t_brama_link;
+
+typedef struct _t_memory_prototype_item {
+    t_brama_value               value;
+    char_ptr                    name;
+    memory_prototype_item_type  type;
+    t_memory_prototype_item_ptr next;
+} t_memory_prototype_item;
 
 /* VM Defs */
 
