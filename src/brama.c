@@ -1436,6 +1436,11 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama
     *ast = new_assign_ast(assign);
     set_semicolon_and_newline(context, *ast);
 
+    if (right != NULL) {
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
+    }
+
     return BRAMA_OK;
 }
 
@@ -3515,6 +3520,7 @@ void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr st
         /* Build 'true' block */
         compile_internal(context, ast->true_body, storage, compile_info, AST_IF_STATEMENT);
         COMPILE_CHECK();
+        storage->temp_counter = temp_counter; // Reset temp counter
         vec_push(context->compiler->op_codes, NULL); // Put 'true' jmp code
 
         jmp_true_location = context->compiler->op_codes->length - 1;
@@ -3558,6 +3564,7 @@ void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr st
         /* Build 'true' block */
         compile_internal(context, ast->true_body, storage, compile_info, AST_IF_STATEMENT);
         COMPILE_CHECK();
+        storage->temp_counter = temp_counter; // Reset temp counter
 
         /* Configure 'false' block jmp opcode */
         code.op = VM_OPT_JMP;
@@ -3748,6 +3755,8 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
 }
 
 void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    size_t temp_counter = storage->temp_counter;
+
     int assignment_variable_index = compile_info->index;
     size_t function_variable_index = -1;
 
@@ -3786,6 +3795,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
     code.reg3 = function_variable_index; /* Function address */
     code.scal = 0;
     vec_push(context->compiler->op_codes, vm_encode(&code));
+    storage->temp_counter = temp_counter;
 }
 
 void brama_func_console_log(t_context_ptr context, size_t param_size, t_brama_value* params) {
@@ -3910,11 +3920,13 @@ void compile_return(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
     }
 
     if (ast->ast_ptr != NULL) {
+        size_t temp_counter = storage->temp_counter;
         size_t opcode_count  = context->compiler->op_codes->length;
         size_t* return_index = map_get(&storage->variable_names, RETURN_VAR);
         compile_info->index  = *return_index; 
         compile_internal(context, ast->ast_ptr, storage, compile_info, AST_RETURN);
         COMPILE_CHECK();
+        storage->temp_counter = temp_counter;
 
         if (ast->ast_ptr->type == AST_SYMBOL) {
             t_brama_vmdata code;
@@ -4333,11 +4345,12 @@ int get_variable_address(t_context_ptr context, t_storage_ptr storage, char_ptr 
 void add_variable(t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value, memory_prototype_item_type type) {
 
     bool head_inited      = true;
+    bool is_new_node      = false;
     t_memory_prototype_item_ptr last_node = NULL;
     t_memory_prototype_item_ptr node      = storage->memory_prototype_head;
 
     if (NULL != node) {
-        while(NULL != node && (MEMORY_PROTOTYPE_TEMPORARY == type || MEMORY_PROTOTYPE_CONST == type || 0 != strcmp(node->name, name))) {
+        while(NULL != node && (MEMORY_PROTOTYPE_TEMPORARY == type || MEMORY_PROTOTYPE_CONST == type || (node->name != NULL && 0 != strcmp(node->name, name)))) {
             last_node = node;
             node      = node->next;
         }
@@ -4348,17 +4361,23 @@ void add_variable(t_context_ptr context, t_storage_ptr storage, char_ptr name, t
     if (!head_inited) {
         storage->memory_prototype_head = BRAMA_MALLOC(sizeof(t_memory_prototype_item));
         node                           = storage->memory_prototype_head;
+        is_new_node                    = true;
+        storage->memory_prototype_head->next = NULL;
     }
 
-    if (NULL == node)
-        node = BRAMA_MALLOC(sizeof(t_memory_prototype_item));
+    if (NULL == node) {
+        node        = BRAMA_MALLOC(sizeof(t_memory_prototype_item));
+        is_new_node = true;
+        node->next  = NULL;
+    } 
+    else if (node->type > type)
+        return;
 
     node->name      = name;
     node->type      = type;
     node->value     = value;
-    node->next      = NULL;
     
-    if (NULL != last_node)
+    if (NULL != last_node && is_new_node)
         last_node->next = node;
 }
 
@@ -4370,18 +4389,18 @@ void add_variable(t_context_ptr context, t_storage_ptr storage, char_ptr name, t
 void locate_variables_to_memory(t_context_ptr context, t_storage_ptr storage) {
     vec_value_ptr  variables      = &storage->variables;
     map_size_t_ptr variable_names = &storage->variable_names;
-    size_t total_item             = sizeof(MEMORY_SORT_INFO) / sizeof(MEMORY_SORT_INFO[0]);
 
-    for (size_t i = 0; i < total_item; ++i) {
+    for (size_t i = 0; i < MEMORY_PROTOTYPE_LENGTH; ++i) {
         t_memory_prototype_item_ptr node      = storage->memory_prototype_head;
         t_memory_prototype_item_ptr last_node = NULL;
 
         while(NULL != node) {
-            if (MEMORY_SORT_INFO[i] == node->type) {
-                if (MEMORY_SORT_INFO[i] == MEMORY_PROTOTYPE_CONST)
+            if (i == node->type) {
+                if (i == MEMORY_PROTOTYPE_CONST)
                     ++storage->constant_count;
-                else if (MEMORY_SORT_INFO[i] == MEMORY_PROTOTYPE_TEMPORARY)
-                    ++storage->temp_count;
+                else if (i == MEMORY_PROTOTYPE_TEMPORARY) {
+                    //++storage->temp_count;
+                }
                 else 
                     ++storage->variable_count;
 
@@ -4521,10 +4540,6 @@ brama_status brama_destroy_get_var(t_context_ptr context, t_get_var_info** var_i
 }
 
 void brama_compile_dump(t_context_ptr context) {
-
-    /* Print main(global) memory */
-    //brama_compile_dump_memory(context->compiler->global_storage);
-
     /* Print function storages */
     t_storage_ptr func_storage = NULL;
     int index                  = -1;
@@ -4552,7 +4567,7 @@ void brama_compile_dump_storage(t_storage_ptr storage) {
     if (storage->constant_count > 0) {
         //printf ("\r\n----------------------------------------\r\n");
         printf ("\r\n Index   | Constant         \r\n");
-        printf ("--------------------------------------------------\r\n");
+        printf ("---------+----------------------------------------\r\n");
 
         for (int i = 0; i < storage->constant_count; ++i) {
             tmp_val = storage->variables.data[i];
@@ -4571,14 +4586,14 @@ void brama_compile_dump_storage(t_storage_ptr storage) {
                 printf ("%8d |  (%s)\r\n", i, AS_FUNCTION(tmp_val)->name);
             else
                 printf ("%8d |  ERROR!\r\n", i);
-            printf ("--------------------------------------------------\r\n");
+            printf ("---------+----------------------------------------\r\n");
         }
     }
 
     if (storage->variables.length > 0) {
         //printf ("\r\n----------------------------------------\r\n");
         printf ("\r\n Index   | Variable         |    Data\r\n");
-        printf ("--------------------------------------------------\r\n");
+        printf ("---------+------------------+---------------------\r\n");
         char_ptr* variable_infos = BRAMA_CALLOC(storage->variables.length, sizeof(char_ptr));
 
         map_iter_t iter = map_iter(&storage->variable_names);
@@ -4605,7 +4620,7 @@ void brama_compile_dump_storage(t_storage_ptr storage) {
                 printf ("%8d |  %-15s | (%s)\r\n", i, variable_infos[i], AS_FUNCTION(tmp_val)->name);
             else
                 printf ("%8d |  ERROR!\r\n", i);
-            printf ("--------------------------------------------------\r\n");
+            printf ("---------+------------------+---------------------\r\n");
         }
 
         BRAMA_FREE(variable_infos);
@@ -4621,7 +4636,7 @@ void brama_compile_dump_memory(t_brama_value* variables, map_size_t_ptr variable
 
     //printf ("\r\n----------------------------------------\r\n");
     printf ("\r\n Index   | Variable         |    Data\r\n");
-    printf ("--------------------------------------------------\r\n");
+    printf ("---------+------------------+---------------------\r\n");
     char_ptr* variable_infos = BRAMA_CALLOC(size, sizeof(char_ptr));
 
     map_iter_t iter = map_iter(&storage->variable_names);
@@ -4650,7 +4665,7 @@ void brama_compile_dump_memory(t_brama_value* variables, map_size_t_ptr variable
             printf ("%8d |  %-15s | (%s)\r\n", i, variable_infos[i], AS_FUNCTION(tmp_val)->name);
         else
             printf ("%8d |  ERROR!\r\n", i);
-        printf ("--------------------------------------------------\r\n");
+        printf ("---------+------------------+---------------------\r\n");
     }
     
     printf("\r\n######################################################\r\n");
@@ -4667,7 +4682,7 @@ void brama_compile_dump_codes(t_context_ptr context) {
     printf (" # STORAGE SIZE = %d\r\n", context->compiler->storages.length);
     //printf ("----------------------------------------\r\n");
     printf (" Index   |   Opcode      |    Data\r\n");
-    printf ("--------------------------------------------------\r\n");
+    printf ("---------+---------------+------------------------\r\n");
 
     vec_foreach(bytes, val, index) {
         t_brama_vmdata vmdata;
@@ -4715,7 +4730,7 @@ void brama_compile_dump_codes(t_context_ptr context) {
                 printf ("%8d |    %-10s | Reg1: %-3d  Reg2: %-3d  Reg3: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
                 break;
         }
-        printf ("--------------------------------------------------\r\n");
+        printf ("---------+---------------+------------------------\r\n");
     }
 }
 
@@ -5099,7 +5114,6 @@ void run(t_context_ptr context) {
             }
 
             case VM_OPT_CALL: {
-                brama_compile_dump_memory(variables, &storage->variable_names, storage->variables.length);
                 size_t args_length    = vmdata.reg2;
                 size_t function_index = vmdata.reg3;
 
@@ -5162,9 +5176,9 @@ void run(t_context_ptr context) {
                 
                 /* Real variable start location */
                 variables = &variables[2];
-                
+
                 /* Copy function arguments to new memory */
-                memcpy(variables + storage->constant_count + 2, previous_storage->variables.data + function_args_location, arg_count * sizeof(t_brama_value));
+                memcpy(variables + storage->variables.length - storage->temp_count - obj->args_length, previous_variables + function_args_location, arg_count * sizeof(t_brama_value));
                 variables[storage->constant_count + 1] = numberToValue(arg_count);
 
                 ipc = location_zero + obj->location;
@@ -5174,7 +5188,6 @@ void run(t_context_ptr context) {
             case VM_OPT_RETURN: {
                 t_brama_value function_value = *(variables + storage->constant_count);
                 double return_data = valueToNumber(function_value);
-                //brama_compile_dump_memory(variables, &storage->variable_names, storage->variables.length);
                 
                 t_brama_value* memory_block = variables;
                 

@@ -28,7 +28,7 @@ int main(int argc, const char* argv[]) {
 
     munit_assert_int(status,         == , BRAMA_OK);
     munit_assert_int(var_info->type, == , CONST_INTEGER);
-    munit_assert_int(var_info->double_, == , 2048);
+    munit_assert_int(var_info->double_, == , 80);
     brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
