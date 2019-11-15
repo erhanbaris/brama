@@ -2287,7 +2287,7 @@ void brama_run(t_context_ptr context) {
 
     compile(context);
     COMPILE_CHECK();
-    
+
     run(context);
 }
 
@@ -3185,7 +3185,7 @@ void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr
     if (upper_ast == AST_ASSIGNMENT)
         dest_id = compile_info->index;
     else        
-        dest_id = storage->constant_count + storage->variable_count + storage->temp_counter++;
+        dest_id = ((storage->variables.length - storage->temp_count)) + storage->temp_counter++;
 
     compile_internal(context, ast->left, storage, compile_info, AST_NONE);
     COMPILE_CHECK();
@@ -3259,7 +3259,7 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
     if (upper_ast == AST_ASSIGNMENT || upper_ast == AST_RETURN)
         dest_id = compile_info->index;
     else 
-        dest_id = storage->constant_count + storage->variable_count + storage->temp_counter++;
+        dest_id = (storage->variables.length - storage->temp_count) + storage->temp_counter++;
 
     compile_internal(context, ast->left, storage, compile_info, AST_NONE);
     COMPILE_CHECK();
@@ -3790,7 +3790,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
 
     t_brama_vmdata code;
     code.op   = VM_OPT_CALL;
-    code.reg1 = assignment_variable_index == -1 ? storage->constant_count + storage->variable_count + storage->temp_counter++ : assignment_variable_index;
+    code.reg1 = assignment_variable_index == -1 ? ((storage->variables.length - storage->temp_count)) + storage->temp_counter++ : assignment_variable_index;
     code.reg2 = ast->args->length;       /* Total passed arguments */
     code.reg3 = function_variable_index; /* Function address */
     code.scal = 0;
@@ -4350,9 +4350,21 @@ void add_variable(t_context_ptr context, t_storage_ptr storage, char_ptr name, t
     t_memory_prototype_item_ptr node      = storage->memory_prototype_head;
 
     if (NULL != node) {
-        while(NULL != node && (MEMORY_PROTOTYPE_TEMPORARY == type || MEMORY_PROTOTYPE_CONST == type || (node->name != NULL && 0 != strcmp(node->name, name)))) {
+        while(true) {
             last_node = node;
             node      = node->next;
+
+            if (NULL == node)
+                break;
+
+            if (node->type == type && node->value == value && type == MEMORY_PROTOTYPE_CONST)
+                break;
+
+            if (node->type == type && type & (MEMORY_PROTOTYPE_RETURN_VAR | MEMORY_PROTOTYPE_TOTAL_ARGS))
+                break;
+
+            if ((type & (MEMORY_PROTOTYPE_VARIABLE | MEMORY_PROTOTYPE_FUNCTION_ARG)) && (node->type & (MEMORY_PROTOTYPE_VARIABLE | MEMORY_PROTOTYPE_FUNCTION_ARG)) && NULL != name && node->name != NULL && 0 == strcmp(node->name, name))
+                break;
         }
     }
     else
@@ -5035,7 +5047,7 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
                 
-                brama_compile_dump_memory(variables, &storage->variable_names, storage->variables.length);
+                //brama_compile_dump_memory(variables, &storage->variable_names, storage->variables.length);
                 
                 if (IS_NUM(left) && IS_NUM(right))  {
                     *(variables + vmdata.reg1) = numberToValue(valueToNumber(left) + valueToNumber(right));
@@ -5200,7 +5212,6 @@ void run(t_context_ptr context) {
                 vm_decode(ipc[0], &tmp_vmdata);
                 *(variables + tmp_vmdata.reg1) = function_value;
             
-                printf("");
                 break;
             }
         }

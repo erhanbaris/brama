@@ -311,13 +311,13 @@ typedef enum func_def_type {
 } func_def_type;
 
 typedef enum _memory_prototype_item_type {
-    MEMORY_PROTOTYPE_CONST        = 0,
-    MEMORY_PROTOTYPE_RETURN_VAR   = 1,
-    MEMORY_PROTOTYPE_TOTAL_ARGS   = 2,
-    MEMORY_PROTOTYPE_VARIABLE     = 3,
-    MEMORY_PROTOTYPE_FUNCTION_ARG = 4,
-    MEMORY_PROTOTYPE_TEMPORARY    = 5,
-    MEMORY_PROTOTYPE_LENGTH       = 6
+    MEMORY_PROTOTYPE_CONST        = 1 << 0,
+    MEMORY_PROTOTYPE_RETURN_VAR   = 1 << 1,
+    MEMORY_PROTOTYPE_TOTAL_ARGS   = 1 << 2,
+    MEMORY_PROTOTYPE_VARIABLE     = 1 << 3,
+    MEMORY_PROTOTYPE_FUNCTION_ARG = 1 << 4,
+    MEMORY_PROTOTYPE_TEMPORARY    = 1 << 5,
+    MEMORY_PROTOTYPE_LENGTH       = 1 << 6
 } memory_prototype_item_type;
 
 typedef struct {

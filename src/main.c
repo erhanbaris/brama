@@ -13,13 +13,13 @@
 #include "brama.h"
 
 int main(int argc, const char* argv[]) {
-    t_context* context = brama_init();
-    brama_compile(context, "function sum(n, m) { "
-    "  return sum_2(30, 50) "
-    "};"
-    "function sum_2(n, m) { "
-    "  return n + m "
-    "}; var test = sum(30, 50); ");
+     t_context* context = brama_init();
+    brama_compile(context, "function fib(n) { "
+"  if (n < 2){ "
+"    return n "
+"  } var p1 =  fib(n - 1) ; var p2 =  fib(n - 2) ; "
+"  return p1 + p2 "
+"}; var test = fib(10);");
     brama_run(context);
     brama_compile_dump(context);
     
@@ -28,7 +28,7 @@ int main(int argc, const char* argv[]) {
 
     munit_assert_int(status,         == , BRAMA_OK);
     munit_assert_int(var_info->type, == , CONST_INTEGER);
-    munit_assert_int(var_info->double_, == , 80);
+    munit_assert_int(var_info->double_, == , 55);
     brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
