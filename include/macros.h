@@ -16,6 +16,20 @@
 #define TOTAL_ARGS_VAR "!total_args"
 #define RETURN_VAR "!return"
 
+#define vm_decode(instr, t) do {\
+    (t).op   = ((instr) & OP_MASK  ) >> 24;\
+    (t).reg1 = ((instr) & REG1_MASK) >> 16;\
+    (t).reg2 = ((instr) & REG2_MASK) >> 8;\
+    (t).reg3 = ((instr) & REG3_MASK);\
+    (t).scal = ((instr) & SCAL_MASK);\
+} while(0)
+
+#define vm_encode(t)    ((((t).op   << 24) & OP_MASK  ) |\
+                         (((t).reg1 << 16) & REG1_MASK) |\
+                         (((t).reg2 << 8 ) & REG2_MASK) |\
+                         (((t).reg3      ) & REG3_MASK) |\
+                         (((t).scal      ) & SCAL_MASK))
+
 #define OPERATOR_CASE_DOUBLE_START_WITH(OPERATOR_1_SYMBOL, OPERATOR_2_SYMBOL, OPERATOR_3_SYMBOL, OPERATOR_1, OPERATOR_2, OPERATOR_3) \
     case OPERATOR_1_SYMBOL :                       \
         if (chNext == OPERATOR_2_SYMBOL ) {        \
@@ -179,8 +193,8 @@ do { \
     return RETURN_CODE ;   \
 } while(0)
 
-#define CLEAR_AST(AST)       if ( AST    != NULL ) do { destroy_ast   ( AST );        BRAMA_FREE( AST );    AST    = NULL; } while(0)
-#define CLEAR_VECTOR(VECTOR) if ( VECTOR != NULL ) do { destroy_ast_vector( VECTOR ); BRAMA_FREE( VECTOR ); VECTOR = NULL; } while(0)
+#define CLEAR_AST(AST)       if ( AST    != NULL ) do { destroy_ast   ( context, AST );        BRAMA_FREE( AST );    AST    = NULL; } while(0)
+#define CLEAR_VECTOR(VECTOR) if ( VECTOR != NULL ) do { destroy_ast_vector(context, VECTOR ); BRAMA_FREE( VECTOR ); VECTOR = NULL; } while(0)
 
 #define vector_get(VECTOR, INDEX) VECTOR ->data[ INDEX ]
 
@@ -197,8 +211,8 @@ do { \
 #else
 #    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) malloc ( SIZE )
 #    define BRAMA_CALLOC(NUM, SIZE)                 calloc ( NUM , SIZE )
-#    define BRAMA_MALLOC( SIZE )                    malloc ( SIZE )
-#    define BRAMA_FREE(PTR)                         free   ( PTR )
+#    define BRAMA_MALLOC( SIZE )                    allocate(context->allocator, SIZE , 8)
+#    define BRAMA_FREE(PTR)                         free_memory   ( context->allocator, PTR )
 
 #endif
 

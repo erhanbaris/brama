@@ -246,7 +246,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     munit_assert_ptr_not_null(ast->primative_ptr);
     munit_assert_int         (ast->primative_ptr->type, ==, PRIMATIVE_STRING);
     munit_assert_string_equal(ast->primative_ptr->char_ptr, "hello world");
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
@@ -256,7 +256,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     munit_assert_ptr_not_null(ast->primative_ptr);
     munit_assert_int         (ast->primative_ptr->type, ==, PRIMATIVE_STRING);
     munit_assert_string_equal(ast->primative_ptr->char_ptr, "hi all");
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
@@ -266,7 +266,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     munit_assert_ptr_not_null(ast->primative_ptr);
     munit_assert_int         (ast->primative_ptr->type, ==, PRIMATIVE_INTEGER);
     munit_assert_int         (ast->primative_ptr->double_, ==, 1024);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
@@ -276,7 +276,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     munit_assert_ptr_not_null(ast->primative_ptr);
     munit_assert_int         (ast->primative_ptr->type,  ==, PRIMATIVE_BOOL);
     munit_assert_int         (ast->primative_ptr->bool_, ==, true);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
@@ -285,7 +285,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(ast->primative_ptr);
     munit_assert_int         (ast->primative_ptr->type, ==, PRIMATIVE_NULL);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
@@ -295,12 +295,12 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     munit_assert_ptr_not_null(ast->primative_ptr);
     munit_assert_int         (ast->primative_ptr->type,    ==, PRIMATIVE_DOUBLE);
     munit_assert_double      (ast->primative_ptr->double_, ==, 3.14);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
     munit_assert_int         (as_primative(ast_consume(context), &ast), ==, BRAMA_PARSE_ERROR);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -343,53 +343,53 @@ MunitResult ast_primary_expr_test_1(const MunitParameter params[], void* user_da
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->primative_ptr->double_, ==, 10);
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_INTEGER);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_double(ast->primative_ptr->double_, ==, 10.1);
     munit_assert_int(ast->primative_ptr->type,    ==, PRIMATIVE_DOUBLE);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->primative_ptr->bool_, ==, true);
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_BOOL);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->primative_ptr->bool_, ==, false);
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_BOOL);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_NULL);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_string_equal(ast->primative_ptr->char_ptr, "hello");
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_STRING);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_string_equal(ast->primative_ptr->char_ptr, "world");
     munit_assert_int(ast->primative_ptr->type, ==, PRIMATIVE_STRING);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_DOES_NOT_MATCH_AST);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -426,7 +426,7 @@ MunitResult ast_primary_expr_test_2(const MunitParameter params[], void* user_da
 
     munit_assert_int         (((t_ast_ptr)vector_get(vector, 6))->primative_ptr->type, ==, PRIMATIVE_STRING);
     munit_assert_string_equal(((t_ast_ptr)vector_get(vector, 6))->primative_ptr->char_ptr, "world");
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -442,7 +442,7 @@ MunitResult ast_primary_expr_test_3(const MunitParameter params[], void* user_da
     munit_assert_int     (ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_OK);
     munit_assert_int     (ast->type,                                  ==, AST_BLOCK);
     munit_assert_ptr_null(ast->ast_ptr->vector_ptr);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -463,7 +463,7 @@ MunitResult ast_primary_expr_test_4(const MunitParameter params[], void* user_da
     munit_assert_int         (((t_ast_ptr)*map_get(dictionary, "hello"))->type,                ==, AST_PRIMATIVE);
     munit_assert_int         (((t_ast_ptr)*map_get(dictionary, "hello"))->primative_ptr->type, ==, PRIMATIVE_STRING);
     munit_assert_string_equal(((t_ast_ptr)*map_get(dictionary, "hello"))->primative_ptr->char_ptr, "world");
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -512,7 +512,7 @@ MunitResult ast_primary_expr_test_5(const MunitParameter params[], void* user_da
     munit_assert_int         (((t_ast_ptr)vector_get(array, 1))->primative_ptr->type, ==, PRIMATIVE_INTEGER);
     munit_assert_int         (((t_ast_ptr)vector_get(array, 1))->primative_ptr->double_, ==, 2);
 
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
     brama_destroy(context);
     return MUNIT_OK;
@@ -547,7 +547,7 @@ MunitResult ast_primary_expr_test_8(const MunitParameter params[], void* user_da
 
     t_ast_ptr ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE),  ==, BRAMA_OK);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
     brama_destroy(context);
     return MUNIT_OK;
@@ -627,7 +627,7 @@ MunitResult ast_symbol_expr_test_1(const MunitParameter params[], void* user_dat
     munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int         (ast->type,                      ==, AST_SYMBOL);
     munit_assert_string_equal(ast->char_ptr,                  "hello_world");
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
     brama_destroy(context);
     return MUNIT_OK;
@@ -641,7 +641,7 @@ MunitResult ast_symbol_expr_test_2(const MunitParameter params[], void* user_dat
     t_ast_ptr ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->type, ==, AST_PRIMATIVE);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
     brama_destroy(context);
     return MUNIT_OK;
@@ -659,7 +659,7 @@ MunitResult ast_call_expr_test_1(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_SYMBOL);
     munit_assert_string_equal(ast->func_call_ptr->function->char_ptr, "test");
     munit_assert_int         (ast->func_call_ptr->args->length, ==, 1);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -682,7 +682,7 @@ MunitResult ast_call_expr_test_2(const MunitParameter params[], void* user_data_
     munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->type,                ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->primative_ptr);
     munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->primative_ptr->type, == , PRIMATIVE_DICTIONARY);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -704,7 +704,7 @@ MunitResult ast_call_expr_test_3(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->func_call_ptr->args->length, ==, 1);
     munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->type, ==, AST_FUNCTION_DECLARATION);
     munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->func_decl_ptr);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -765,7 +765,7 @@ MunitResult ast_mult_expr_test_1(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_MULTIPLICATION);
     munit_assert_ptr_not_null(ast->binary_ptr->left);
     munit_assert_ptr_not_null(ast->binary_ptr->right);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -784,7 +784,7 @@ MunitResult ast_mult_expr_test_2(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_DIVISION);
     munit_assert_ptr_not_null(ast->binary_ptr->left);
     munit_assert_ptr_not_null(ast->binary_ptr->right);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -807,7 +807,7 @@ MunitResult ast_mult_expr_test_3(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->binary_ptr->right->type, == , AST_SYMBOL);
     munit_assert_string_equal(ast->binary_ptr->left->char_ptr, "_ten");
     munit_assert_string_equal(ast->binary_ptr->right->char_ptr, "_twelve");
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -830,7 +830,7 @@ MunitResult ast_mult_expr_test_4(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->binary_ptr->right->type, == , AST_PRIMATIVE);
     munit_assert_string_equal(ast->binary_ptr->left->char_ptr, "_ten");
     munit_assert_int         (ast->binary_ptr->right->primative_ptr->double_, == , 124);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -850,7 +850,7 @@ MunitResult ast_addition_expr_test_1(const MunitParameter params[], void* user_d
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_SUBTRACTION);
     munit_assert_ptr_not_null(ast->binary_ptr->left);
     munit_assert_ptr_not_null(ast->binary_ptr->right);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -869,7 +869,7 @@ MunitResult ast_addition_expr_test_2(const MunitParameter params[], void* user_d
     munit_assert_int         (ast->binary_ptr->opt, == , OPERATOR_ADDITION);
     munit_assert_ptr_not_null(ast->binary_ptr->left);
     munit_assert_ptr_not_null(ast->binary_ptr->right);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -892,7 +892,7 @@ MunitResult ast_addition_expr_test_3(const MunitParameter params[], void* user_d
     munit_assert_int         (ast->binary_ptr->right->type, == , AST_SYMBOL);
     munit_assert_string_equal(ast->binary_ptr->left->char_ptr, "_ten");
     munit_assert_string_equal(ast->binary_ptr->right->char_ptr, "_twelve");
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -915,7 +915,7 @@ MunitResult ast_addition_expr_test_4(const MunitParameter params[], void* user_d
     munit_assert_int         (ast->binary_ptr->right->type, == , AST_PRIMATIVE);
     munit_assert_string_equal(ast->binary_ptr->left->char_ptr, "_ten");
     munit_assert_int         (ast->binary_ptr->right->primative_ptr->double_, == , 124);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -942,7 +942,7 @@ MunitResult ast_addition_expr_test_5(const MunitParameter params[], void* user_d
     munit_assert_int         (ast->binary_ptr->right->binary_ptr->opt, ==, OPERATOR_MULTIPLICATION);
     munit_assert_int         (ast->binary_ptr->right->binary_ptr->left->primative_ptr->double_,  ==, 1000);
     munit_assert_int         (ast->binary_ptr->right->binary_ptr->right->primative_ptr->double_, ==, 2);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -971,7 +971,7 @@ MunitResult ast_addition_expr_test_6(const MunitParameter params[], void* user_d
     munit_assert_int         (ast->binary_ptr->right->binary_ptr->opt, ==, OPERATOR_ADDITION);
     munit_assert_int         (ast->binary_ptr->right->binary_ptr->left->primative_ptr->double_,  ==, 1024);
     munit_assert_int         (ast->binary_ptr->right->binary_ptr->right->primative_ptr->double_, ==, 2);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -996,7 +996,7 @@ MunitResult ast_control_expr_test_1(const MunitParameter params[], void* user_da
     munit_assert_int         (ast->control_ptr->left->primative_ptr->bool_, ==, true);
     munit_assert_ptr_not_null(ast->control_ptr->right->primative_ptr);
     munit_assert_int         (ast->control_ptr->right->primative_ptr->bool_, ==, false);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1029,7 +1029,7 @@ MunitResult ast_control_expr_test_2(const MunitParameter params[], void* user_da
     munit_assert_ptr_not_null(ast->control_ptr->right->binary_ptr->right);
     munit_assert_int         (ast->control_ptr->right->binary_ptr->left->primative_ptr->double_, ==, 256);
     munit_assert_int         (ast->control_ptr->right->binary_ptr->right->primative_ptr->double_, ==, 4);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1054,7 +1054,7 @@ MunitResult ast_equality_expr_test_1(const MunitParameter params[], void* user_d
     munit_assert_int         (ast->control_ptr->left->primative_ptr->bool_, ==, true);
     munit_assert_ptr_not_null(ast->control_ptr->right->primative_ptr);
     munit_assert_int         (ast->control_ptr->right->primative_ptr->bool_, ==, true);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1079,7 +1079,7 @@ MunitResult ast_equality_expr_test_2(const MunitParameter params[], void* user_d
     munit_assert_int         (ast->control_ptr->left->primative_ptr->bool_, ==, true);
     munit_assert_ptr_not_null(ast->control_ptr->right->primative_ptr);
     munit_assert_int         (ast->control_ptr->right->primative_ptr->bool_, ==, false);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1104,7 +1104,7 @@ MunitResult ast_and_expr_test(const MunitParameter params[], void* user_data_or_
     munit_assert_int         (ast->control_ptr->left->primative_ptr->bool_, ==, true);
     munit_assert_ptr_not_null(ast->control_ptr->right->primative_ptr);
     munit_assert_int         (ast->control_ptr->right->primative_ptr->bool_, ==, true);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1129,7 +1129,7 @@ MunitResult ast_or_expr_test(const MunitParameter params[], void* user_data_or_f
     munit_assert_int         (ast->control_ptr->left->primative_ptr->bool_, ==, true);
     munit_assert_ptr_not_null(ast->control_ptr->right->primative_ptr);
     munit_assert_int         (ast->control_ptr->right->primative_ptr->bool_, ==, true);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1153,7 +1153,7 @@ MunitResult ast_assignment_expr_test_1(const MunitParameter params[], void* user
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->primative_ptr);
     munit_assert_int         (ast->assign_ptr->assignment->primative_ptr->type, ==, PRIMATIVE_INTEGER);
     munit_assert_int         (ast->assign_ptr->assignment->primative_ptr->double_, ==, 1024);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1177,7 +1177,7 @@ MunitResult ast_assignment_expr_test_2(const MunitParameter params[], void* user
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->primative_ptr);
     munit_assert_int         (ast->assign_ptr->assignment->primative_ptr->type,     ==, PRIMATIVE_STRING);
     munit_assert_string_equal(ast->assign_ptr->assignment->primative_ptr->char_ptr, "hello world");
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1193,7 +1193,7 @@ MunitResult ast_assignment_expr_test_3(const MunitParameter params[], void* user
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), ==, BRAMA_OK);
     munit_assert_int(ast->type,                           ==, AST_ASSIGNMENT);
     munit_assert_int(ast->assign_ptr->assignment->type,   ==, AST_PRIMATIVE);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1213,7 +1213,7 @@ MunitResult ast_assignment_expr_test_4(const MunitParameter params[], void* user
     munit_assert_int(ast->assign_ptr->assignment->control_ptr->left->type,  ==, AST_PRIMATIVE);
     munit_assert_int(ast->assign_ptr->assignment->control_ptr->right->type, ==, AST_PRIMATIVE);
     munit_assert_int(ast->assign_ptr->assignment->control_ptr->opt,         ==, OPERATOR_EQUAL_VALUE);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1231,7 +1231,7 @@ MunitResult ast_assignment_expr_test_5(const MunitParameter params[], void* user
     munit_assert_int(ast->control_ptr->opt,         ==, OPERATOR_EQUAL_VALUE);
     munit_assert_int(ast->control_ptr->left->type,  ==, AST_ASSIGNMENT);
     munit_assert_int(ast->control_ptr->right->type, ==, AST_PRIMATIVE);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1388,7 +1388,7 @@ MunitResult ast_unary_expr_test_1(const MunitParameter params[], void* user_data
     munit_assert_int         (ast->unary_ptr->operand_type,   == , UNARY_OPERAND_BEFORE);
     munit_assert_int         (ast->unary_ptr->opt,            == , OPERATOR_SUBTRACTION);
     munit_assert_int         (ast->unary_ptr->content->type,  == , AST_SYMBOL);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1408,7 +1408,7 @@ MunitResult ast_unary_expr_test_2(const MunitParameter params[], void* user_data
     munit_assert_int         (ast->unary_ptr->operand_type,  == , UNARY_OPERAND_BEFORE);
     munit_assert_int         (ast->unary_ptr->content->type, == , AST_SYMBOL);
     munit_assert_string_equal(ast->unary_ptr->content->char_ptr, "test");
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1426,7 +1426,7 @@ MunitResult ast_unary_expr_test_3(const MunitParameter params[], void* user_data
     munit_assert_ptr_not_null(ast->unary_ptr);
     munit_assert_int         (ast->unary_ptr->opt,           == , OPERATOR_NOT);
     munit_assert_int         (ast->unary_ptr->content->type, == , AST_SYMBOL);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1457,7 +1457,7 @@ MunitResult ast_unary_expr_test_5(const MunitParameter params[], void* user_data
     munit_assert_int         (ast->unary_ptr->opt,                 == , OPERATOR_INCREMENT);
     munit_assert_int         (ast->unary_ptr->content->type,       == , AST_SYMBOL);
     munit_assert_string_equal(ast->unary_ptr->content->char_ptr, "test");
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1503,7 +1503,7 @@ MunitResult ast_func_decl_test_1(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->func_decl_ptr->body->type, ==, AST_BLOCK);
     munit_assert_ptr_not_null(ast->func_decl_ptr->body->vector_ptr);
     munit_assert_int         (ast->func_decl_ptr->body->vector_ptr->length, ==, 2);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1540,7 +1540,7 @@ MunitResult ast_func_decl_test_4(const MunitParameter params[], void* user_data_
 
     t_ast_ptr ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1554,7 +1554,7 @@ MunitResult ast_func_decl_test_5(const MunitParameter params[], void* user_data_
 
     t_ast_ptr ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1568,7 +1568,7 @@ MunitResult ast_func_decl_test_6(const MunitParameter params[], void* user_data_
 
     t_ast_ptr ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1582,7 +1582,7 @@ MunitResult ast_func_decl_test_7(const MunitParameter params[], void* user_data_
 
     t_ast_ptr ast = NULL;
     munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1602,7 +1602,7 @@ MunitResult ast_block_stmt_test_1(const MunitParameter params[], void* user_data
     munit_assert_int         (ast->type, ==, AST_BLOCK);
     munit_assert_ptr_not_null(ast->vector_ptr);
     munit_assert_int         (ast->vector_ptr->length, ==, 1);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1625,7 +1625,7 @@ MunitResult ast_block_stmt_test_2(const MunitParameter params[], void* user_data
     munit_assert_int         (ast->type, ==, AST_BLOCK);
     munit_assert_ptr_not_null(ast->vector_ptr);
     munit_assert_int         (ast->vector_ptr->length, ==, 5);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1656,7 +1656,7 @@ MunitResult ast_new_object_1(const MunitParameter params[], void* user_data_or_f
     munit_assert_string_equal(ast->object_creation_ptr->object_name, "test");
     munit_assert_ptr_not_null(ast->object_creation_ptr->args);
     munit_assert_int         (ast->object_creation_ptr->args->length, ==, 0);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1677,7 +1677,7 @@ MunitResult ast_new_object_2(const MunitParameter params[], void* user_data_or_f
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
     munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->length, ==, 0);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1698,7 +1698,7 @@ MunitResult ast_new_object_3(const MunitParameter params[], void* user_data_or_f
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
     munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->length, ==, 0);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);
@@ -1719,7 +1719,7 @@ MunitResult ast_new_object_4(const MunitParameter params[], void* user_data_or_f
     munit_assert_ptr_not_null(ast->assign_ptr->assignment->object_creation_ptr);
     munit_assert_string_equal(ast->assign_ptr->assignment->object_creation_ptr->object_name, "test");
     munit_assert_int         (ast->assign_ptr->assignment->object_creation_ptr->args->length, ==, 4);
-    destroy_ast(ast);
+    destroy_ast(context, ast);
     BRAMA_FREE(ast);
 
     brama_destroy(context);

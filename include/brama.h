@@ -10,6 +10,7 @@
 #include "vec.h"
 #include "macros.h"
 #include "tools.h"
+#include "allocator.h"
 
 //#if (__STDC_VERSION__ >= 201112L)
 //#endif
@@ -781,6 +782,7 @@ typedef struct _t_ast {
 } t_ast;
 
 typedef struct _t_context {
+    t_allocator* allocator;
     t_tokinizer* tokinizer;
     t_parser*    parser;
     t_compiler*  compiler;

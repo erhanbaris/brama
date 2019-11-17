@@ -1,13 +1,15 @@
 #include "tools.h"
+#include "brama.h"
 
 int string_stream_grow_buffer(t_string_stream* stream);
 
-t_string_stream* string_stream_init() {
+t_string_stream* string_stream_init(t_context_ptr context) {
     t_string_stream* stream = (t_string_stream*)BRAMA_MALLOC(sizeof(t_string_stream));
     stream->length          = 32;
     stream->index           = 0;
     stream->text_length     = 0;
     stream->data            = (char**)BRAMA_MALLOC(sizeof(char*) * stream->length);
+    stream->context         = context;
 
     if (stream->data == NULL)
         return NULL;
@@ -39,7 +41,8 @@ int string_stream_add_char(t_string_stream* stream, char data) {
         if (status != STRING_STREAM_OK)
             return status;
     }
-
+    
+    t_context_ptr context         = stream->context;
     char* tmpData                 = (char*)BRAMA_MALLOC((sizeof(char) * 2));
     tmpData[0]                    = data;
     tmpData[1]                    = '\0';
@@ -50,6 +53,7 @@ int string_stream_add_char(t_string_stream* stream, char data) {
 
 int string_stream_grow_buffer(t_string_stream* stream) {
     CHECK_STREAM_PTR(stream);
+    t_context_ptr context = stream->context;
 
     size_t tmpLength = stream->length * 2;
     char** tmpData   = (char**)BRAMA_MALLOC(sizeof(char*) * tmpLength);
@@ -67,8 +71,9 @@ int string_stream_grow_buffer(t_string_stream* stream) {
 
 int string_stream_get(t_string_stream* stream, char** text) {
     CHECK_STREAM_PTR(stream);
-
-    char* tmpData   = (char*)BRAMA_MALLOC((sizeof(char) * stream->text_length) + 1);
+    
+    t_context_ptr context = stream->context;
+    char* tmpData         = (char*)BRAMA_MALLOC((sizeof(char) * stream->text_length) + 1);
     if (tmpData == NULL)
         return STRING_STREAM_ERR_NO_MEMORY;
 
@@ -84,6 +89,7 @@ int string_stream_get(t_string_stream* stream, char** text) {
 
 int string_stream_destroy(t_string_stream* stream) {
     CHECK_STREAM_PTR(stream);
+    t_context_ptr context = stream->context;
 
     for (size_t i = 0; i < stream->index; ++i)
         BRAMA_FREE(stream->data[i]);

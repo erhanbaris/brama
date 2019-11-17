@@ -15,8 +15,8 @@ MunitResult encode_decode_1(const MunitParameter params[], void* user_data_or_fi
     vmdata.reg3 = 3;
     vmdata.scal = 0;
 
-    t_brama_byte code = vm_encode(&vmdata);
-    vm_decode(code, &vmdata_decoded);
+    t_brama_byte code = vm_encode(vmdata);
+    vm_decode(code, vmdata_decoded);
     munit_assert_int(vmdata_decoded.op,   ==, vmdata.op);
     munit_assert_int(vmdata_decoded.reg1, ==, vmdata.reg1);
     munit_assert_int(vmdata_decoded.reg2, ==, vmdata.reg2);
@@ -35,8 +35,8 @@ MunitResult encode_decode_2(const MunitParameter params[], void* user_data_or_fi
     vmdata.reg3 = 0;
     vmdata.scal = 60;
 
-    t_brama_byte code = vm_encode(&vmdata);
-    vm_decode(code, &vmdata_decoded);
+    t_brama_byte code = vm_encode(vmdata);
+    vm_decode(code, vmdata_decoded);
     munit_assert_int(vmdata_decoded.op,   ==, vmdata.op);
     munit_assert_int(vmdata_decoded.scal, ==, vmdata.scal);
 
