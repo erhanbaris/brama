@@ -52,7 +52,7 @@ void* allocate(t_allocator_ptr allocator, size_t size, const size_t alignment) {
     allocator->offset += size;
 
 #ifdef _DEBUG
-    std::cout << "A" << "\t@C " << (void*) currentAddress << "\t@R " << (void*) nextAddress << "\tO " << m_offset << "\tP " << padding << std::endl;
+    printf("A\t@C-%p\t@R-%p\tS-%d\tO-%d\tP-%d\r\n", (void*) currentAddress, (void*) nextAddress, size, allocator->offset, padding);
 #endif
     allocator->used = allocator->offset;
     allocator->peak = FAST_MAX(allocator->peak, allocator->used);
@@ -63,14 +63,14 @@ void* allocate(t_allocator_ptr allocator, size_t size, const size_t alignment) {
 void free_memory(t_allocator_ptr allocator, void *ptr) {
     // Move offset back to clear address
     const size_t currentAddress = (size_t) ptr;
-    const size_t headerAddress = allocator->memory - sizeof (struct AllocationHeader);
+    const size_t headerAddress = (size_t)allocator->memory - sizeof (struct AllocationHeader);
     struct AllocationHeader * allocationHeader = (struct AllocationHeader *) headerAddress;
 
     allocator->offset = currentAddress - allocationHeader->padding - (size_t) allocator->memory;
     allocator->used = allocator->offset;
 
     #ifdef _DEBUG
-        std::cout << "F" << "\t@C " << (void*) currentAddress << "\t@F " << (void*) ((char*) m_start_ptr + m_offset) << "\tO " << m_offset << std::endl;
+        printf("F\t@C-%p\t@F-%p\t\tO-%d\r\n", (void*) currentAddress, (void*) ((char*) allocator->memory + allocator->offset), allocator->offset); 
     #endif
 }
 

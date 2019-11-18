@@ -13,12 +13,13 @@
 #include "brama.h"
 
 int main(int argc, const char* argv[]) {
-
-    Stack* stack = stack_init(1024);
-    void* ss = stack_alloc(stack, 1000);
-    
-    t_context* context = brama_init();
-    brama_compile(context, "var test = 55;");
+     t_context* context = brama_init();
+    brama_compile(context, "function fib(n) { "
+"  if (n < 2){ "
+"    return n "
+"  } var p1 =  fib(n - 1) ; var p2 =  fib(n - 2) ; "
+"  return p1 + p2 "
+"}; var test = fib(10);");
     brama_run(context);
     brama_compile_dump(context);
     

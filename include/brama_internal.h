@@ -26,7 +26,7 @@ bool        is_primative      (t_token_ptr token);
 bool        is_next_new_line  (t_context_ptr context);
 void        set_semicolon_and_newline(t_context_ptr context, t_ast_ptr ast);
 
-brama_status as_primative            (t_token_ptr token, t_ast_ptr_ptr ast);
+brama_status as_primative            (t_context_ptr context, t_token_ptr token, t_ast_ptr_ptr ast);
 brama_status ast_parser              (t_context_ptr context);
 brama_status ast_declaration_stmt    (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_expression          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);

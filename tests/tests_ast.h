@@ -240,7 +240,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     munit_assert_int(context->tokinizer->tokens->length, ==, 7);
     context->parser->index = 0;
     t_ast* ast = NULL;
-    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, BRAMA_OK);
+    munit_assert_int         (as_primative(context, ast_consume(context), &ast), ==, BRAMA_OK);
     munit_assert_ptr_not_null(ast);
     munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(ast->primative_ptr);
@@ -250,7 +250,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, BRAMA_OK);
+    munit_assert_int         (as_primative(context, ast_consume(context), &ast), ==, BRAMA_OK);
     munit_assert_ptr_not_null(ast);
     munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(ast->primative_ptr);
@@ -260,7 +260,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, BRAMA_OK);
+    munit_assert_int         (as_primative(context, ast_consume(context), &ast), ==, BRAMA_OK);
     munit_assert_ptr_not_null(ast);
     munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(ast->primative_ptr);
@@ -270,7 +270,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, BRAMA_OK);
+    munit_assert_int         (as_primative(context, ast_consume(context), &ast), ==, BRAMA_OK);
     munit_assert_ptr_not_null(ast);
     munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(ast->primative_ptr);
@@ -280,7 +280,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, BRAMA_OK);
+    munit_assert_int         (as_primative(context, ast_consume(context), &ast), ==, BRAMA_OK);
     munit_assert_ptr_not_null(ast);
     munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(ast->primative_ptr);
@@ -289,7 +289,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, BRAMA_OK);
+    munit_assert_int         (as_primative(context, ast_consume(context), &ast), ==, BRAMA_OK);
     munit_assert_ptr_not_null(ast);
     munit_assert_int         (ast->type, ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(ast->primative_ptr);
@@ -299,7 +299,7 @@ MunitResult ast_primative_test_1(const MunitParameter params[], void* user_data_
     BRAMA_FREE(ast);
 
     ast = NULL;
-    munit_assert_int         (as_primative(ast_consume(context), &ast), ==, BRAMA_PARSE_ERROR);
+    munit_assert_int         (as_primative(context, ast_consume(context), &ast), ==, BRAMA_PARSE_ERROR);
     destroy_ast(context, ast);
     BRAMA_FREE(ast);
 

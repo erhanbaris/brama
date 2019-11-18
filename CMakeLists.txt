@@ -51,6 +51,8 @@ add_executable(brama
         tests/munit.c
         tests/munit.h
         src/brama.c
+        src/allocator.c
+        include/allocator.h
         include/brama.h
         include/tools.h
         include/macros.h

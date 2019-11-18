@@ -487,7 +487,7 @@ NEW_AST_DEF(return,    t_ast_ptr,             AST_RETURN,               ast_ptr,
 NEW_AST_DEF(accessor,  t_accessor_ptr,        AST_ACCESSOR,             accessor_ptr, false)
 NEW_AST_DEF(keyword,   brama_keyword_type,    AST_KEYWORD,              keyword, false)
 
-brama_status as_primative(t_token_ptr token, t_ast_ptr_ptr ast) {
+brama_status as_primative(t_context_ptr context, t_token_ptr token, t_ast_ptr_ptr ast) {
     switch (token->type) {
     case TOKEN_INTEGER:
         *ast = new_primative_ast_int(get_double(token));
@@ -535,7 +535,7 @@ bool is_primative(t_token_ptr token) {
 brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     if (is_primative(ast_peek(context))) {
         ast_consume(context);
-        return as_primative(ast_previous(context), ast);
+        return as_primative(context, ast_previous(context), ast);
     }
 
     BACKUP_PARSER_INDEX();
@@ -2182,7 +2182,7 @@ t_context_ptr brama_init() {
     t_context_ptr context      = (t_context_ptr)malloc(sizeof(t_context));
     context->error_message     = NULL;
     
-    context->allocator         = init_allocator(1014 * 1024 * 1024);
+    context->allocator         = init_allocator(1014 * 1024 * 1);
     
     /* tokinizer */
     context->tokinizer         = (t_tokinizer_ptr)BRAMA_MALLOC(sizeof(t_tokinizer));
@@ -4754,7 +4754,10 @@ void run(t_context_ptr context) {
     t_storage_ptr  storage          = context->compiler->global_storage;
     t_storage_ptr  previous_storage = NULL;
     t_storage_ptr* storages         = context->compiler->storages.data;
-
+    
+    DoubleBits tmp_data_1;
+    DoubleBits tmp_data_2;
+    DoubleBits tmp_data_3;
 
     vec_byte_ptr   bytes              = context->compiler->op_codes;
     t_brama_value* variables          = context->compiler->global_storage->variables.data;
@@ -4810,7 +4813,9 @@ void run(t_context_ptr context) {
             case VM_OPT_INC: {
                 t_brama_value variable = *(variables + vmdata.reg1);
                 if (IS_NUM(variable)) {
-                    *(variables + vmdata.reg1) = numberToValue(valueToNumber(variable) + 1);
+                    tmp_data_1.bits64 = variable;
+                    tmp_data_2.num    = tmp_data_1.num + 1;
+                    *(variables + vmdata.reg1) = tmp_data_2.bits64;
                 }
                 break;
             }
@@ -4819,7 +4824,9 @@ void run(t_context_ptr context) {
             case VM_OPT_DINC: {
                 t_brama_value variable = *(variables + vmdata.reg1);
                 if (IS_NUM(variable)) {
-                    *(variables + vmdata.reg1) = numberToValue(valueToNumber(variable) - 1);
+                    tmp_data_1.bits64 = variable;
+                    tmp_data_2.num    = tmp_data_1.num - 1;
+                    *(variables + vmdata.reg1) = tmp_data_2.bits64;
                 }
                 break;
             }
@@ -5055,7 +5062,10 @@ void run(t_context_ptr context) {
                 //brama_compile_dump_memory(variables, &storage->variable_names, storage->variables.length);
                 
                 if (IS_NUM(left) && IS_NUM(right))  {
-                    *(variables + vmdata.reg1) = numberToValue(valueToNumber(left) + valueToNumber(right));
+                    tmp_data_1.bits64 = left;
+                    tmp_data_2.bits64 = right;
+                    tmp_data_3.num    = tmp_data_1.num + tmp_data_2.num;
+                    *(variables + vmdata.reg1) = tmp_data_3.bits64;
                 } else if (IS_UNDEFINED(left) || IS_UNDEFINED(right)) {
                     *(variables + vmdata.reg1) = NULL_VAL;
                     char_ptr tmp = BRAMA_MALLOC(sizeof(char) * 10);
@@ -5089,7 +5099,10 @@ void run(t_context_ptr context) {
                 t_brama_value right = *(variables + vmdata.reg3);
 
                 if (IS_NUM(left) && IS_NUM(right)) {
-                    *(variables + vmdata.reg1) = numberToValue(valueToNumber(left) - valueToNumber(right));
+                    tmp_data_1.bits64 = left;
+                    tmp_data_2.bits64 = right;
+                    tmp_data_3.num    = tmp_data_1.num - tmp_data_2.num;
+                    *(variables + vmdata.reg1) = tmp_data_3.bits64;
                 }
                 else if (IS_UNDEFINED(left) || IS_UNDEFINED(right)) {
                     *(variables + vmdata.reg1) = UNDEFINED_VAL;
@@ -5191,12 +5204,14 @@ void run(t_context_ptr context) {
                 /* Save previous variable memory */
                 variables[1] = (t_brama_value)previous_variables;
                 
+                size_t size = sizeof(t_brama_value) * (array_size  + 2);
                 /* Real variable start location */
                 variables = &variables[2];
 
                 /* Copy function arguments to new memory */
                 memcpy(variables + storage->variables.length - storage->temp_count - obj->args_length, previous_variables + function_args_location, arg_count * sizeof(t_brama_value));
-                variables[storage->constant_count + 1] = numberToValue(arg_count);
+                tmp_data_1.num = arg_count;
+                variables[storage->constant_count + 1] = tmp_data_1.bits64;
 
                 ipc = location_zero + obj->location;
                 break;
@@ -5204,7 +5219,6 @@ void run(t_context_ptr context) {
 
             case VM_OPT_RETURN: {
                 t_brama_value function_value = *(variables + storage->constant_count);
-                double return_data = valueToNumber(function_value);
                 
                 t_brama_value* memory_block = variables;
                 
