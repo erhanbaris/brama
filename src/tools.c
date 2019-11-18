@@ -4,11 +4,11 @@
 int string_stream_grow_buffer(t_string_stream* stream);
 
 t_string_stream* string_stream_init(t_context_ptr context) {
-    t_string_stream* stream = (t_string_stream*)BRAMA_MALLOC(sizeof(t_string_stream));
+    t_string_stream* stream = (t_string_stream*)malloc(sizeof(t_string_stream));
     stream->length          = 32;
     stream->index           = 0;
     stream->text_length     = 0;
-    stream->data            = (char**)BRAMA_MALLOC(sizeof(char*) * stream->length);
+    stream->data            = (char**)malloc(sizeof(char*) * stream->length);
     stream->context         = context;
 
     if (stream->data == NULL)
@@ -43,7 +43,7 @@ int string_stream_add_char(t_string_stream* stream, char data) {
     }
     
     t_context_ptr context         = stream->context;
-    char* tmpData                 = (char*)BRAMA_MALLOC((sizeof(char) * 2));
+    char* tmpData                 = (char*)malloc((sizeof(char) * 2));
     tmpData[0]                    = data;
     tmpData[1]                    = '\0';
     stream->data[stream->index++] = tmpData;
@@ -56,12 +56,12 @@ int string_stream_grow_buffer(t_string_stream* stream) {
     t_context_ptr context = stream->context;
 
     size_t tmpLength = stream->length * 2;
-    char** tmpData   = (char**)BRAMA_MALLOC(sizeof(char*) * tmpLength);
+    char** tmpData   = (char**)malloc(sizeof(char*) * tmpLength);
     if (tmpData == NULL)
         return STRING_STREAM_ERR_NO_MEMORY;
 
     memcpy(tmpData, stream->data, stream->length * sizeof (char*));
-    BRAMA_FREE(stream->data);
+    free(stream->data);
 
     stream->data   = tmpData;
     stream->length = tmpLength;
@@ -73,7 +73,7 @@ int string_stream_get(t_string_stream* stream, char** text) {
     CHECK_STREAM_PTR(stream);
     
     t_context_ptr context = stream->context;
-    char* tmpData         = (char*)BRAMA_MALLOC((sizeof(char) * stream->text_length) + 1);
+    char* tmpData         = (char*)malloc((sizeof(char) * stream->text_length) + 1);
     if (tmpData == NULL)
         return STRING_STREAM_ERR_NO_MEMORY;
 
@@ -92,9 +92,9 @@ int string_stream_destroy(t_string_stream* stream) {
     t_context_ptr context = stream->context;
 
     for (size_t i = 0; i < stream->index; ++i)
-        BRAMA_FREE(stream->data[i]);
+        free(stream->data[i]);
 
-    BRAMA_FREE(stream->data);
+    free(stream->data);
     stream->text_length = 0;
     stream->index       = 0;
     stream->length      = 0;

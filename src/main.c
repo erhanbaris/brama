@@ -19,20 +19,17 @@ int main(int argc, const char* argv[]) {
 "    return n "
 "  } var p1 =  fib(n - 1) ; var p2 =  fib(n - 2) ; "
 "  return p1 + p2 "
-"}; var test = fib(10);");
+"}; var index = 0; var total = 0; while (100 > index) { ++index; total += fib(10); }");
     brama_run(context);
     brama_compile_dump(context);
-    
     t_get_var_info_ptr var_info = NULL;
-    brama_status status         = brama_get_var(context, "test", &var_info);
+    brama_status status         = brama_get_var(context, "total", &var_info);
 
     munit_assert_int(status,         == , BRAMA_OK);
     munit_assert_int(var_info->type, == , CONST_INTEGER);
     munit_assert_int(var_info->double_, == , 55);
     brama_destroy_get_var(context, &var_info);
-
     brama_destroy(context);
-    getchar();
     return 0;
 
     

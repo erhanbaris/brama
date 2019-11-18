@@ -871,6 +871,7 @@ typedef struct _t_function_referance {
     size_t    args_length;
     size_t    storage_id;
     bool      is_native;
+    t_brama_value brama_value;
 } t_function_referance;
 
 typedef struct _t_brama_native_function {

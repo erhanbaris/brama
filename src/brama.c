@@ -81,6 +81,9 @@ int getSymbol(t_context_ptr context, t_tokinizer_ptr tokinizer) {
 
     char_ptr data       = NULL;
     string_stream_get(stream, &data);
+    string_stream_destroy(stream);
+    free(stream);
+    
     int_ptr keywordInfo = (int_ptr)map_get(&tokinizer->keywords, data);
 
     if (keywordInfo) {
@@ -91,7 +94,6 @@ int getSymbol(t_context_ptr context, t_tokinizer_ptr tokinizer) {
         token->keyword    = *keywordInfo;
 
         vec_push(tokinizer->tokens, token);
-        BRAMA_FREE(data);
     } else {
         t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
         token->type        = TOKEN_SYMBOL;
@@ -101,9 +103,7 @@ int getSymbol(t_context_ptr context, t_tokinizer_ptr tokinizer) {
 
         vec_push(tokinizer->tokens, token);
     }
-
-    string_stream_destroy(stream);
-    BRAMA_FREE(stream);
+    
     return BRAMA_OK;
 }
 
@@ -134,23 +134,28 @@ int getText(t_context_ptr context, t_tokinizer_ptr tokinizer, char symbol) {
 
     if (ch != symbol) {
         string_stream_destroy(stream);
-        BRAMA_FREE(stream);
+        free(stream);
         return BRAMA_MISSING_TEXT_DELIMITER;
     }
+    
+    size_t stream_len = stream->text_length;
+    char_ptr data = NULL;
+    string_stream_get(stream, data);
+    string_stream_destroy(stream);
+    free(stream);
+    
 
     t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
     token->type        = TOKEN_TEXT;
     token->current     = tokinizer->column;
     token->line        = tokinizer->line;
-    token->char_ptr    = NULL;
-    string_stream_get(stream, &token->char_ptr);
+    token->char_ptr    = data;
+    
     vec_push(tokinizer->tokens, token);
 
-    if (stream->text_length == 0)
+    if (stream_len == 0)
         increase(tokinizer);
-
-    string_stream_destroy(stream);
-    BRAMA_FREE(stream);
+    
     return BRAMA_OK;
 }
 
@@ -703,7 +708,7 @@ brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_a
     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
 }
 
-brama_status ast_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
+brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     brama_status status = ast_assignment_expr(context, ast, extra_data);
     if (status == BRAMA_OK)
         return BRAMA_OK;
@@ -1005,7 +1010,7 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
             status = ast_primary_expr(context, &unary_content, extra_data);
         }
         else {
-            status = ast_call(context, &unary_content, extra_data);
+            status = ast_func_call(context, &unary_content, extra_data);
         }
 
         if (status != BRAMA_OK) {
@@ -1031,7 +1036,7 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
     /* Looking for : i++ i--
     todo: not working, fix it*/
 
-    status = ast_call(context, ast, extra_data);
+    status = ast_func_call(context, ast, extra_data);
 
     if (status == BRAMA_OK && (*ast)->type == AST_SYMBOL && (ast_check_operator(context, OPERATOR_INCREMENT) ||  ast_check_operator(context, OPERATOR_DECCREMENT))) {
         unary_type    = UNARY_OPERAND_AFTER;
@@ -2182,7 +2187,7 @@ t_context_ptr brama_init() {
     t_context_ptr context      = (t_context_ptr)malloc(sizeof(t_context));
     context->error_message     = NULL;
     
-    context->allocator         = init_allocator(1014 * 1024 * 1);
+    context->allocator         = init_allocator(1014 * 1024 * 200);
     
     /* tokinizer */
     context->tokinizer         = (t_tokinizer_ptr)BRAMA_MALLOC(sizeof(t_tokinizer));
@@ -2286,7 +2291,7 @@ void brama_compile(t_context_ptr context, char_ptr data) {
 void brama_run(t_context_ptr context) {
     if (context->status != BRAMA_OK)
         return;
-
+    
     compile(context);
     COMPILE_CHECK();
 
@@ -2831,11 +2836,9 @@ brama_status find_compile_stack(t_context_ptr context, brama_compile_block_type 
 }
 
 void destroy_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack) {
-    if (stack->compile_obj != NULL)
-        BRAMA_FREE(stack->compile_obj);
-
+    
     remove_from_compile_stack(context, stack);
-    BRAMA_FREE(stack);
+    //BRAMA_FREE(stack);
 }
 
 void remove_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack) {
@@ -2972,6 +2975,8 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
 
             prepare_variable_memory(context, ast->assign_ptr->object,     ast, storage, &in_object);
             prepare_variable_memory(context, ast->assign_ptr->assignment, ast, storage, &in_assignment);
+            if (ast->assign_ptr->opt != OPERATOR_ASSIGN)
+                ++in_assignment;
 
             ++storage->variable_count;
 
@@ -3389,17 +3394,22 @@ void compile_symbol(t_context_ptr context, char_ptr const ast, t_storage_ptr sto
 */
 void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     /* We need to check variable that used on scope before */
-    compile_info->index = get_variable_address(context, storage, ast->object->char_ptr);
+    if (ast->opt == OPERATOR_ASSIGN)
+        compile_info->index = get_variable_address(context, storage, ast->object->char_ptr);
 
     size_t temp_counter = storage->temp_counter;
 
     /* Has assignment code */
     if (ast->assignment != NULL) {
-        size_t variable_index = compile_info->index;
+        size_t variable_index = get_variable_address(context, storage, ast->object->char_ptr);
         size_t opcode_count   = context->compiler->op_codes->length;
 
         /* Opcode generation for assignment */
-        compile_internal(context, ast->assignment, storage, compile_info, AST_ASSIGNMENT);
+        if (ast->opt == OPERATOR_ASSIGN)
+            compile_internal(context, ast->assignment, storage, compile_info, AST_ASSIGNMENT);
+        else
+            compile_internal(context, ast->assignment, storage, compile_info, AST_NONE);
+
         COMPILE_CHECK();
 
         if (ast->assignment->type == AST_SYMBOL) {
@@ -3842,6 +3852,12 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
     function_referance->location    = function_location_start;
     function_referance->args_length = ast->args->length;
     function_referance->args        = BRAMA_MALLOC(sizeof(char*) * function_referance->args_length);
+    
+    t_vm_object_ptr object          = new_vm_object(context);
+    object->type                    = CONST_FUNCTION;
+    object->function                = function_referance;
+
+    function_referance->brama_value = GET_VALUE_FROM_OBJ(object);
 
     map_set(&storage->functions, function_referance->name, function_referance);
 
@@ -3897,7 +3913,7 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
     context->compiler->op_codes->data[function_location_start] = vm_encode(code);
 
     destroy_from_compile_stack(context, stack_info);
-    BRAMA_FREE(func_compile_info);
+    //BRAMA_FREE(func_compile_info);
 
     if (compile_info->index > -1) {
         /* Variable not defined before, create new variable slot */
@@ -4435,7 +4451,7 @@ void locate_variables_to_memory(t_context_ptr context, t_storage_ptr storage) {
                     storage->memory_prototype_head = node->next;
 
                 node = node->next;
-                BRAMA_FREE(tmp);
+                //BRAMA_FREE(tmp);
             }
             else {
                 last_node = node;
@@ -4483,8 +4499,8 @@ void compile(t_context_ptr context) {
     vec_push(context->compiler->op_codes, NULL);
 
     /* Clear */
-    BRAMA_FREE(main);
-    BRAMA_FREE(compile_info);
+    //BRAMA_FREE(main);
+    //BRAMA_FREE(compile_info);
 }
 
 inline t_brama_value numberToValue(double num) {
@@ -4504,7 +4520,7 @@ brama_status brama_get_var(t_context_ptr context, char_ptr var_name, t_get_var_i
     if (NULL == index)
         return BRAMA_NOK;
 
-    *var_info          = BRAMA_MALLOC(sizeof(t_get_var_info));
+    *var_info          = malloc(sizeof(t_get_var_info));
     (*var_info)->bool_ = false;
 
     t_brama_value value = context->compiler->global_storage->variables.data[*index];
@@ -4534,7 +4550,7 @@ brama_status brama_get_var(t_context_ptr context, char_ptr var_name, t_get_var_i
     } else if (IS_STRING(value)) {
         (*var_info)->type  = CONST_STRING;
 
-        (*var_info)->char_ptr = BRAMA_MALLOC(sizeof(char) * (strlen(AS_STRING(value)) + 1));
+        (*var_info)->char_ptr = malloc(sizeof(char) * (strlen(AS_STRING(value)) + 1));
         strcpy((*var_info)->char_ptr, AS_STRING(value));
         (*var_info)->char_ptr[strlen(AS_STRING(value))] = '\0';
     }
@@ -5164,13 +5180,7 @@ void run(t_context_ptr context) {
                         void** func_ptr = map_get(&search_storage->functions, tmp_var);
 
                         if (NULL != func_ptr) {
-                            t_function_referance_ptr func = *func_ptr;
-
-                            t_vm_object_ptr object = new_vm_object(context);
-                            object->type           = CONST_FUNCTION;
-                            object->function       = func;
-
-                            variables[function_index] = GET_VALUE_FROM_OBJ(object);
+                            variables[function_index] = ((t_function_referance_ptr)(*func_ptr))->brama_value;
                             function_value            = variables[function_index];
                             function_found = true;
                             break;
@@ -5204,7 +5214,6 @@ void run(t_context_ptr context) {
                 /* Save previous variable memory */
                 variables[1] = (t_brama_value)previous_variables;
                 
-                size_t size = sizeof(t_brama_value) * (array_size  + 2);
                 /* Real variable start location */
                 variables = &variables[2];
 
@@ -5220,10 +5229,14 @@ void run(t_context_ptr context) {
             case VM_OPT_RETURN: {
                 t_brama_value function_value = *(variables + storage->constant_count);
                 
-                t_brama_value* memory_block = variables;
+                t_brama_byte* tmp_ipc        = (t_brama_byte*)variables[-2];
+                t_brama_value* tmp_variables = (t_brama_value*)variables[-1];
+            
+                BRAMA_FREE(storage);
+                BRAMA_FREE(&variables[-2]);
                 
-                ipc       = (t_brama_byte*)variables[-2];
-                variables = (t_brama_value*)variables[-1];
+                ipc       = tmp_ipc;
+                variables = tmp_variables;
                 storage   = previous_storage;
                 //variables = previous_variables;
 
@@ -5275,7 +5288,7 @@ void brama_destroy(t_context_ptr context) {
 
     /* Remove all objects 
      * Simple GC         */
-    t_vm_object_ptr _object = context->compiler->object_head;
+   /* t_vm_object_ptr _object = context->compiler->object_head;
     while (NULL != _object) {
         t_vm_object_ptr next_object = _object->next;
 
@@ -5284,7 +5297,7 @@ void brama_destroy(t_context_ptr context) {
 
         BRAMA_FREE(_object);
         _object = next_object;
-    }
+    }*/
 
     context->compiler->total_object = 0;
 
