@@ -1589,7 +1589,20 @@ MunitResult ast_func_decl_test_7(const MunitParameter params[], void* user_data_
     return MUNIT_OK;
 }
 
-CHECK_OK(ast_func_decl_test_8, "var test = function () {}");
+MunitResult ast_func_decl_test_8(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context,  "var test = function () {}");
+    context->parser->index = 0;
+
+    t_ast_ptr ast = NULL;
+    munit_assert_int(ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
+    destroy_ast(context, ast);
+    BRAMA_FREE(ast);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 CHECK_OK(ast_func_decl_test_9, "var test = {func: function () {}}");
 
 MunitResult ast_block_stmt_test_1(const MunitParameter params[], void* user_data_or_fixture) {

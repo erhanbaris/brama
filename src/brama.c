@@ -140,7 +140,7 @@ int getText(t_context_ptr context, t_tokinizer_ptr tokinizer, char symbol) {
     
     size_t stream_len = stream->text_length;
     char_ptr data = NULL;
-    string_stream_get(stream, data);
+    string_stream_get(stream, &data);
     string_stream_destroy(stream);
     free(stream);
     
@@ -607,10 +607,10 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_as
                 t_ast_ptr item = NULL;
                 brama_status status = ast_expression(context, &item, extra_data);
                 if (status != BRAMA_OK) {
-                    destroy_ast_vector(context, args);
-                    BRAMA_FREE(args);
                     destroy_ast(context, item);
                     BRAMA_FREE(item);
+                    destroy_ast_vector(context, args);
+                    BRAMA_FREE(args);
                     RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_ARRAY_NOT_VALID);
                 }
 
@@ -2187,7 +2187,7 @@ t_context_ptr brama_init() {
     t_context_ptr context      = (t_context_ptr)malloc(sizeof(t_context));
     context->error_message     = NULL;
     
-    context->allocator         = init_allocator(1014 * 1024 * 200);
+    context->allocator         = init_allocator(1014 * 1024 * 1);
     
     /* tokinizer */
     context->tokinizer         = (t_tokinizer_ptr)BRAMA_MALLOC(sizeof(t_tokinizer));
@@ -3432,7 +3432,7 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
                 vm_decode(last_byte, last_code);
 
                 /* Last opcode not assigned to variable */
-                if (last_code.reg1 == variable_index || ast->assignment->type == AST_FUNCTION_DECLARATION || ast->assignment->type == AST_FUNCTION_CALL)
+                if ((last_code.reg1 == variable_index || ast->assignment->type == AST_FUNCTION_DECLARATION || ast->assignment->type == AST_FUNCTION_CALL) && ast->opt == OPERATOR_ASSIGN)
                     opcode_need = false;
             }
 
@@ -3808,6 +3808,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
     code.scal = 0;
     vec_push(context->compiler->op_codes, vm_encode(code));
     storage->temp_counter = temp_counter;
+    compile_info->index   = code.reg1; 
 }
 
 void brama_func_console_log(t_context_ptr context, size_t param_size, t_brama_value* params) {
@@ -5331,5 +5332,9 @@ void brama_destroy(t_context_ptr context) {
     BRAMA_FREE(_context->tokinizer);
     BRAMA_FREE(_context->parser);
     BRAMA_FREE(_context->compiler);
-    BRAMA_FREE(_context);
+
+    free(_context->allocator->memory);
+    free(_context->allocator);
+
+    free(_context);
 }

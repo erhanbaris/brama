@@ -403,6 +403,28 @@ MunitResult ast_compile_13(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+
+MunitResult ast_compile_14(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init();
+    brama_compile(context, "function fib(n) { "
+"  if (n < 2){ "
+"    return n "
+"  } var p1 =  fib(n - 1) ; var p2 =  fib(n - 2) ; "
+"  return p1 + p2 "
+"}; var index = 0; var total = 0; while (100 > index) { ++index; total += fib(10); }");
+    brama_run(context);
+    brama_compile_dump(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "total", &var_info);
+
+    munit_assert_int(status,         == , BRAMA_OK);
+    munit_assert_int(var_info->type, == , CONST_INTEGER);
+    munit_assert_int(var_info->double_, == , 5500);
+    brama_destroy_get_var(context, &var_info);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitTest COMPILE_TESTS[] = {
 
         ADD_TEST(ast_compile_1),
@@ -417,6 +439,8 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_10),
         ADD_TEST(ast_compile_11),
         ADD_TEST(ast_compile_12),
+        ADD_TEST(ast_compile_13),
+        ADD_TEST(ast_compile_14),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
