@@ -942,12 +942,6 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
         }
 
-        t_func_decl_ptr func_decl = (t_func_decl_ptr)BRAMA_MALLOC(sizeof(t_func_decl));
-        func_decl->args           = args;
-        func_decl->body           = body;
-        func_decl->name           = function_name;
-        *ast = new_func_decl_ast(func_decl);
-
         if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) { // If anonymous function directly calling
             vec_ast_ptr call_args = BRAMA_MALLOC(sizeof(vec_ast));
             vec_init(call_args);
@@ -975,15 +969,26 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
                 RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_CLOSE_OPERATOR_NOT_FOUND);
             }
 
+            t_func_decl_ptr func_decl = (t_func_decl_ptr)BRAMA_MALLOC(sizeof(t_func_decl));
+            func_decl->args           = args;
+            func_decl->body           = body;
+            func_decl->name           = function_name;
+
+
             t_func_call_ptr func_call = (t_func_call_ptr)BRAMA_MALLOC(sizeof (t_func_call));
             func_call->args           = call_args;
-            func_call->func_decl_ptr  = (*ast)->func_decl_ptr;
+            func_call->func_decl_ptr  = func_decl;
             func_call->type           = FUNC_CALL_ANONY;
 
-            BRAMA_FREE((*ast)); // t_ast_ptr not need any more
             *ast                      = new_func_call_ast(func_call);
             return BRAMA_OK;
         }
+
+        t_func_decl_ptr func_decl = (t_func_decl_ptr)BRAMA_MALLOC(sizeof(t_func_decl));
+        func_decl->args           = args;
+        func_decl->body           = body;
+        func_decl->name           = function_name;
+        *ast = new_func_decl_ast(func_decl);
 
         return BRAMA_OK;
     }
@@ -1442,8 +1447,8 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama
     set_semicolon_and_newline(context, *ast);
 
     if (right != NULL) {
-        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
-        (*ast)->ends_with_newline   = right->ends_with_newline;
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon || (*ast)->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline   || (*ast)->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -2975,7 +2980,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
 
             prepare_variable_memory(context, ast->assign_ptr->object,     ast, storage, &in_object);
             prepare_variable_memory(context, ast->assign_ptr->assignment, ast, storage, &in_assignment);
-            if (ast->assign_ptr->opt != OPERATOR_ASSIGN)
+            if (ast->assign_ptr->opt != OPERATOR_ASSIGN && ast->assign_ptr->opt != OPERATOR_NONE)
                 ++in_assignment;
 
             ++storage->variable_count;
@@ -3394,7 +3399,7 @@ void compile_symbol(t_context_ptr context, char_ptr const ast, t_storage_ptr sto
 */
 void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     /* We need to check variable that used on scope before */
-    if (ast->opt == OPERATOR_ASSIGN)
+    if (ast->opt == OPERATOR_ASSIGN || ast->opt == OPERATOR_NONE)
         compile_info->index = get_variable_address(context, storage, ast->object->char_ptr);
 
     size_t temp_counter = storage->temp_counter;
@@ -3405,7 +3410,7 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
         size_t opcode_count   = context->compiler->op_codes->length;
 
         /* Opcode generation for assignment */
-        if (ast->opt == OPERATOR_ASSIGN)
+        if (ast->opt == OPERATOR_ASSIGN || ast->opt == OPERATOR_NONE)
             compile_internal(context, ast->assignment, storage, compile_info, AST_ASSIGNMENT);
         else
             compile_internal(context, ast->assignment, storage, compile_info, AST_NONE);
@@ -3432,7 +3437,7 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
                 vm_decode(last_byte, last_code);
 
                 /* Last opcode not assigned to variable */
-                if ((last_code.reg1 == variable_index || ast->assignment->type == AST_FUNCTION_DECLARATION || ast->assignment->type == AST_FUNCTION_CALL) && ast->opt == OPERATOR_ASSIGN)
+                if ((last_code.reg1 == variable_index || ast->assignment->type == AST_FUNCTION_DECLARATION || ast->assignment->type == AST_FUNCTION_CALL) && (ast->opt == OPERATOR_ASSIGN || ast->opt == OPERATOR_NONE))
                     opcode_need = false;
             }
 

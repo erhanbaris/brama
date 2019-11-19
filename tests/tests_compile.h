@@ -47,16 +47,16 @@ MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixt
     vm_decode(context->compiler->op_codes->data[1], vmdata);
 
     munit_assert_int(vmdata.op,   ==, VM_OPT_INIT_VAR);
-    munit_assert_int(vmdata.reg1, ==, 2);
+    munit_assert_int(vmdata.reg1, ==, 4);
     munit_assert_int(vmdata.reg2, ==, 1);
     munit_assert_int(vmdata.reg3, ==, 0);
 
-    munit_assert_int(context->compiler->global_storage->variables.length, ==, 4);
+    munit_assert_int(context->compiler->global_storage->variables.length, ==, 5);
 
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 1024);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 2048);
 
-    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[2]), ==, 2048);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[4]), ==, 2048);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[3]), ==, 1024);
 
 
@@ -90,7 +90,7 @@ MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixt
 
     vm_decode(context->compiler->op_codes->data[0], vmdata);
     munit_assert_int(vmdata.op,   ==, VM_OPT_INIT_VAR);
-    munit_assert_int(vmdata.reg1, ==, 2);
+    munit_assert_int(vmdata.reg1, ==, 5);
     munit_assert_int(vmdata.reg2, ==, 0);
     munit_assert_int(vmdata.reg3, ==, 0);
 
@@ -103,10 +103,10 @@ MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixt
     vm_decode(context->compiler->op_codes->data[2], vmdata);
     munit_assert_int(vmdata.op,   ==, VM_OPT_LT);
     munit_assert_int(vmdata.reg1, ==, 4);
-    munit_assert_int(vmdata.reg2, ==, 2);
+    munit_assert_int(vmdata.reg2, ==, 5);
     munit_assert_int(vmdata.reg3, ==, 3);
 
-    munit_assert_int(context->compiler->global_storage->variables.length, ==, 5);
+    munit_assert_int(context->compiler->global_storage->variables.length, ==, 6);
 
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 10.0);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 20.0);
@@ -413,7 +413,6 @@ MunitResult ast_compile_14(const MunitParameter params[], void* user_data_or_fix
 "  return p1 + p2 "
 "}; var index = 0; var total = 0; while (100 > index) { ++index; total += fib(10); }");
     brama_run(context);
-    brama_compile_dump(context);
     t_get_var_info_ptr var_info = NULL;
     brama_status status         = brama_get_var(context, "total", &var_info);
 
