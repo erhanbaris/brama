@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-#define ALLOCATOR_ALIGNMENT 8
-
 struct AllocationHeader {
     char padding;
 };

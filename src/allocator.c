@@ -16,8 +16,8 @@ t_allocator_ptr init_allocator(size_t totalSize) {
 void* allocate(t_allocator_ptr allocator, size_t size) {
     const size_t currentAddress = (size_t)allocator->memory + allocator->offset;
 
-    const size_t multiplier = (currentAddress / ALLOCATOR_ALIGNMENT) + 1;
-    const size_t alignedAddress = multiplier * ALLOCATOR_ALIGNMENT;
+    const size_t multiplier = (currentAddress >> 3) + 1; // For performance improvement: (currentAddress / 8) + 1
+    const size_t alignedAddress = multiplier * 8;
     size_t padding = alignedAddress - currentAddress;
 
     //size_t padding = Utils::CalculatePaddingWithHeader(currentAddress, alignment, sizeof (AllocationHeader));
@@ -29,10 +29,10 @@ void* allocate(t_allocator_ptr allocator, size_t size) {
         neededSpace -= padding;
 
         // How many alignments I need to fit the header
-        if(neededSpace % ALLOCATOR_ALIGNMENT > 0){
-            padding += ALLOCATOR_ALIGNMENT * (1+(neededSpace / ALLOCATOR_ALIGNMENT));
+        if(neededSpace & 7 > 0){ // For performance improvement: neededSpace % 8
+            padding += 8 * (1+(neededSpace >> 3)); // For performance improvement: (1+(neededSpace / 8))
         }else {
-            padding += ALLOCATOR_ALIGNMENT * (neededSpace / ALLOCATOR_ALIGNMENT);
+            padding += 8 * (neededSpace >> 3); // For performance improvement: (currentAddress / 8)
         }
     }
 
