@@ -207,14 +207,14 @@ do { \
 #    include <stdlib.h>
 #    include <crtdbg.h>
 
-#    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) allocate(context->allocator, SIZE , 8)
+#    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) allocate(context->allocator, SIZE)
 #    define BRAMA_CALLOC(NUM, SIZE)                 calloc ( NUM , SIZE )
-#    define BRAMA_MALLOC( SIZE )                    allocate(context->allocator, SIZE , 8)
+#    define BRAMA_MALLOC( SIZE )                    allocate(context->allocator, SIZE)
 #    define BRAMA_FREE(PTR)                         free_memory   ( context->allocator, PTR )
 #else
-#    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) allocate(context->allocator, SIZE , 8)
+#    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) allocate(context->allocator, SIZE)
 #    define BRAMA_CALLOC(NUM, SIZE)                 calloc ( NUM , SIZE )
-#    define BRAMA_MALLOC( SIZE )                    allocate(context->allocator, SIZE , 8)
+#    define BRAMA_MALLOC( SIZE )                    allocate(context->allocator, SIZE)
 #    define BRAMA_FREE(PTR)                         free_memory   ( context->allocator, PTR )
 
 #endif

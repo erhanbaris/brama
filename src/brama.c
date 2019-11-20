@@ -88,6 +88,11 @@ int getSymbol(t_context_ptr context, t_tokinizer_ptr tokinizer) {
 
     if (keywordInfo) {
         t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
+        if (NULL == token) {
+            context->status = BRAMA_OUT_OF_MEMORY;
+            return 0;
+        }
+
         token->type       = TOKEN_KEYWORD;
         token->current    = tokinizer->column;
         token->line       = tokinizer->line;
@@ -96,6 +101,10 @@ int getSymbol(t_context_ptr context, t_tokinizer_ptr tokinizer) {
         vec_push(tokinizer->tokens, token);
     } else {
         t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
+        if (NULL == token) {
+            context->status = BRAMA_OUT_OF_MEMORY;
+            return 0;
+        }
         token->type        = TOKEN_SYMBOL;
         token->current     = tokinizer->column;
         token->line        = tokinizer->line;
@@ -146,6 +155,10 @@ int getText(t_context_ptr context, t_tokinizer_ptr tokinizer, char symbol) {
     
 
     t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
+    if (NULL == token) {
+        context->status = BRAMA_OUT_OF_MEMORY;
+        return 0;
+    }
     token->type        = TOKEN_TEXT;
     token->current     = tokinizer->column;
     token->line        = tokinizer->line;
@@ -264,6 +277,10 @@ int getNumber(t_context_ptr context, t_tokinizer_ptr tokinizer) {
     }
 
     t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
+    if (NULL == token) {
+        context->status = BRAMA_OUT_OF_MEMORY;
+        return 0;
+    }
 
     if (!isDouble) {
         token->type = TOKEN_INTEGER;
@@ -296,6 +313,10 @@ brama_status getOperator(t_context_ptr context, t_tokinizer_ptr tokinizer) {
 
     increase(tokinizer);
     t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
+    if (NULL == token) {
+        context->status = BRAMA_OUT_OF_MEMORY;
+        return 0;
+    }
     token->type       = TOKEN_OPERATOR;
     token->current    = tokinizer->column;
     token->line       = tokinizer->line;
@@ -371,6 +392,10 @@ int brama_tokinize(t_context_ptr context, char_ptr data) {
 
         if (isNewLine(ch)) {
             t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
+            if (NULL == token) {
+                context->status = BRAMA_OUT_OF_MEMORY;
+                return 0;
+            }
             token->type    = TOKEN_OPERATOR;
             token->current = tokinizer->column;
             token->line    = tokinizer->line;
@@ -557,6 +582,10 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_as
 
     if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_START)) { // Parse dictionary
         map_void_t* dictionary = BRAMA_MALLOC(sizeof (map_void_t));
+        if (NULL == dictionary) {
+            return BRAMA_OUT_OF_MEMORY;
+        }
+
         map_init(dictionary);
         *ast = new_primative_ast_dict(dictionary);
 
@@ -600,6 +629,9 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_as
 
     if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START)) {
         vec_ast_ptr args = BRAMA_MALLOC(sizeof (vec_ast));
+        if (NULL == args) {
+            return BRAMA_OUT_OF_MEMORY;
+        }
         vec_init(args);
 
         if (!ast_check_operator(context, OPERATOR_SQUARE_BRACKET_END)) {
@@ -663,6 +695,8 @@ brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_a
 
         if (*ast != NULL) {
             t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
+            if (NULL == accessor) return BRAMA_OUT_OF_MEMORY;
+
             accessor->object        = *ast;
             accessor->property      = tmp_ast;
             *ast                    = new_accessor_ast(accessor);
@@ -695,6 +729,8 @@ brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_a
         }
 
         t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
+        if (NULL == accessor) return BRAMA_OUT_OF_MEMORY;
+
         accessor->object        = *ast;
         accessor->property      = indexer;
         *ast                    = new_accessor_ast(accessor);
@@ -736,6 +772,8 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
     /* We are parsing function parameters */
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) {
         vec_ast_ptr args = BRAMA_MALLOC(sizeof (vec_ast));
+        if (NULL == args) return BRAMA_OUT_OF_MEMORY;
+
         vec_init(args);
 
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
@@ -757,6 +795,8 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
         }
 
         t_func_call* func_call = BRAMA_MALLOC(sizeof (t_func_call));
+        if (NULL == func_call) return BRAMA_OUT_OF_MEMORY;
+
         func_call->args        = args;
         func_call->function    = *ast;
         func_call->type        = FUNC_CALL_NORMAL;
@@ -785,6 +825,8 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
         }
 
         t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
+        if (NULL == accessor) return BRAMA_OUT_OF_MEMORY;
+
         accessor->object        = *ast;
         accessor->property      = indexer;
         *ast                    = new_accessor_ast(accessor);
@@ -810,6 +852,8 @@ brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, 
 
     if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_START)) { // Is it start with '{'
         vec_ast_ptr blocks = BRAMA_MALLOC(sizeof (vec_ast));
+        if (NULL == blocks) return BRAMA_OUT_OF_MEMORY;
+
         bool ends_with_semicolon = false;
         bool ends_with_newline   = false;
         vec_init(blocks);
@@ -904,6 +948,8 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
 
         vec_ast_ptr args = BRAMA_MALLOC(sizeof(vec_ast));
+        if (NULL == args) return BRAMA_OUT_OF_MEMORY;
+
         vec_init(args);
 
         if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
@@ -944,6 +990,8 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
 
         if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) { // If anonymous function directly calling
             vec_ast_ptr call_args = BRAMA_MALLOC(sizeof(vec_ast));
+            if (NULL == call_args) return BRAMA_OUT_OF_MEMORY;
+
             vec_init(call_args);
 
             if (!ast_check_operator(context, OPERATOR_RIGHT_PARENTHESES)) {
@@ -970,12 +1018,16 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
             }
 
             t_func_decl_ptr func_decl = (t_func_decl_ptr)BRAMA_MALLOC(sizeof(t_func_decl));
+            if (NULL == func_decl) return BRAMA_OUT_OF_MEMORY;
+
             func_decl->args           = args;
             func_decl->body           = body;
             func_decl->name           = function_name;
 
 
             t_func_call_ptr func_call = (t_func_call_ptr)BRAMA_MALLOC(sizeof (t_func_call));
+            if (NULL == func_call) return BRAMA_OUT_OF_MEMORY;
+
             func_call->args           = call_args;
             func_call->func_decl_ptr  = func_decl;
             func_call->type           = FUNC_CALL_ANONY;
@@ -985,6 +1037,8 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
         }
 
         t_func_decl_ptr func_decl = (t_func_decl_ptr)BRAMA_MALLOC(sizeof(t_func_decl));
+        if (NULL == func_decl) return BRAMA_OUT_OF_MEMORY;
+
         func_decl->args           = args;
         func_decl->body           = body;
         func_decl->name           = function_name;
@@ -1031,6 +1085,8 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         }
 
         t_unary_ptr unary   = BRAMA_MALLOC(sizeof (t_unary));
+        if (NULL == unary) return BRAMA_OUT_OF_MEMORY;
+
         unary->operand_type = UNARY_OPERAND_BEFORE;
         unary->opt          = operator_type;
         unary->content      = unary_content;
@@ -1049,6 +1105,8 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         status = ast_primary_expr(context, &unary_content, extra_data);
 
         t_unary_ptr unary   = BRAMA_MALLOC(sizeof (t_unary));
+        if (NULL == unary) return BRAMA_OUT_OF_MEMORY;
+
         unary->operand_type = UNARY_OPERAND_AFTER;
         unary->opt          = operator_type;
         unary->content      = *ast;
@@ -1154,6 +1212,8 @@ brama_status ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_as
         }
 
         t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
+        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
@@ -1178,6 +1238,8 @@ brama_status ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_a
         }
 
         t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
+        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
@@ -1203,6 +1265,8 @@ brama_status ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_ex
         }
 
         t_control_ptr control = BRAMA_MALLOC(sizeof(t_control));
+        if (NULL == control) return BRAMA_OUT_OF_MEMORY;
+
         control->left         = *ast;
         control->opt          = opt;
         control->right        = right;
@@ -1227,6 +1291,8 @@ brama_status ast_bitwise_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, bram
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
+        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
@@ -1251,6 +1317,8 @@ brama_status ast_bitwise_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
+        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
@@ -1275,6 +1343,8 @@ brama_status ast_bitwise_xor_expr(t_context_ptr context, t_ast_ptr_ptr ast, bram
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
+        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
@@ -1299,6 +1369,8 @@ brama_status ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_ext
         }
 
         t_control_ptr control = BRAMA_MALLOC(sizeof(t_control));
+        if (NULL == control) return BRAMA_OUT_OF_MEMORY;
+
         control->left         = *ast;
         control->opt          = opt;
         control->right        = right;
@@ -1324,6 +1396,8 @@ brama_status ast_bitwise_shift_expr(t_context_ptr context, t_ast_ptr_ptr ast, br
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
+        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+
         binary->left        = *ast;
         binary->opt         = opt;
         binary->right       = right;
@@ -1348,6 +1422,8 @@ brama_status ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_a
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
+        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+
         binary->left        = *ast;
         binary->opt         = opt;
         binary->right       = right;
@@ -1372,6 +1448,8 @@ brama_status ast_modulo_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
+        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+
         binary->left        = *ast;
         binary->opt         = opt;
         binary->right       = right;
@@ -1396,6 +1474,8 @@ brama_status ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, b
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
+        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+
         binary->left        = *ast;
         binary->opt         = opt;
         binary->right       = right;
@@ -1438,6 +1518,8 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama
         DESTROY_AST_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST, *ast);
 
     t_assign_ptr assign = BRAMA_MALLOC(sizeof(t_assign));
+    if (NULL == assign) return BRAMA_OUT_OF_MEMORY;
+
     assign->object      = *ast;
     assign->def_type    = type;
     assign->opt         = opt;
@@ -1509,6 +1591,8 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_NEW_CLASS_CREATION_NOT_VALID);
 
         vec_ast_ptr args = BRAMA_MALLOC(sizeof (vec_ast));
+        if (NULL == args) return BRAMA_OUT_OF_MEMORY;
+
         vec_init(args);
 
         if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES)) {
@@ -1532,6 +1616,8 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         }
 
         t_object_creation_ptr object = (t_object_creation_ptr)BRAMA_MALLOC(sizeof(t_object_creation));
+        if (NULL == object) return BRAMA_OUT_OF_MEMORY;
+
         object->object_name = object_name;
         object->args        = args;
         *ast = new_object_ast(object);
@@ -1590,6 +1676,8 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         }
 
         t_while_loop_ptr object = (t_while_loop_ptr)BRAMA_MALLOC(sizeof(t_while_loop));
+        if (NULL == object) return BRAMA_OUT_OF_MEMORY;
+
         object->body            = body;
         object->condition       = condition;
         *ast = new_while_ast(object);
@@ -1670,6 +1758,8 @@ brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_ext
         }
 
         t_if_stmt_ptr object = (t_if_stmt_ptr)BRAMA_MALLOC(sizeof(t_if_stmt));
+        if (NULL == object) return BRAMA_OUT_OF_MEMORY;
+
         object->true_body  = true_body;
         object->false_body = false_body;
         object->condition  = condition;
@@ -1712,6 +1802,8 @@ brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
         check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
 
         vec_case_item_ptr cases = BRAMA_MALLOC(sizeof(vec_case_item));
+        if (NULL == cases) return BRAMA_OUT_OF_MEMORY;
+
         vec_init(cases);
 
         /*
@@ -1746,6 +1838,8 @@ brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
             ast_consume(context); /* Remove last token from list */
             /* Key and value for case */
             t_case_item_ptr case_item = BRAMA_MALLOC(sizeof(t_case_item));
+            if (NULL == case_item) return BRAMA_OUT_OF_MEMORY;
+
             case_item->key            = NULL;
             case_item->body           = NULL;
 
@@ -1783,6 +1877,8 @@ brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
             brama_status body_status = ast_block_multiline_stmt(context, &case_item->body, extra_data | AST_IN_SWITCH);
             if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
                 vec_ast_ptr blocks = BRAMA_MALLOC(sizeof (vec_ast));
+                if (NULL == blocks) return BRAMA_OUT_OF_MEMORY;
+
                 vec_init(blocks);
 
                 do {
@@ -1847,6 +1943,8 @@ brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
         }
 
         t_switch_stmt_ptr object = (t_switch_stmt_ptr)BRAMA_MALLOC(sizeof(t_switch_stmt));
+        if (NULL == object) return BRAMA_OUT_OF_MEMORY;
+
         object->condition        = condition;
         object->cases            = cases;
         *ast = new_switch_ast(object);
@@ -2192,21 +2290,41 @@ t_context_ptr brama_init() {
     t_context_ptr context      = (t_context_ptr)malloc(sizeof(t_context));
     context->error_message     = NULL;
     
-    context->allocator         = init_allocator(1014 * 1024 * 1);
+    context->allocator         = init_allocator(1014 * 1024 * 100);
     
     /* tokinizer */
     context->tokinizer         = (t_tokinizer_ptr)BRAMA_MALLOC(sizeof(t_tokinizer));
+    if (NULL == context->tokinizer) {
+        context->status = BRAMA_OUT_OF_MEMORY;
+        return;
+    }
+
     context->tokinizer->column = 0;
     context->tokinizer->index  = 0;
     context->tokinizer->line   = 1;
     context->tokinizer->tokens = BRAMA_MALLOC(sizeof (vec_token));
+    if (NULL == context->tokinizer->tokens) {
+        context->status = BRAMA_OUT_OF_MEMORY;
+        return;
+    }
+
     vec_init(context->tokinizer->tokens);
 
     /* parser */
     context->parser            = (t_parser_ptr)BRAMA_MALLOC(sizeof (t_parser));
+    if (NULL == context->parser) {
+        context->status = BRAMA_OUT_OF_MEMORY;
+        return;
+    }
+
     context->parser->index     = 0;
     context->parser->line      = 0;
     context->parser->asts      = BRAMA_MALLOC(sizeof (vec_ast));
+    if (NULL == context->parser->asts) {
+        context->status = BRAMA_OUT_OF_MEMORY;
+        return;
+    }
+        
     vec_init(context->parser->asts);
 
     /* keywords */
@@ -2218,12 +2336,27 @@ t_context_ptr brama_init() {
 
     /* Compiler */
     context->compiler                 = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
+    if (NULL == context->compiler) {
+        context->status = BRAMA_OUT_OF_MEMORY;
+        return;
+    }
+
     context->compiler->object_head    = NULL;
     context->compiler->total_object   = 0;
     context->compiler->storage_index  = 0;
     context->compiler->op_codes       = BRAMA_MALLOC(sizeof (vec_opcode));
+    if (NULL == context->compiler->op_codes) {
+        context->status = BRAMA_OUT_OF_MEMORY;
+        return;
+    }
+
     vec_init(&context->compiler->compile_stack);
     context->compiler->global_storage = BRAMA_MALLOC(sizeof (t_storage));
+    if (NULL == context->compiler->global_storage) {
+        context->status = BRAMA_OUT_OF_MEMORY;
+        return;
+    }
+
     context->compiler->global_storage->id                   = 0;
     context->compiler->global_storage->loop_counter         = 0;
     context->compiler->global_storage->constant_count       = 0;
@@ -5206,6 +5339,12 @@ void run(t_context_ptr context) {
 
                 size_t array_size = storage->variables.length;
                 variables         = BRAMA_MALLOC(sizeof(t_brama_value) * (array_size  + 2));
+
+                if (NULL == variables) {
+                    context->status = BRAMA_OUT_OF_MEMORY;
+                    return;
+                }
+
                 memcpy(variables + 2, storage->variables.data, array_size * sizeof(t_brama_value));
 
                 /* Find function argumen location */
