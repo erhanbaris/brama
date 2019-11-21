@@ -2296,7 +2296,7 @@ t_context_ptr brama_init() {
     context->tokinizer         = (t_tokinizer_ptr)BRAMA_MALLOC(sizeof(t_tokinizer));
     if (NULL == context->tokinizer) {
         context->status = BRAMA_OUT_OF_MEMORY;
-        return;
+        return context;
     }
 
     context->tokinizer->column = 0;
@@ -2305,7 +2305,7 @@ t_context_ptr brama_init() {
     context->tokinizer->tokens = BRAMA_MALLOC(sizeof (vec_token));
     if (NULL == context->tokinizer->tokens) {
         context->status = BRAMA_OUT_OF_MEMORY;
-        return;
+        return context;
     }
 
     vec_init(context->tokinizer->tokens);
@@ -2314,7 +2314,7 @@ t_context_ptr brama_init() {
     context->parser            = (t_parser_ptr)BRAMA_MALLOC(sizeof (t_parser));
     if (NULL == context->parser) {
         context->status = BRAMA_OUT_OF_MEMORY;
-        return;
+        return context;
     }
 
     context->parser->index     = 0;
@@ -2322,7 +2322,7 @@ t_context_ptr brama_init() {
     context->parser->asts      = BRAMA_MALLOC(sizeof (vec_ast));
     if (NULL == context->parser->asts) {
         context->status = BRAMA_OUT_OF_MEMORY;
-        return;
+        return context;
     }
         
     vec_init(context->parser->asts);
@@ -2338,7 +2338,7 @@ t_context_ptr brama_init() {
     context->compiler                 = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
     if (NULL == context->compiler) {
         context->status = BRAMA_OUT_OF_MEMORY;
-        return;
+        return context;
     }
 
     context->compiler->object_head    = NULL;
@@ -2347,14 +2347,14 @@ t_context_ptr brama_init() {
     context->compiler->op_codes       = BRAMA_MALLOC(sizeof (vec_opcode));
     if (NULL == context->compiler->op_codes) {
         context->status = BRAMA_OUT_OF_MEMORY;
-        return;
+        return context;
     }
 
     vec_init(&context->compiler->compile_stack);
     context->compiler->global_storage = BRAMA_MALLOC(sizeof (t_storage));
     if (NULL == context->compiler->global_storage) {
         context->status = BRAMA_OUT_OF_MEMORY;
-        return;
+        return context;
     }
 
     context->compiler->global_storage->id                   = 0;
@@ -3025,6 +3025,9 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                 *temps = FAST_MAX((*temps), in_property);
                 *temps = FAST_MAX((*temps), max);
                 *temps = FAST_MAX((*temps), in_function);
+
+                if (COMPILE_AST_OPTIONS[AST_FUNCTION_CALL].ignore_temp_resetter | upper_ast->type)
+                    ++(*temps);
             }
             else 
                 func_decl = ast->func_decl_ptr;
@@ -3332,11 +3335,13 @@ void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr
     else        
         dest_id = ((storage->variables.length - storage->temp_count)) + storage->temp_counter++;
 
-    compile_internal(context, ast->left, storage, compile_info, AST_NONE);
+    compile_info->index = -1;
+    compile_internal(context, ast->left, storage, compile_info, AST_BINARY_OPERATION);
     COMPILE_CHECK();
     int left_index = compile_info->index;
 
-    compile_internal(context, ast->right, storage, compile_info, AST_NONE);
+    compile_info->index = -1;
+    compile_internal(context, ast->right, storage, compile_info, AST_BINARY_OPERATION);
     COMPILE_CHECK();
     int right_index = compile_info->index;
 
@@ -3406,10 +3411,12 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
     else 
         dest_id = (storage->variables.length - storage->temp_count) + storage->temp_counter++;
 
+    compile_info->index = -1;
     compile_internal(context, ast->left, storage, compile_info, AST_NONE);
     COMPILE_CHECK();
     int left_index = compile_info->index;
 
+    compile_info->index = -1;
     compile_internal(context, ast->right, storage, compile_info, AST_NONE);
     COMPILE_CHECK();
     int right_index = compile_info->index;
@@ -3945,7 +3952,10 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
     code.reg3 = function_variable_index; /* Function address */
     code.scal = 0;
     vec_push(context->compiler->op_codes, vm_encode(code));
-    storage->temp_counter = temp_counter;
+
+    if (!(COMPILE_AST_OPTIONS[AST_FUNCTION_CALL].ignore_temp_resetter | upper_ast))
+        storage->temp_counter = temp_counter;
+
     compile_info->index   = code.reg1; 
 }
 

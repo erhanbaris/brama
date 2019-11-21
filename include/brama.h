@@ -500,6 +500,37 @@ static char* KEYWORDS[] = {
     "UNDEFINED"
 };
 
+typedef struct _t_compile_ast_option {
+    size_t ignore_temp_resetter;
+} t_compile_ast_option;
+
+static t_compile_ast_option COMPILE_AST_OPTIONS[] = {
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { AST_BINARY_OPERATION }, // AST_FUNCTION_CALL
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL }
+};
+
+
 /* STRUCTS */
 typedef struct _t_token           t_token;
 typedef struct _t_tokinizer       t_tokinizer;

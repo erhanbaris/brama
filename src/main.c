@@ -17,9 +17,9 @@ int main(int argc, const char* argv[]) {
     brama_compile(context, "function fib(n) { "
 "  if (n < 2){ "
 "    return n "
-"  } var p1 =  fib(n - 1) ; var p2 =  fib(n - 2) ; "
-"  return p1 + p2 "
-"}; var index = 0; var total = 0; while (100 > index) { ++index; total += fib(10); }");
+"  } "
+"  return fib(n - 1) + fib(n - 2) "
+"}; var total = fib(10);");
     brama_run(context);
     brama_compile_dump(context);
     t_get_var_info_ptr var_info = NULL;
