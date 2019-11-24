@@ -148,19 +148,17 @@ do { \
         ast->ends_with_semicolon = false;                      \
         primative-> STR_TYPE   = value;                        \
         primative->type        = PRI_TYPE ;                    \
-        ast->create_new_storage = false ;                      \
         return ast;                                            \
     }
 
 
-#define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE, NEWSTORAGE)       \
+#define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE)       \
     t_ast* new_##NAME##_ast_internal(t_context_ptr context, INPUT variable, int FILE__ , char_ptr LINE__ ) {   \
         t_ast_ptr ast           = BRAMA_MALLOC_LINE(sizeof (t_ast), FILE__ , LINE__ );  \
         ast->type               = STR_TYPE;    \
         ast-> TYPE              = variable;    \
         ast->ends_with_newline   = false;      \
         ast->ends_with_semicolon = false;      \
-        ast->create_new_storage = NEWSTORAGE ; \
         return ast;                            \
     }
 
@@ -174,6 +172,7 @@ do { \
 #define new_block_ast(DATA)        new_block_ast_internal    (context,  DATA , __FILE__, __LINE__ )
 #define new_object_ast(DATA)       new_object_ast_internal   (context,  DATA , __FILE__, __LINE__ )
 #define new_while_ast(DATA)        new_while_ast_internal    (context,  DATA , __FILE__, __LINE__ )
+#define new_for_ast(DATA)          new_for_ast_internal      (context,  DATA , __FILE__, __LINE__ )
 #define new_if_ast(DATA)           new_if_ast_internal       (context,  DATA , __FILE__, __LINE__ )
 #define new_switch_ast(DATA)       new_switch_ast_internal   (context,  DATA , __FILE__, __LINE__ )
 #define new_return_ast(DATA)       new_return_ast_internal   (context,  DATA , __FILE__, __LINE__ )
@@ -207,15 +206,15 @@ do { \
 #    include <stdlib.h>
 #    include <crtdbg.h>
 
-#    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) allocate(context->allocator, SIZE)
-#    define BRAMA_CALLOC(NUM, SIZE)                 calloc ( NUM , SIZE )
-#    define BRAMA_MALLOC( SIZE )                    allocate(context->allocator, SIZE)
-#    define BRAMA_FREE(PTR)                         free_memory   ( context->allocator, PTR )
+#    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) context->malloc(context->allocator, SIZE)
+#    define BRAMA_CALLOC(NUM, SIZE)                 context->calloc(context->allocator, NUM , SIZE )
+#    define BRAMA_MALLOC( SIZE )                    context->malloc(context->allocator, SIZE)
+#    define BRAMA_FREE(PTR)                         context->free  (context->allocator, PTR )
 #else
-#    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) allocate(context->allocator, SIZE)
-#    define BRAMA_CALLOC(NUM, SIZE)                 calloc ( NUM , SIZE )
-#    define BRAMA_MALLOC( SIZE )                    allocate(context->allocator, SIZE)
-#    define BRAMA_FREE(PTR)                         free_memory   ( context->allocator, PTR )
+#    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) context->malloc(context->allocator, SIZE)
+#    define BRAMA_CALLOC(NUM, SIZE)                 context->calloc(context->allocator, NUM , SIZE )
+#    define BRAMA_MALLOC( SIZE )                    context->malloc(context->allocator, SIZE)
+#    define BRAMA_FREE(PTR)                         context->free  (context->allocator, PTR )
 
 #endif
 

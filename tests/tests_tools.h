@@ -9,7 +9,7 @@
 /* STRING STREAM */
 
 MunitResult string_stream_1(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context_ptr context = brama_init();
+    t_context_ptr context = brama_init(0);
     t_string_stream* stream = string_stream_init(context);
     munit_assert_ptr_not_null(stream);
     string_stream_destroy(stream);
@@ -20,7 +20,7 @@ MunitResult string_stream_1(const MunitParameter params[], void* user_data_or_fi
 }
 
 MunitResult string_stream_2(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context_ptr context = brama_init();
+    t_context_ptr context = brama_init(0);
     t_string_stream* stream = string_stream_init(context);
     munit_assert_int(stream->length,       ==, 32);
     munit_assert_int(stream->index,        ==, 0);
@@ -35,7 +35,7 @@ MunitResult string_stream_2(const MunitParameter params[], void* user_data_or_fi
 }
 
 MunitResult string_stream_3(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context_ptr context = brama_init();
+    t_context_ptr context = brama_init(0);
     t_string_stream* stream = string_stream_init(context);
     int state = string_stream_add(stream, "hello world");
     munit_assert_int(state, ==, STRING_STREAM_OK);
@@ -51,7 +51,7 @@ MunitResult string_stream_3(const MunitParameter params[], void* user_data_or_fi
 }
 
 MunitResult string_stream_4(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context_ptr context = brama_init();
+    t_context_ptr context = brama_init(0);
     t_string_stream* stream = string_stream_init(context);
     string_stream_add(stream, "hello ");
     string_stream_add(stream, "world");
@@ -67,7 +67,7 @@ MunitResult string_stream_4(const MunitParameter params[], void* user_data_or_fi
 }
 
 MunitResult string_stream_5(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context_ptr context = brama_init();
+    t_context_ptr context = brama_init(0);
     t_string_stream* stream = string_stream_init(context);
     char* tmpData = (char*)malloc((sizeof(char) * (1024 * 3)) + 1);
     char key[] = "abc";
@@ -96,7 +96,7 @@ MunitResult string_stream_5(const MunitParameter params[], void* user_data_or_fi
 }
 
 MunitResult string_stream_6(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context_ptr context = brama_init();
+    t_context_ptr context = brama_init(0);
     t_string_stream* stream = string_stream_init(context);
     char* tmpData = (char*)malloc((sizeof(char) * (1024 * 3)) + 1);
     char key[] = "abc";
@@ -126,7 +126,7 @@ MunitResult string_stream_7(const MunitParameter params[], void* user_data_or_fi
 }
 
 MunitResult string_stream_8(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context_ptr context = brama_init();
+    t_context_ptr context = brama_init(0);
     t_string_stream* stream = string_stream_init(context);
     char* tmpData = (char*)malloc((sizeof(char) * (1024)) + 1);
     char key[] = "a";
@@ -161,7 +161,7 @@ MunitResult string_stream_8(const MunitParameter params[], void* user_data_or_fi
 }
 
 MunitResult string_stream_9(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context_ptr context = brama_init();
+    t_context_ptr context = brama_init(0);
     t_string_stream* stream = string_stream_init(context);
 
     string_stream_add_char(stream, 'h');

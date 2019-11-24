@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include "murmur3.h"
 
+static inline brama_status out_of_memory_error(t_context_ptr context) {
+    return BRAMA_OUT_OF_MEMORY;
+}
 
 /* TOKINIZER OPERATIONS START */
 bool isEnd(t_tokinizer_ptr tokinizer) {
@@ -89,7 +92,7 @@ int getSymbol(t_context_ptr context, t_tokinizer_ptr tokinizer) {
     if (keywordInfo) {
         t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
         if (NULL == token) {
-            context->status = BRAMA_OUT_OF_MEMORY;
+            context->status = out_of_memory_error(context);
             return 0;
         }
 
@@ -102,7 +105,7 @@ int getSymbol(t_context_ptr context, t_tokinizer_ptr tokinizer) {
     } else {
         t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
         if (NULL == token) {
-            context->status = BRAMA_OUT_OF_MEMORY;
+            context->status = out_of_memory_error(context);
             return 0;
         }
         token->type        = TOKEN_SYMBOL;
@@ -156,7 +159,7 @@ int getText(t_context_ptr context, t_tokinizer_ptr tokinizer, char symbol) {
 
     t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
     if (NULL == token) {
-        context->status = BRAMA_OUT_OF_MEMORY;
+        context->status = out_of_memory_error(context);
         return 0;
     }
     token->type        = TOKEN_TEXT;
@@ -278,7 +281,7 @@ int getNumber(t_context_ptr context, t_tokinizer_ptr tokinizer) {
 
     t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
     if (NULL == token) {
-        context->status = BRAMA_OUT_OF_MEMORY;
+        context->status = out_of_memory_error(context);
         return 0;
     }
 
@@ -314,7 +317,7 @@ brama_status getOperator(t_context_ptr context, t_tokinizer_ptr tokinizer) {
     increase(tokinizer);
     t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
     if (NULL == token) {
-        context->status = BRAMA_OUT_OF_MEMORY;
+        context->status = out_of_memory_error(context);
         return 0;
     }
     token->type       = TOKEN_OPERATOR;
@@ -393,7 +396,7 @@ int brama_tokinize(t_context_ptr context, char_ptr data) {
         if (isNewLine(ch)) {
             t_token_ptr token = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
             if (NULL == token) {
-                context->status = BRAMA_OUT_OF_MEMORY;
+                context->status = out_of_memory_error(context);
                 return 0;
             }
             token->type    = TOKEN_OPERATOR;
@@ -501,21 +504,22 @@ NEW_PRIMATIVE_DEF(undefined, int,                 PRIMATIVE_UNDEFINED,  double_)
 NEW_PRIMATIVE_DEF(array,     vec_ast_ptr,         PRIMATIVE_ARRAY,      array)
 NEW_PRIMATIVE_DEF(dict,      map_ast_t_ptr,       PRIMATIVE_DICTIONARY, dict)
 
-NEW_AST_DEF(symbol,    char_ptr,              AST_SYMBOL,               char_ptr, false)
-NEW_AST_DEF(unary,     t_unary_ptr,           AST_UNARY,                unary_ptr, false)
-NEW_AST_DEF(binary,    t_binary_ptr,          AST_BINARY_OPERATION,     binary_ptr, false)
-NEW_AST_DEF(control,   t_control_ptr,         AST_CONTROL_OPERATION,    control_ptr, false)
-NEW_AST_DEF(assign,    t_assign_ptr,          AST_ASSIGNMENT,           assign_ptr, false)
-NEW_AST_DEF(func_call, t_func_call_ptr,       AST_FUNCTION_CALL,        func_call_ptr, false)
-NEW_AST_DEF(func_decl, t_func_decl_ptr,       AST_FUNCTION_DECLARATION, func_decl_ptr, true)
-NEW_AST_DEF(block,     vec_ast_ptr ,          AST_BLOCK,                vector_ptr, false)
-NEW_AST_DEF(object,    t_object_creation_ptr, AST_OBJECT_CREATION,      object_creation_ptr, false)
-NEW_AST_DEF(while,     t_while_loop_ptr ,     AST_WHILE,                while_ptr, false)
-NEW_AST_DEF(if,        t_if_stmt_ptr,         AST_IF_STATEMENT,         if_stmt_ptr, false)
-NEW_AST_DEF(switch,    t_switch_stmt_ptr ,    AST_SWITCH,               switch_stmt_ptr, false)
-NEW_AST_DEF(return,    t_ast_ptr,             AST_RETURN,               ast_ptr, false)
-NEW_AST_DEF(accessor,  t_accessor_ptr,        AST_ACCESSOR,             accessor_ptr, false)
-NEW_AST_DEF(keyword,   brama_keyword_type,    AST_KEYWORD,              keyword, false)
+NEW_AST_DEF(symbol,    char_ptr,              AST_SYMBOL,               char_ptr)
+NEW_AST_DEF(unary,     t_unary_ptr,           AST_UNARY,                unary_ptr)
+NEW_AST_DEF(binary,    t_binary_ptr,          AST_BINARY_OPERATION,     binary_ptr)
+NEW_AST_DEF(control,   t_control_ptr,         AST_CONTROL_OPERATION,    control_ptr)
+NEW_AST_DEF(assign,    t_assign_ptr,          AST_ASSIGNMENT,           assign_ptr)
+NEW_AST_DEF(func_call, t_func_call_ptr,       AST_FUNCTION_CALL,        func_call_ptr)
+NEW_AST_DEF(func_decl, t_func_decl_ptr,       AST_FUNCTION_DECLARATION, func_decl_ptr)
+NEW_AST_DEF(block,     vec_ast_ptr ,          AST_BLOCK,                vector_ptr)
+NEW_AST_DEF(object,    t_object_creation_ptr, AST_OBJECT_CREATION,      object_creation_ptr)
+NEW_AST_DEF(while,     t_while_loop_ptr ,     AST_WHILE,                while_ptr)
+NEW_AST_DEF(for,       t_for_loop_ptr ,       AST_FOR,                  for_ptr)
+NEW_AST_DEF(if,        t_if_stmt_ptr,         AST_IF_STATEMENT,         if_stmt_ptr)
+NEW_AST_DEF(switch,    t_switch_stmt_ptr ,    AST_SWITCH,               switch_stmt_ptr)
+NEW_AST_DEF(return,    t_ast_ptr,             AST_RETURN,               ast_ptr)
+NEW_AST_DEF(accessor,  t_accessor_ptr,        AST_ACCESSOR,             accessor_ptr)
+NEW_AST_DEF(keyword,   brama_keyword_type,    AST_KEYWORD,              keyword)
 
 brama_status as_primative(t_context_ptr context, t_token_ptr token, t_ast_ptr_ptr ast) {
     switch (token->type) {
@@ -548,6 +552,7 @@ brama_status as_primative(t_context_ptr context, t_token_ptr token, t_ast_ptr_pt
         return BRAMA_PARSE_ERROR;
     }
 
+    set_semicolon_and_newline(context, *ast);
     return BRAMA_OK;
 }
 
@@ -583,7 +588,7 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_as
     if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_START)) { // Parse dictionary
         map_void_t* dictionary = BRAMA_MALLOC(sizeof (map_void_t));
         if (NULL == dictionary) {
-            return BRAMA_OUT_OF_MEMORY;
+            return out_of_memory_error(context);
         }
 
         map_init(dictionary);
@@ -630,7 +635,7 @@ brama_status ast_primary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_as
     if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START)) {
         vec_ast_ptr args = BRAMA_MALLOC(sizeof (vec_ast));
         if (NULL == args) {
-            return BRAMA_OUT_OF_MEMORY;
+            return out_of_memory_error(context);
         }
         vec_init(args);
 
@@ -695,7 +700,7 @@ brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_a
 
         if (*ast != NULL) {
             t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
-            if (NULL == accessor) return BRAMA_OUT_OF_MEMORY;
+            if (NULL == accessor) return out_of_memory_error(context);
 
             accessor->object        = *ast;
             accessor->property      = tmp_ast;
@@ -729,7 +734,7 @@ brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_a
         }
 
         t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
-        if (NULL == accessor) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == accessor) return out_of_memory_error(context);
 
         accessor->object        = *ast;
         accessor->property      = indexer;
@@ -772,7 +777,7 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
     /* We are parsing function parameters */
     if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) {
         vec_ast_ptr args = BRAMA_MALLOC(sizeof (vec_ast));
-        if (NULL == args) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == args) return out_of_memory_error(context);
 
         vec_init(args);
 
@@ -795,7 +800,7 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
         }
 
         t_func_call* func_call = BRAMA_MALLOC(sizeof (t_func_call));
-        if (NULL == func_call) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == func_call) return out_of_memory_error(context);
 
         func_call->args        = args;
         func_call->function    = *ast;
@@ -825,7 +830,7 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
         }
 
         t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
-        if (NULL == accessor) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == accessor) return out_of_memory_error(context);
 
         accessor->object        = *ast;
         accessor->property      = indexer;
@@ -852,7 +857,7 @@ brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, 
 
     if (ast_match_operator(context, 1, OPERATOR_CURVE_BRACKET_START)) { // Is it start with '{'
         vec_ast_ptr blocks = BRAMA_MALLOC(sizeof (vec_ast));
-        if (NULL == blocks) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == blocks) return out_of_memory_error(context);
 
         bool ends_with_semicolon = false;
         bool ends_with_newline   = false;
@@ -899,7 +904,9 @@ brama_status ast_block_multiline_stmt(t_context_ptr context, t_ast_ptr_ptr ast, 
                 if (block->type == AST_PRIMATIVE || block->type == AST_FUNCTION_CALL) {
                     if (!is_next_new_line(context) &&
                         !ast_check_operator(context, OPERATOR_CURVE_BRACKET_END) &&
-                        !ast_check_operator(context, OPERATOR_SEMICOLON)) {
+                        !ast_check_operator(context, OPERATOR_SEMICOLON) &&
+                        !block->ends_with_semicolon &&
+                        !block->ends_with_newline) {
                         destroy_ast_vector(context, blocks);
                         BRAMA_FREE(blocks);
                         CLEAR_AST(block);
@@ -948,7 +955,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
 
         vec_ast_ptr args = BRAMA_MALLOC(sizeof(vec_ast));
-        if (NULL == args) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == args) return out_of_memory_error(context);
 
         vec_init(args);
 
@@ -990,7 +997,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
 
         if (ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES)) { // If anonymous function directly calling
             vec_ast_ptr call_args = BRAMA_MALLOC(sizeof(vec_ast));
-            if (NULL == call_args) return BRAMA_OUT_OF_MEMORY;
+            if (NULL == call_args) return out_of_memory_error(context);
 
             vec_init(call_args);
 
@@ -1018,7 +1025,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
             }
 
             t_func_decl_ptr func_decl = (t_func_decl_ptr)BRAMA_MALLOC(sizeof(t_func_decl));
-            if (NULL == func_decl) return BRAMA_OUT_OF_MEMORY;
+            if (NULL == func_decl) return out_of_memory_error(context);
 
             func_decl->args           = args;
             func_decl->body           = body;
@@ -1026,7 +1033,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
 
 
             t_func_call_ptr func_call = (t_func_call_ptr)BRAMA_MALLOC(sizeof (t_func_call));
-            if (NULL == func_call) return BRAMA_OUT_OF_MEMORY;
+            if (NULL == func_call) return out_of_memory_error(context);
 
             func_call->args           = call_args;
             func_call->func_decl_ptr  = func_decl;
@@ -1037,7 +1044,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
         }
 
         t_func_decl_ptr func_decl = (t_func_decl_ptr)BRAMA_MALLOC(sizeof(t_func_decl));
-        if (NULL == func_decl) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == func_decl) return out_of_memory_error(context);
 
         func_decl->args           = args;
         func_decl->body           = body;
@@ -1085,7 +1092,7 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         }
 
         t_unary_ptr unary   = BRAMA_MALLOC(sizeof (t_unary));
-        if (NULL == unary) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == unary) return out_of_memory_error(context);
 
         unary->operand_type = UNARY_OPERAND_BEFORE;
         unary->opt          = operator_type;
@@ -1105,7 +1112,7 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         status = ast_primary_expr(context, &unary_content, extra_data);
 
         t_unary_ptr unary   = BRAMA_MALLOC(sizeof (t_unary));
-        if (NULL == unary) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == unary) return out_of_memory_error(context);
 
         unary->operand_type = UNARY_OPERAND_AFTER;
         unary->opt          = operator_type;
@@ -1114,7 +1121,7 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         return BRAMA_OK;
     }
 
-    if (status == BRAMA_OK && (*ast)->type == AST_PRIMATIVE && (ast_check_operator(context, OPERATOR_INCREMENT) ||  ast_check_operator(context, OPERATOR_DECCREMENT))) {
+    if (status == BRAMA_OK && (*ast)->type == AST_PRIMATIVE && !(*ast)->ends_with_newline && !(*ast)->ends_with_semicolon && (ast_check_operator(context, OPERATOR_INCREMENT) ||  ast_check_operator(context, OPERATOR_DECCREMENT))) {
         CLEAR_AST(*ast);
         RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_INVALID_UNARY_EXPRESSION);
     }
@@ -1131,6 +1138,12 @@ brama_status ast_declaration_stmt(t_context_ptr context, t_ast_ptr_ptr ast, bram
         return status;
 
     status = ast_block_multiline_stmt(context, ast, extra_data);
+    if (status == BRAMA_OK)
+        return BRAMA_OK;
+    else if (status != BRAMA_DOES_NOT_MATCH_AST)
+        return status;
+
+    status = ast_for_loop(context, ast, extra_data);
     if (status == BRAMA_OK)
         return BRAMA_OK;
     else if (status != BRAMA_DOES_NOT_MATCH_AST)
@@ -1212,12 +1225,15 @@ brama_status ast_control_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_as
         }
 
         t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
-        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == binary) return out_of_memory_error(context);
 
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
         *ast = new_control_ast(binary);
+
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -1238,12 +1254,15 @@ brama_status ast_equality_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_a
         }
 
         t_control_ptr binary = BRAMA_MALLOC(sizeof(t_control));
-        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == binary) return out_of_memory_error(context);
 
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
         *ast = new_control_ast(binary);
+
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -1265,12 +1284,15 @@ brama_status ast_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_ex
         }
 
         t_control_ptr control = BRAMA_MALLOC(sizeof(t_control));
-        if (NULL == control) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == control) return out_of_memory_error(context);
 
         control->left         = *ast;
         control->opt          = opt;
         control->right        = right;
         *ast = new_control_ast(control);
+
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -1291,12 +1313,15 @@ brama_status ast_bitwise_and_expr(t_context_ptr context, t_ast_ptr_ptr ast, bram
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
-        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == binary) return out_of_memory_error(context);
 
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
         *ast = new_binary_ast(binary);
+
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -1317,12 +1342,15 @@ brama_status ast_bitwise_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
-        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == binary) return out_of_memory_error(context);
 
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
         *ast = new_binary_ast(binary);
+
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -1343,12 +1371,15 @@ brama_status ast_bitwise_xor_expr(t_context_ptr context, t_ast_ptr_ptr ast, bram
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
-        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == binary) return out_of_memory_error(context);
 
         binary->left         = *ast;
         binary->opt          = opt;
         binary->right        = right;
         *ast = new_binary_ast(binary);
+
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -1369,12 +1400,15 @@ brama_status ast_or_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_ext
         }
 
         t_control_ptr control = BRAMA_MALLOC(sizeof(t_control));
-        if (NULL == control) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == control) return out_of_memory_error(context);
 
         control->left         = *ast;
         control->opt          = opt;
         control->right        = right;
         *ast = new_control_ast(control);
+
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -1396,12 +1430,15 @@ brama_status ast_bitwise_shift_expr(t_context_ptr context, t_ast_ptr_ptr ast, br
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
-        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == binary) return out_of_memory_error(context);
 
         binary->left        = *ast;
         binary->opt         = opt;
         binary->right       = right;
         *ast = new_binary_ast(binary);
+
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -1422,12 +1459,15 @@ brama_status ast_addition_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_a
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
-        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == binary) return out_of_memory_error(context);
 
         binary->left        = *ast;
         binary->opt         = opt;
         binary->right       = right;
         *ast = new_binary_ast(binary);
+
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -1448,12 +1488,15 @@ brama_status ast_modulo_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
-        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == binary) return out_of_memory_error(context);
 
         binary->left        = *ast;
         binary->opt         = opt;
         binary->right       = right;
         *ast = new_binary_ast(binary);
+
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -1474,12 +1517,15 @@ brama_status ast_multiplication_expr(t_context_ptr context, t_ast_ptr_ptr ast, b
         }
 
         t_binary_ptr binary = BRAMA_MALLOC(sizeof(t_binary));
-        if (NULL == binary) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == binary) return out_of_memory_error(context);
 
         binary->left        = *ast;
         binary->opt         = opt;
         binary->right       = right;
         *ast = new_binary_ast(binary);
+
+        (*ast)->ends_with_semicolon = right->ends_with_semicolon;
+        (*ast)->ends_with_newline   = right->ends_with_newline;
     }
 
     return BRAMA_OK;
@@ -1495,43 +1541,72 @@ brama_status ast_assignment_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama
         new_def = true;
     }
 
-    brama_status status = ast_accessor_stmt(context, ast, extra_data);
+    vec_ast_ptr blocks = NULL;
 
-    if (status != BRAMA_OK && !is_symbol(ast_peek(context)))
-        DESTROY_AST_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST, *ast);
+    bool ends_with_semicolon = false;
+    bool ends_with_newline   = false;
 
-    if (status != BRAMA_OK)
-        *ast = new_symbol_ast(get_symbol(ast_consume(context)));
+    do {
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+        
+        *ast = NULL;
 
-    t_ast_ptr right         = NULL;
-    brama_operator_type opt = OPERATOR_NONE;
+        brama_status status = ast_accessor_stmt(context, ast, extra_data);
 
-    if (ast_match_operator(context, 6, OPERATOR_ASSIGN, OPERATOR_ASSIGN_ADDITION, OPERATOR_ASSIGN_DIVISION, OPERATOR_ASSIGN_MODULUS, OPERATOR_ASSIGN_MULTIPLICATION, OPERATOR_ASSIGN_SUBTRACTION)) {
-        opt = get_operator(ast_previous(context));
-        brama_status right_status = ast_assignable(context, &right, extra_data);
-        if (right_status != BRAMA_OK) {
-            CLEAR_AST(right);
-            CLEAR_AST(*ast);
-            return right_status;
+        if (status != BRAMA_OK && !is_symbol(ast_peek(context)))
+            DESTROY_AST_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST, *ast);
+
+        if (status != BRAMA_OK)
+            *ast = new_symbol_ast(get_symbol(ast_consume(context)));
+
+        t_ast_ptr right         = NULL;
+        brama_operator_type opt = OPERATOR_NONE;
+
+        if (ast_match_operator(context, 6, OPERATOR_ASSIGN, OPERATOR_ASSIGN_ADDITION, OPERATOR_ASSIGN_DIVISION, OPERATOR_ASSIGN_MODULUS, OPERATOR_ASSIGN_MULTIPLICATION, OPERATOR_ASSIGN_SUBTRACTION)) {
+            opt = get_operator(ast_previous(context));
+            brama_status right_status = ast_assignable(context, &right, extra_data);
+            if (right_status != BRAMA_OK) {
+                CLEAR_AST(right);
+                CLEAR_AST(*ast);
+                return right_status;
+            }
+        } else if (!new_def)
+            DESTROY_AST_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST, *ast);
+
+        t_assign_ptr assign = BRAMA_MALLOC(sizeof(t_assign));
+        if (NULL == assign) return out_of_memory_error(context);
+
+        assign->object      = *ast;
+        assign->def_type    = type;
+        assign->opt         = opt;
+        assign->assignment  = right;
+        assign->new_def     = new_def;
+        *ast = new_assign_ast(assign);
+        set_semicolon_and_newline(context, *ast);
+
+        if (right != NULL) {
+            (*ast)->ends_with_semicolon = right->ends_with_semicolon || (*ast)->ends_with_semicolon;
+            (*ast)->ends_with_newline   = right->ends_with_newline   || (*ast)->ends_with_newline;
         }
-    } else if (!new_def)
-        DESTROY_AST_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST, *ast);
 
-    t_assign_ptr assign = BRAMA_MALLOC(sizeof(t_assign));
-    if (NULL == assign) return BRAMA_OUT_OF_MEMORY;
+        if (ast_check_operator(context, OPERATOR_COMMA) && NULL == blocks) {
+            blocks = BRAMA_MALLOC(sizeof (vec_ast));
+            if (NULL == blocks) return out_of_memory_error(context);
+            vec_init(blocks);
+        }
 
-    assign->object      = *ast;
-    assign->def_type    = type;
-    assign->opt         = opt;
-    assign->assignment  = right;
-    assign->new_def     = new_def;
-    *ast = new_assign_ast(assign);
-    set_semicolon_and_newline(context, *ast);
+        if (NULL != blocks)
+            vec_push(blocks, *ast);
 
-    if (right != NULL) {
-        (*ast)->ends_with_semicolon = right->ends_with_semicolon || (*ast)->ends_with_semicolon;
-        (*ast)->ends_with_newline   = right->ends_with_newline   || (*ast)->ends_with_newline;
-    }
+        ends_with_semicolon = true;
+        ends_with_newline   = true;
+    } while (!ast_is_at_end(context) && ast_match_operator(context, 1, OPERATOR_COMMA));
+
+    if (NULL != blocks)
+        *ast = new_block_ast(blocks);
+
+    (*ast)->ends_with_newline   = ends_with_newline;
+    (*ast)->ends_with_semicolon = ends_with_semicolon;
 
     return BRAMA_OK;
 }
@@ -1573,6 +1648,8 @@ brama_status ast_return_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
 
         *ast = new_return_ast(statement);
         set_semicolon_and_newline(context, *ast);
+        (*ast)->ends_with_semicolon = (*ast)->ends_with_semicolon || statement->ends_with_semicolon;
+        (*ast)->ends_with_newline   = (*ast)->ends_with_newline   || statement->ends_with_newline;
         return BRAMA_OK;
     }
 
@@ -1591,7 +1668,7 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
             RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_NEW_CLASS_CREATION_NOT_VALID);
 
         vec_ast_ptr args = BRAMA_MALLOC(sizeof (vec_ast));
-        if (NULL == args) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == args) return out_of_memory_error(context);
 
         vec_init(args);
 
@@ -1616,12 +1693,99 @@ brama_status ast_new_object(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         }
 
         t_object_creation_ptr object = (t_object_creation_ptr)BRAMA_MALLOC(sizeof(t_object_creation));
-        if (NULL == object) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == object) return out_of_memory_error(context);
 
         object->object_name = object_name;
         object->args        = args;
         *ast = new_object_ast(object);
         set_semicolon_and_newline(context, *ast);
+        return BRAMA_OK;
+    }
+
+    RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_DOES_NOT_MATCH_AST);
+}
+
+brama_status ast_for_loop(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
+    BACKUP_PARSER_INDEX();
+
+    if (ast_match_keyword(context, 1, KEYWORD_FOR)) {
+        /* Remove new lines */
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+
+        if (!ast_match_operator(context, 1, OPERATOR_LEFT_PARENTHESES))
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+
+        t_ast_ptr definition           = NULL;
+        brama_status definition_status = ast_assignable(context, &definition, extra_data | AST_IN_LOOP);
+        if (definition_status != BRAMA_OK) {
+            CLEAR_AST(definition);
+            RESTORE_PARSER_INDEX_AND_RETURN(definition_status);
+        }
+
+        /* Remove new lines */
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+        if (!definition->ends_with_semicolon)
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_SEMICOLON_REQUIRED);
+
+        t_ast_ptr condition           = NULL;
+        brama_status condition_status = ast_assignable(context, &condition, extra_data | AST_IN_LOOP);
+        if (condition_status != BRAMA_OK) {
+            CLEAR_AST(condition);
+            RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
+        }
+
+        /* Remove new lines */
+        check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+        if (!condition->ends_with_semicolon)
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_SEMICOLON_REQUIRED);
+
+        t_ast_ptr increment           = NULL;
+        brama_status increment_status = ast_assignable(context, &increment, extra_data | AST_IN_LOOP);
+        if (increment_status != BRAMA_OK) {
+            CLEAR_AST(increment);
+            RESTORE_PARSER_INDEX_AND_RETURN(increment_status);
+        }
+
+        if (!ast_match_operator(context, 1, OPERATOR_RIGHT_PARENTHESES)){
+            destroy_ast(context, condition);
+            BRAMA_FREE(condition);
+            condition = NULL;
+            RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_OPEN_OPERATOR_NOT_FOUND);
+        }
+
+        t_ast_ptr body = NULL;
+        brama_status body_status = ast_block_multiline_stmt(context, &body, extra_data | AST_IN_LOOP);
+        if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
+            check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
+
+            body_status = ast_block_body(context, &body, extra_data | AST_IN_LOOP);
+            if (body_status != BRAMA_OK) {
+                CLEAR_AST(condition);
+                CLEAR_AST(body);
+                RESTORE_PARSER_INDEX_AND_RETURN(body_status);
+            }
+        }
+        else if (condition_status != BRAMA_OK) {
+            CLEAR_AST(condition);
+            CLEAR_AST(body);
+            RESTORE_PARSER_INDEX_AND_RETURN(condition_status);
+        }
+        else if (body_status != BRAMA_OK) {
+            CLEAR_AST(condition);
+            CLEAR_AST(body);
+            RESTORE_PARSER_INDEX_AND_RETURN(body_status);
+        }
+
+        t_for_loop_ptr object = (t_for_loop_ptr)BRAMA_MALLOC(sizeof(t_for_loop));
+        if (NULL == object) return out_of_memory_error(context);
+
+        object->body                = body;
+        object->condition           = condition;
+        object->definition          = definition;
+        object->increment           = increment;
+        *ast = new_for_ast(object);
+        (*ast)->ends_with_semicolon = body->ends_with_semicolon;
+        (*ast)->ends_with_newline   = body->ends_with_newline;
         return BRAMA_OK;
     }
 
@@ -1676,7 +1840,7 @@ brama_status ast_while_loop(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
         }
 
         t_while_loop_ptr object = (t_while_loop_ptr)BRAMA_MALLOC(sizeof(t_while_loop));
-        if (NULL == object) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == object) return out_of_memory_error(context);
 
         object->body            = body;
         object->condition       = condition;
@@ -1758,7 +1922,7 @@ brama_status ast_if_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_ext
         }
 
         t_if_stmt_ptr object = (t_if_stmt_ptr)BRAMA_MALLOC(sizeof(t_if_stmt));
-        if (NULL == object) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == object) return out_of_memory_error(context);
 
         object->true_body  = true_body;
         object->false_body = false_body;
@@ -1802,7 +1966,7 @@ brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
         check_end_of_line(context, END_LINE_CHECKER_NEWLINE);
 
         vec_case_item_ptr cases = BRAMA_MALLOC(sizeof(vec_case_item));
-        if (NULL == cases) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == cases) return out_of_memory_error(context);
 
         vec_init(cases);
 
@@ -1838,7 +2002,7 @@ brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
             ast_consume(context); /* Remove last token from list */
             /* Key and value for case */
             t_case_item_ptr case_item = BRAMA_MALLOC(sizeof(t_case_item));
-            if (NULL == case_item) return BRAMA_OUT_OF_MEMORY;
+            if (NULL == case_item) return out_of_memory_error(context);
 
             case_item->key            = NULL;
             case_item->body           = NULL;
@@ -1877,7 +2041,7 @@ brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
             brama_status body_status = ast_block_multiline_stmt(context, &case_item->body, extra_data | AST_IN_SWITCH);
             if (body_status == BRAMA_DOES_NOT_MATCH_AST) {
                 vec_ast_ptr blocks = BRAMA_MALLOC(sizeof (vec_ast));
-                if (NULL == blocks) return BRAMA_OUT_OF_MEMORY;
+                if (NULL == blocks) return out_of_memory_error(context);
 
                 vec_init(blocks);
 
@@ -1943,7 +2107,7 @@ brama_status ast_switch_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
         }
 
         t_switch_stmt_ptr object = (t_switch_stmt_ptr)BRAMA_MALLOC(sizeof(t_switch_stmt));
-        if (NULL == object) return BRAMA_OUT_OF_MEMORY;
+        if (NULL == object) return out_of_memory_error(context);
 
         object->condition        = condition;
         object->cases            = cases;
@@ -2286,16 +2450,39 @@ brama_status ast_parser(t_context_ptr context) {
 
 /* AST PARSER OPERATIONS END */
 
-t_context_ptr brama_init() {
+static inline void* native_malloc(void* user_data, size_t size) {
+    return malloc(size);
+}
+
+static inline void native_free(void* user_data, void* ptr) {
+    free(ptr);
+}
+
+static inline void* native_calloc(void* user_data, size_t count, size_t size) {
+    return calloc(count, size);
+}
+
+t_context_ptr brama_init(size_t memory) {
     t_context_ptr context      = (t_context_ptr)malloc(sizeof(t_context));
     context->error_message     = NULL;
     
-    context->allocator         = init_allocator(1014 * 1024 * 100);
+    if (memory == 0) {
+        context->malloc = &native_malloc;
+        context->calloc = &native_calloc;
+        context->free   = &native_free;
+
+        context->allocator = NULL;
+    } else {
+        context->allocator = init_allocator(memory);
+        context->malloc  = &stack_malloc;
+        context->calloc  = &stack_calloc;
+        context->free    = &stack_free;
+    }
     
     /* tokinizer */
     context->tokinizer         = (t_tokinizer_ptr)BRAMA_MALLOC(sizeof(t_tokinizer));
     if (NULL == context->tokinizer) {
-        context->status = BRAMA_OUT_OF_MEMORY;
+        context->status = out_of_memory_error(context);
         return context;
     }
 
@@ -2304,7 +2491,7 @@ t_context_ptr brama_init() {
     context->tokinizer->line   = 1;
     context->tokinizer->tokens = BRAMA_MALLOC(sizeof (vec_token));
     if (NULL == context->tokinizer->tokens) {
-        context->status = BRAMA_OUT_OF_MEMORY;
+        context->status = out_of_memory_error(context);
         return context;
     }
 
@@ -2313,7 +2500,7 @@ t_context_ptr brama_init() {
     /* parser */
     context->parser            = (t_parser_ptr)BRAMA_MALLOC(sizeof (t_parser));
     if (NULL == context->parser) {
-        context->status = BRAMA_OUT_OF_MEMORY;
+        context->status = out_of_memory_error(context);
         return context;
     }
 
@@ -2321,7 +2508,7 @@ t_context_ptr brama_init() {
     context->parser->line      = 0;
     context->parser->asts      = BRAMA_MALLOC(sizeof (vec_ast));
     if (NULL == context->parser->asts) {
-        context->status = BRAMA_OUT_OF_MEMORY;
+        context->status = out_of_memory_error(context);
         return context;
     }
         
@@ -2337,7 +2524,7 @@ t_context_ptr brama_init() {
     /* Compiler */
     context->compiler                 = (t_compiler_ptr)BRAMA_MALLOC(sizeof(t_compiler));
     if (NULL == context->compiler) {
-        context->status = BRAMA_OUT_OF_MEMORY;
+        context->status = out_of_memory_error(context);
         return context;
     }
 
@@ -2346,14 +2533,14 @@ t_context_ptr brama_init() {
     context->compiler->storage_index  = 0;
     context->compiler->op_codes       = BRAMA_MALLOC(sizeof (vec_opcode));
     if (NULL == context->compiler->op_codes) {
-        context->status = BRAMA_OUT_OF_MEMORY;
+        context->status = out_of_memory_error(context);
         return context;
     }
 
     vec_init(&context->compiler->compile_stack);
     context->compiler->global_storage = BRAMA_MALLOC(sizeof (t_storage));
     if (NULL == context->compiler->global_storage) {
-        context->status = BRAMA_OUT_OF_MEMORY;
+        context->status = out_of_memory_error(context);
         return context;
     }
 
@@ -2635,6 +2822,12 @@ bool destroy_ast(t_context_ptr context, t_ast_ptr ast) {
        ast->control_ptr = NULL;
    }
 
+   else if (ast->type == AST_FOR) {
+       destroy_ast_while_loop(context, ast->while_ptr);
+       BRAMA_FREE(ast->while_ptr);
+       ast->control_ptr = NULL;
+   }
+
    else if (ast->type == AST_BLOCK) {
        destroy_ast_vector(context, ast->vector_ptr);
        BRAMA_FREE(ast->vector_ptr);
@@ -2786,6 +2979,33 @@ bool destroy_ast_func_decl(t_context_ptr context, t_func_decl_ptr func_decl_ptr)
         BRAMA_FREE(func_decl_ptr->body);
     }
 
+    return true;
+}
+
+bool destroy_ast_for_loop(t_context_ptr context, t_for_loop_ptr for_ptr) {
+    if (for_ptr->body != NULL) {
+        if (destroy_ast(context, for_ptr->body)) {
+            BRAMA_FREE(for_ptr->body);
+        }
+    }
+
+    if (for_ptr->condition != NULL) {
+        if (destroy_ast(context, for_ptr->condition)) {
+            BRAMA_FREE(for_ptr->condition);
+        }
+    }
+
+    if (for_ptr->definition != NULL) {
+        if (destroy_ast(context, for_ptr->definition)) {
+            BRAMA_FREE(for_ptr->definition);
+        }
+    }
+
+    if (for_ptr->increment != NULL) {
+        if (destroy_ast(context, for_ptr->increment)) {
+            BRAMA_FREE(for_ptr->increment);
+        }
+    }
     return true;
 }
 
@@ -3272,7 +3492,6 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
         }
 
         case AST_PRIMATIVE: {
-            int index = 0;
             switch (ast->primative_ptr->type) {
                 case PRIMATIVE_INTEGER:
                 case PRIMATIVE_DOUBLE:
@@ -3783,7 +4002,6 @@ void compile_unary(t_context_ptr context, t_unary_ptr const ast, t_storage_ptr s
             code->reg1 = dest_id;
             code->reg2 = compile_info->index;
 
-            int index;
             code->reg3 = get_constant_address(context, storage, numberToValue(-1));
             break;
         }
@@ -3840,7 +4058,6 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     assign->object           = BRAMA_MALLOC(sizeof(t_ast));
     assign->object->type     = AST_SYMBOL;
     assign->object->char_ptr = BRAMA_MALLOC(sizeof(char) * 20);
-    assign->object->create_new_storage = false;
 
     /* Store loop status */
     sprintf(assign->object->char_ptr, "(loop #%zu)", ++storage->loop_counter);
@@ -3945,18 +4162,39 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
         }
     }
 
-    t_brama_vmdata code;
-    code.op   = VM_OPT_CALL;
-    code.reg1 = assignment_variable_index == -1 ? ((storage->variables.length - storage->temp_count)) + storage->temp_counter++ : assignment_variable_index;
-    code.reg2 = ast->args->length;       /* Total passed arguments */
-    code.reg3 = function_variable_index; /* Function address */
-    code.scal = 0;
-    vec_push(context->compiler->op_codes, vm_encode(code));
+    if (storage->temp_counter > 1 && ast->args->length != 0) {
+        t_brama_vmdata tmp_set_code;
+        tmp_set_code.op   = VM_OPT_SET_TMP_LOC;
+        tmp_set_code.reg1 = storage->temp_counter - 1;
+        tmp_set_code.reg2 = 0;
+        tmp_set_code.reg3 = 0;
+        tmp_set_code.scal = 0;
+        vec_push(context->compiler->op_codes, vm_encode(tmp_set_code));
+    }
+
+    if (0 == strcmp(ast->function->char_ptr, "print")) {
+        t_brama_vmdata code;
+        code.op   = VM_OPT_PRINT;
+        code.reg1 = ast->args->length;
+        code.reg2 = (((storage->variables.length - storage->temp_count)) + storage->temp_counter) - ast->args->length;
+        code.reg3 = 0;
+        code.scal = 0;
+        vec_push(context->compiler->op_codes, vm_encode(code));
+        compile_info->index   = code.reg1;
+    }
+    else {
+        t_brama_vmdata code;
+        code.op   = VM_OPT_CALL;
+        code.reg1 = assignment_variable_index == -1 ? ((storage->variables.length - storage->temp_count)) + storage->temp_counter++ : assignment_variable_index;
+        code.reg2 = ast->args->length;       /* Total passed arguments */
+        code.reg3 = function_variable_index; /* Function address */
+        code.scal = 0;
+        vec_push(context->compiler->op_codes, vm_encode(code));
+        compile_info->index   = code.reg1;
+    }
 
     if (!(COMPILE_AST_OPTIONS[AST_FUNCTION_CALL].ignore_temp_resetter | upper_ast))
         storage->temp_counter = temp_counter;
-
-    compile_info->index   = code.reg1; 
 }
 
 void brama_func_console_log(t_context_ptr context, size_t param_size, t_brama_value* params) {
@@ -4151,7 +4389,6 @@ void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storag
     assign->object           = BRAMA_MALLOC(sizeof(t_ast));
     assign->object->type     = AST_SYMBOL;
     assign->object->char_ptr = BRAMA_MALLOC(sizeof(char) * 20);
-    assign->object->create_new_storage = false;
 
     /* Build switch condition for compare in cases */
     sprintf(assign->object->char_ptr, "(switch #%zu)", ++storage->loop_counter);
@@ -4742,39 +4979,12 @@ void brama_compile_dump_storage(t_context_ptr context, t_storage_ptr storage) {
     printf(" # STORAGE ID          = %zu\r\n", storage->id);
     printf(" # CONSTANTS SIZE      = %zu\r\n", storage->constant_count);
     printf(" # TEMP VARIABLES SIZE = %zu\r\n", storage->temp_count);
-    printf(" # VARIABLES SIZE      = %zu\r\n\r\n", storage->variables.length);
-
-
-    if (storage->constant_count > 0) {
-        //printf ("\r\n----------------------------------------\r\n");
-        printf ("\r\n Index   | Constant         \r\n");
-        printf ("---------+----------------------------------------\r\n");
-
-        for (int i = 0; i < storage->constant_count; ++i) {
-            tmp_val = storage->variables.data[i];
-
-            if (IS_BOOL(tmp_val))
-                printf ("%8d |  %s\r\n", i, IS_FALSE(tmp_val) ? "false" : "true");
-            else if (IS_NUM(tmp_val))
-                printf ("%8d |  %f\r\n", i, valueToNumber(tmp_val));
-            else if (IS_STRING(tmp_val))
-                printf ("%8d |  '%s'\r\n", i, AS_STRING(tmp_val));
-            else if (IS_UNDEFINED(tmp_val))
-                printf ("%8d |  undefined\r\n", i);
-            else if (IS_NULL(tmp_val))
-                printf ("%8d |  null\r\n", i);
-            else if (IS_FUNCTION(tmp_val))
-                printf ("%8d |  (%s)\r\n", i, AS_FUNCTION(tmp_val)->name);
-            else
-                printf ("%8d |  ERROR!\r\n", i);
-            printf ("---------+----------------------------------------\r\n");
-        }
-    }
+    printf(" # VARIABLES SIZE      = %d\r\n\r\n", storage->variables.length);
 
     if (storage->variables.length > 0) {
         //printf ("\r\n----------------------------------------\r\n");
         printf ("\r\n Index   | Variable         |    Data\r\n");
-        printf ("---------+------------------+---------------------\r\n");
+        printf ("---------+------------------+-----------------------------------------\r\n");
         char_ptr* variable_infos = BRAMA_CALLOC(storage->variables.length, sizeof(char_ptr));
 
         map_iter_t iter = map_iter(&storage->variable_names);
@@ -4801,7 +5011,7 @@ void brama_compile_dump_storage(t_context_ptr context, t_storage_ptr storage) {
                 printf ("%8d |  %-15s | (%s)\r\n", i, variable_infos[i], AS_FUNCTION(tmp_val)->name);
             else
                 printf ("%8d |  ERROR!\r\n", i);
-            printf ("---------+------------------+---------------------\r\n");
+            printf ("---------+------------------+-----------------------------------------\r\n");
         }
 
         BRAMA_FREE(variable_infos);
@@ -4810,15 +5020,15 @@ void brama_compile_dump_storage(t_context_ptr context, t_storage_ptr storage) {
     printf("\r\n######################################################\r\n\r\n\r\n");
 }
 
-void brama_compile_dump_memory(t_brama_value* variables, map_size_t_ptr variable_names, size_t size) {
+void brama_compile_dump_memory(t_context_ptr context, t_brama_value* variables, map_size_t_ptr variable_names, size_t size) {
     printf("######################################################\r\n");
     printf("######################################################\r\n");
     printf("######################################################\r\n\r\n");
 
     //printf ("\r\n----------------------------------------\r\n");
     printf ("\r\n Index   | Variable         |    Data\r\n");
-    printf ("---------+------------------+---------------------\r\n");
-    char_ptr* variable_infos = BRAMA_CALLOC(size, sizeof(char_ptr));
+    printf ("---------+------------------+-----------------------------------------\r\n");
+    char_ptr** variable_infos = BRAMA_CALLOC(size, sizeof(char_ptr));
 
     map_iter_t iter = map_iter(&storage->variable_names);
     int            index   = 0;
@@ -4833,22 +5043,24 @@ void brama_compile_dump_memory(t_brama_value* variables, map_size_t_ptr variable
         tmp_val = variables[i];
 
         if (IS_BOOL(tmp_val))
-            printf ("%8d |  %-15s | %s\r\n", i, variable_infos[i], IS_FALSE(tmp_val) ? "false" : "true");
+            printf ("%8d |  %-15s | %s\r\n", i, NULL == variable_infos[i] ? "(NULL)" : variable_infos[i], IS_FALSE(tmp_val) ? "false" : "true");
         else if (IS_NUM(tmp_val))
-            printf ("%8d |  %-15s | %f\r\n", i, variable_infos[i], valueToNumber(tmp_val));
+            printf ("%8d |  %-15s | %f\r\n", i, NULL == variable_infos[i] ? "(NULL)" : variable_infos[i], valueToNumber(tmp_val));
         else if (IS_UNDEFINED(tmp_val))
-            printf ("%8d |  %-15s | undefined\r\n", i, variable_infos[i]);
+            printf ("%8d |  %-15s | undefined\r\n", i, NULL == variable_infos[i] ? "(NULL)" : variable_infos[i]);
         else if (IS_NULL(tmp_val))
-            printf ("%8d |  %-15s | null\r\n", i, variable_infos[i]);
+            printf ("%8d |  %-15s | null\r\n", i, NULL == variable_infos[i] ? "(NULL)" : variable_infos[i]);
         else if (IS_STRING(tmp_val))
-            printf ("%8d |  %-15s | '%s'\r\n", i, variable_infos[i], AS_STRING(tmp_val));
+            printf ("%8d |  %-15s | '%s'\r\n", i, NULL == variable_infos[i] ? "(NULL)" : variable_infos[i], AS_STRING(tmp_val));
         else if (IS_FUNCTION(tmp_val))
-            printf ("%8d |  %-15s | (%s)\r\n", i, variable_infos[i], AS_FUNCTION(tmp_val)->name);
+            printf ("%8d |  %-15s | (%s)\r\n", i, NULL == variable_infos[i] ? "(NULL)" : variable_infos[i], AS_FUNCTION(tmp_val)->name);
         else
             printf ("%8d |  ERROR!\r\n", i);
-        printf ("---------+------------------+---------------------\r\n");
+        printf ("---------+------------------+-----------------------------------------\r\n");
     }
     
+    BRAMA_FREE(variable_infos);
+
     printf("\r\n######################################################\r\n");
     printf("######################################################\r\n");
     printf("######################################################\r\n\r\n\r\n");
@@ -4862,8 +5074,8 @@ void brama_compile_dump_codes(t_context_ptr context) {
     printf (" # OPCODE  SIZE = %d\r\n", bytes->length);
     printf (" # STORAGE SIZE = %d\r\n", context->compiler->storages.length);
     //printf ("----------------------------------------\r\n");
-    printf (" Index   |   Opcode      |    Data\r\n");
-    printf ("---------+---------------+------------------------\r\n");
+    printf (" Index   |   Opcode        |    Data\r\n");
+    printf ("---------+-----------------+--------------------------------------------\r\n");
 
     vec_foreach(bytes, val, index) {
         t_brama_vmdata vmdata;
@@ -4873,7 +5085,7 @@ void brama_compile_dump_codes(t_context_ptr context) {
             /* Print just operator name */
             case VM_OPT_RETURN:
             case VM_OPT_HALT:
-                printf ("%8d |    %-10s |\r\n", index, VM_OPCODES[(int)vmdata.op].name);
+                printf ("%8d |    %-12s |\r\n", index, VM_OPCODES[(int)vmdata.op].name);
                 break;
 
             /* Print reg1*/
@@ -4881,37 +5093,37 @@ void brama_compile_dump_codes(t_context_ptr context) {
             case VM_OPT_INC:
             case VM_OPT_DINC:
             case VM_OPT_IF:
-                printf ("%8d |    %-10s | Reg1: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1);
+                printf ("%8d |    %-12s | Reg1: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1);
                 break;
 
             /* Print reg1 and reg2 */
             case VM_OPT_COPY:
             case VM_OPT_CASE:
             case VM_OPT_INIT_VAR:
-                printf ("%8d |    %-10s | Reg1: %-3d  Reg2: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2);
+                printf ("%8d |    %-12s | Reg1: %-3d  Reg2: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2);
                 break;
 
             /* Print jump */
             case VM_OPT_JMP:
-                printf ("%8d |    %-10s | Scal: %-4d -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.scal, index + vmdata.scal);
+                printf ("%8d |    %-12s | Scal: %-4d -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.scal, index + vmdata.scal);
                 break;
 
             /* Print scal */
             case VM_OPT_FUNC:
-                printf ("%8d |    %-10s | Reg1: %-3d  Scal: %-4d -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.scal, index + vmdata.scal);
+                printf ("%8d |    %-12s | Reg1: %-3d  Scal: %-4d -> [%d]\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.scal, index + vmdata.scal);
                 break;
             
             /* Print scal */
             case VM_OPT_CALL:
-                printf ("%8d |    %-10s | RetV: %-3d  Args: %-3d  Func: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
+                printf ("%8d |    %-12s | RetV: %-3d  Args: %-3d  Func: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
                 break;
                 
             /* Print reg1, reg2 and  reg3*/
             default:
-                printf ("%8d |    %-10s | Reg1: %-3d  Reg2: %-3d  Reg3: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
+                printf ("%8d |    %-12s | Reg1: %-3d  Reg2: %-3d  Reg3: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
                 break;
         }
-        printf ("---------+---------------+------------------------\r\n");
+        printf ("---------+-----------------+--------------------------------------------\r\n");
     }
 }
 
@@ -4929,11 +5141,14 @@ void run(t_context_ptr context) {
     t_brama_value* previous_variables = NULL;
     t_brama_byte*  ipc                = &bytes->data[0];
     t_brama_byte*  location_zero      = &bytes->data[0];
+    size_t         temporary_location = 0;
+    size_t         ticks              = 0;
 
     while (*ipc != (int)NULL) {
         t_brama_vmdata vmdata;
         t_brama_byte tmp_ipc = *ipc;
         vm_decode(tmp_ipc, vmdata);
+        ++ticks;
 
         switch (vmdata.op) {
 
@@ -4954,8 +5169,8 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg1);
                 t_brama_value right = *(variables + vmdata.reg2);
 
-                uint64_t left_val  = 0;
-                uint64_t right_val = 0;
+                int64_t left_val  = 0;
+                int64_t right_val = 0;
 
                 TWO_VARIABLE_COMPARE();
 
@@ -5086,8 +5301,8 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
                 
-                uint64_t left_val  = 0;
-                uint64_t right_val = 0;
+                int64_t left_val  = 0;
+                int64_t right_val = 0;
 
                 TWO_VARIABLE_COMPARE();
 
@@ -5100,8 +5315,8 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                uint64_t left_val  = 0;
-                uint64_t right_val = 0;
+                int64_t left_val  = 0;
+                int64_t right_val = 0;
 
                 TWO_VARIABLE_COMPARE();
 
@@ -5113,8 +5328,8 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                uint64_t left_val  = 0;
-                uint64_t right_val = 0;
+                int64_t left_val  = 0;
+                int64_t right_val = 0;
 
                 TWO_VARIABLE_COMPARE();
 
@@ -5127,8 +5342,8 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                uint64_t left_val  = 0;
-                uint64_t right_val = 0;
+                int64_t left_val  = 0;
+                int64_t right_val = 0;
 
                 TWO_VARIABLE_COMPARE();
 
@@ -5140,8 +5355,8 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                uint64_t left_val  = 0;
-                uint64_t right_val = 0;
+                int64_t left_val  = 0;
+                int64_t right_val = 0;
 
                 TWO_VARIABLE_COMPARE();
 
@@ -5154,8 +5369,8 @@ void run(t_context_ptr context) {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
 
-                uint64_t left_val  = 0;
-                uint64_t right_val = 0;
+                int64_t left_val  = 0;
+                int64_t right_val = 0;
 
                 TWO_VARIABLE_COMPARE();
 
@@ -5256,6 +5471,9 @@ void run(t_context_ptr context) {
                         //compile_info->index = (storage->variables.length) * -1;
                     }
                 }
+                else {
+                    brama_compile_dump_memory(context, variables, &storage->variable_names, storage->variables.length);
+                }
                 break;
             }
 
@@ -5302,14 +5520,38 @@ void run(t_context_ptr context) {
             }
 
             case VM_OPT_FUNC: {
-                size_t memory_address = vmdata.reg1;
-                size_t end_location   = vmdata.scal;
                 ipc += vmdata.scal;
                 break;
             }
 
+            case VM_OPT_SET_TMP_LOC: {
+                temporary_location = vmdata.reg1;
+                break;
+            }
+
+            case VM_OPT_PRINT: {
+                for (size_t i = 0; i < vmdata.reg1; ++i) {
+                    t_brama_value value  = *(variables + vmdata.reg2 + i);
+
+                    if (IS_BOOL(value))
+                        printf(" >> %s\r\n", (IS_TRUE(value) ? "true" : "false"));
+                    else if (IS_NUM(value))
+                        printf(" >> %f\r\n", (valueToNumber(value)));
+                    else if (IS_STRING(value))
+                        printf(" >> %s\r\n", (AS_STRING(value)));
+                    else if (IS_UNDEFINED(value))
+                        printf(" >> undefined\r\n");
+                    else if (IS_NULL(value))
+                        printf(" >> null\r\n");
+                    else if (IS_FUNCTION(value))
+                        printf(" >> function: %s\r\n", AS_FUNCTION(value)->name);
+                    else if (IS_OBJ(value))
+                        printf(" >> object: %d\r\n", AS_OBJ(value)->type);
+                }
+                break;
+            }
+
             case VM_OPT_CALL: {
-                size_t args_length    = vmdata.reg2;
                 size_t function_index = vmdata.reg3;
 
                 t_brama_value function_value = *(variables + function_index);
@@ -5318,7 +5560,6 @@ void run(t_context_ptr context) {
                     bool          function_found = false;
                     
                     map_iter_t iter  = map_iter(&search_storage->variable_names);
-                    size_t index     = 0;
                     char_ptr tmp_var = NULL;
                     while ((tmp_var  = map_next(&storage->variable_names, &iter))) {
                         if (vmdata.reg3 == *map_get(&storage->variable_names, tmp_var))
@@ -5348,14 +5589,14 @@ void run(t_context_ptr context) {
                 storage            = storages[obj->storage_id];
 
                 size_t array_size = storage->variables.length;
-                variables         = BRAMA_MALLOC(sizeof(t_brama_value) * (array_size  + 2));
+                variables         = BRAMA_MALLOC(sizeof(t_brama_value) * (array_size  + 3));
 
                 if (NULL == variables) {
-                    context->status = BRAMA_OUT_OF_MEMORY;
+                    context->status = out_of_memory_error(context);
                     return;
                 }
 
-                memcpy(variables + 2, storage->variables.data, array_size * sizeof(t_brama_value));
+                memcpy(variables, storage->variables.data, array_size * sizeof(t_brama_value));
 
                 /* Find function argumen location */
                 size_t function_args_location = previous_storage->variables.length - previous_storage->temp_count;
@@ -5364,31 +5605,38 @@ void run(t_context_ptr context) {
                 //size_t function_args_location = ((previous_storage->constant_count + previous_storage->variable_count) - obj->args_length);
                 
                 /* Save previous pointer location */
-                variables[0] = (t_brama_value)ipc;
+                variables[array_size] = (t_brama_value)ipc;
                 
                 /* Save previous variable memory */
-                variables[1] = (t_brama_value)previous_variables;
+                variables[array_size + 1] = (t_brama_value)previous_variables;
+
+                /* Save previous storage memory */
+                variables[array_size + 2] = (t_brama_value)previous_storage;
                 
                 /* Real variable start location */
-                variables = &variables[2];
+                //variables = &variables[2];
 
                 /* Copy function arguments to new memory */
-                memcpy(variables + storage->variables.length - storage->temp_count - obj->args_length, previous_variables + function_args_location, arg_count * sizeof(t_brama_value));
+                memcpy(variables + storage->variables.length - storage->temp_count - obj->args_length, previous_variables + function_args_location + temporary_location, arg_count * sizeof(t_brama_value));
                 tmp_data_1.num = arg_count;
                 variables[storage->constant_count + 1] = tmp_data_1.bits64;
 
                 ipc = location_zero + obj->location;
+
+                temporary_location = 0;
+
+                //brama_compile_dump_memory(variables, &storage->variable_names, storage->variables.length);
                 break;
             }
 
             case VM_OPT_RETURN: {
                 t_brama_value function_value = *(variables + storage->constant_count);
                 
-                t_brama_byte* tmp_ipc        = (t_brama_byte*)variables[-2];
-                t_brama_value* tmp_variables = (t_brama_value*)variables[-1];
-            
-                BRAMA_FREE(storage);
-                BRAMA_FREE(&variables[-2]);
+                t_brama_byte* tmp_ipc        = (t_brama_byte*) variables[storage->variables.length];
+                t_brama_value* tmp_variables = (t_brama_value*)variables[storage->variables.length + 1];
+                previous_storage             = (t_storage*)    variables[storage->variables.length + 2];
+
+                BRAMA_FREE(variables);
                 
                 ipc       = tmp_ipc;
                 variables = tmp_variables;
@@ -5443,16 +5691,19 @@ void brama_destroy(t_context_ptr context) {
 
     /* Remove all objects 
      * Simple GC         */
-   /* t_vm_object_ptr _object = context->compiler->object_head;
-    while (NULL != _object) {
-        t_vm_object_ptr next_object = _object->next;
 
-        if (CONST_STRING == _object->type) 
-            BRAMA_FREE(_object->char_ptr);
+    if (NULL == _context->allocator) {
+        t_vm_object_ptr _object = context->compiler->object_head;
+        while (NULL != _object) {
+            t_vm_object_ptr next_object = _object->next;
 
-        BRAMA_FREE(_object);
-        _object = next_object;
-    }*/
+            if (CONST_STRING == _object->type)
+                BRAMA_FREE(_object->char_ptr);
+
+            BRAMA_FREE(_object);
+            _object = next_object;
+        }
+    }
 
     context->compiler->total_object = 0;
 
@@ -5487,8 +5738,10 @@ void brama_destroy(t_context_ptr context) {
     BRAMA_FREE(_context->parser);
     BRAMA_FREE(_context->compiler);
 
-    free(_context->allocator->memory);
-    free(_context->allocator);
+    if (NULL != _context->allocator) {
+        free(_context->allocator->memory);
+        free(_context->allocator);
+    }
 
     free(_context);
 }

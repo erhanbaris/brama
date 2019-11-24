@@ -31,7 +31,7 @@ brama_status ast_parser              (t_context_ptr context);
 brama_status ast_declaration_stmt    (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_expression          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_unary_expr          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
-brama_status ast_func_call                (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
+brama_status ast_func_call           (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_symbol_expr         (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_primary_expr        (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_multiplication_expr (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
@@ -48,6 +48,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_assignable          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_new_object          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_while_loop          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
+brama_status ast_for_loop            (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_if_stmt             (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_return_stmt         (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_block_body          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
@@ -68,6 +69,7 @@ bool destroy_ast_assignment     (t_context_ptr context, t_assign_ptr assignment)
 bool destroy_ast_binary         (t_context_ptr context, t_binary_ptr binary);
 bool destroy_ast_control        (t_context_ptr context, t_control_ptr binary);
 bool destroy_ast_while_loop     (t_context_ptr context, t_while_loop_ptr while_ptr);
+bool destroy_ast_for_loop       (t_context_ptr context, t_for_loop_ptr for_ptr);
 bool destroy_ast_func_call      (t_context_ptr context, t_func_call_ptr func_call_ptr);
 bool destroy_ast_unary          (t_context_ptr context, t_unary_ptr unary_ptr);
 bool destroy_ast_func_decl      (t_context_ptr context, t_func_decl_ptr func_decl_ptr);
@@ -82,7 +84,7 @@ void brama_dump_ast_internal    (t_ast_ptr ast, int level);
 void run                        (t_context_ptr context);
 void brama_compile_dump         (t_context_ptr context);
 void brama_compile_dump_storage (t_context_ptr context, t_storage_ptr storage);
-void brama_compile_dump_memory  (t_brama_value* variables, map_size_t_ptr variable_names, size_t size);
+void brama_compile_dump_memory  (t_context_ptr context, t_brama_value* variables, map_size_t_ptr variable_names, size_t size);
 void brama_compile_dump_codes   (t_context_ptr context);
 
 brama_status brama_get_var        (t_context_ptr context, char_ptr var_name, t_get_var_info** var_info);

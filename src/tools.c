@@ -42,7 +42,6 @@ int string_stream_add_char(t_string_stream* stream, char data) {
             return status;
     }
     
-    t_context_ptr context         = stream->context;
     char* tmpData                 = (char*)malloc((sizeof(char) * 2));
     tmpData[0]                    = data;
     tmpData[1]                    = '\0';
@@ -53,7 +52,6 @@ int string_stream_add_char(t_string_stream* stream, char data) {
 
 int string_stream_grow_buffer(t_string_stream* stream) {
     CHECK_STREAM_PTR(stream);
-    t_context_ptr context = stream->context;
 
     size_t tmpLength = stream->length * 2;
     char** tmpData   = (char**)malloc(sizeof(char*) * tmpLength);
@@ -72,7 +70,6 @@ int string_stream_grow_buffer(t_string_stream* stream) {
 int string_stream_get(t_string_stream* stream, char** text) {
     CHECK_STREAM_PTR(stream);
     
-    t_context_ptr context = stream->context;
     char* tmpData         = (char*)malloc((sizeof(char) * stream->text_length) + 1);
     if (tmpData == NULL)
         return STRING_STREAM_ERR_NO_MEMORY;
@@ -89,7 +86,6 @@ int string_stream_get(t_string_stream* stream, char** text) {
 
 int string_stream_destroy(t_string_stream* stream) {
     CHECK_STREAM_PTR(stream);
-    t_context_ptr context = stream->context;
 
     for (size_t i = 0; i < stream->index; ++i)
         free(stream->data[i]);

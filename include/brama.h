@@ -267,7 +267,7 @@ enum brama_vm_operator {
     VM_OPT_NOT,
     VM_OPT_CASE,
     VM_OPT_FUNC,
-    VM_OPT_STORAGE_ID,
+    VM_OPT_SET_TMP_LOC,
 };
 
 /* VM CONST TYPE */
@@ -445,7 +445,7 @@ static OperatorPair VM_OPCODES[] =  {
         { "NOT", "!"},
         { "CASE", ""},
         { "FUNC", ""},
-        { "STORAGE_ID", ""}
+        { "SET_TMP_LOC", ""}
 };
 
 static char* KEYWORDS[] = {
@@ -543,6 +543,7 @@ typedef struct _t_context         t_context;
 typedef struct _t_binary          t_binary;
 typedef struct _t_func_decl       t_func_decl;
 typedef struct _t_object_creation t_object_creation;
+typedef struct _t_for_loop        t_for_loop;
 typedef struct _t_while_loop      t_while_loop;
 typedef struct _t_if_stmt         t_if_stmt;
 typedef struct _t_switch_stmt     t_switch_stmt;
@@ -582,6 +583,7 @@ typedef t_ast**            t_ast_ptr_ptr;
 typedef t_context*         t_context_ptr;
 typedef t_string_stream*   t_string_stream_ptr;
 typedef t_object_creation* t_object_creation_ptr;
+typedef t_for_loop*        t_for_loop_ptr;
 typedef t_while_loop*      t_while_loop_ptr;
 typedef t_if_stmt*         t_if_stmt_ptr;
 typedef t_switch_stmt*     t_switch_stmt_ptr;
@@ -603,6 +605,10 @@ typedef void*              void_ptr;
 typedef int*               int_ptr;
 typedef double*            double_ptr;
 typedef t_compile_stack*   t_compile_stack_ptr;
+
+typedef void* (*t_malloc)(void* user_data, size_t size);
+typedef void  (*t_free)  (void* user_data, void*  ptr);
+typedef void* (*t_calloc)(void* user_data, size_t count, size_t size);
 
 enum brama_vm_operator;
 
@@ -765,6 +771,13 @@ typedef struct _t_accessor{
     struct _t_ast* property;
 } t_accessor;
 
+typedef struct _t_for_loop {
+    t_ast* definition;
+    t_ast* condition;
+    t_ast* increment;
+    t_ast* body;
+} t_for_loop;
+
 typedef struct _t_while_loop {
     t_ast* condition;
     t_ast* body;
@@ -790,7 +803,6 @@ typedef struct _t_ast {
     brama_ast_type type;
     bool           ends_with_newline;
     bool           ends_with_semicolon;
-    bool create_new_storage;
 
     union {
         t_func_call*           func_call_ptr;
@@ -802,6 +814,7 @@ typedef struct _t_ast {
         t_assign*              assign_ptr;
         vec_ast_ptr            vector_ptr;
         t_object_creation*     object_creation_ptr;
+        t_for_loop*            for_ptr;
         t_while_loop*          while_ptr;
         t_if_stmt*             if_stmt_ptr;
         t_accessor*            accessor_ptr;
@@ -814,6 +827,10 @@ typedef struct _t_ast {
 } t_ast;
 
 typedef struct _t_context {
+    t_malloc     malloc;
+    t_free       free;
+    t_calloc     calloc;
+
     t_allocator* allocator;
     t_tokinizer* tokinizer;
     t_parser*    parser;
@@ -1083,8 +1100,9 @@ static KeywordPair KEYWORDS_PAIR[] = {
    { "undefined",   KEYWORD_UNDEFINED}
  };
 
-t_context_ptr brama_init       ();
+t_context_ptr brama_init       (size_t memory);
 void          brama_compile    (t_context_ptr context, char_ptr data);
+void          brama_compile_opt(t_context_ptr context);
 void          brama_run        (t_context_ptr context);
 void_ptr      brama_last_error (t_context_ptr context);
 void          brama_dump       (t_context_ptr context);
