@@ -103,6 +103,7 @@ void compile_binary             (t_context_ptr context, t_binary_ptr const ast, 
 void compile_control            (t_context_ptr context, t_control_ptr const ast,    t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_symbol             (t_context_ptr context, char_ptr const ast,         t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_if                 (t_context_ptr context, t_if_stmt_ptr const ast,    t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_for                (t_context_ptr context, t_for_loop_ptr const ast,   t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_while              (t_context_ptr context, t_while_loop_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_block              (t_context_ptr context, vec_ast_ptr const ast,      t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_unary              (t_context_ptr context, t_unary_ptr const ast,      t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
@@ -112,6 +113,7 @@ void compile_func_call          (t_context_ptr context, t_func_call_ptr const as
 void compile_func_decl          (t_context_ptr context, t_func_decl_ptr const ast,  t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_return             (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_switch             (t_context_ptr context, t_switch_stmt_ptr const ast,t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+brama_status compile_is_up_value(t_context_ptr context, char_ptr const ast, t_storage_ptr storage, size_t* storage_id, size_t* variable_index);
 
 t_compile_stack_ptr new_compile_stack         (t_context_ptr context, brama_compile_block_type ast_type, void_ptr ast, void_ptr compile_obj) ;
 brama_status        find_compile_stack        (t_context_ptr context, brama_compile_block_type ast_type, t_compile_stack_ptr* stack);

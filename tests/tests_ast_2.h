@@ -513,7 +513,7 @@ MunitResult ast_accessor_1(const MunitParameter params[], void* user_data_or_fix
     munit_assert_int         (ast->accessor_ptr->property->type,  ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(ast->accessor_ptr->property->primative_ptr);
     munit_assert_int         (ast->accessor_ptr->property->primative_ptr->type, ==, PRIMATIVE_INTEGER);
-    munit_assert_int         (ast->accessor_ptr->property->primative_ptr->int_, ==, 0);
+    munit_assert_int         (ast->accessor_ptr->property->primative_ptr->double_, ==, 0);
 
     munit_assert_ptr_not_null(ast->accessor_ptr->object);
     munit_assert_int         (ast->accessor_ptr->object->type,  ==, AST_ACCESSOR);
@@ -543,7 +543,7 @@ MunitResult ast_accessor_2(const MunitParameter params[], void* user_data_or_fix
     munit_assert_int         (ast->accessor_ptr->property->type,  ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(ast->accessor_ptr->property->primative_ptr);
     munit_assert_int         (ast->accessor_ptr->property->primative_ptr->type, ==, PRIMATIVE_INTEGER);
-    munit_assert_int         (ast->accessor_ptr->property->primative_ptr->int_, ==, 0);
+    munit_assert_int         (ast->accessor_ptr->property->primative_ptr->double_, ==, 0);
 
     munit_assert_ptr_not_null(ast->accessor_ptr->object);
     munit_assert_int         (ast->accessor_ptr->object->type,  ==, AST_ACCESSOR);

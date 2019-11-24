@@ -218,6 +218,7 @@ typedef enum brama_compile_block_type {
     COMPILE_BLOCK_SWITCH      = 2,
     COMPILE_BLOCK_SWITCH_CASE = 3,
     COMPILE_BLOCK_FUNC_DECL   = 4,
+    COMPILE_BLOCK_FOR         = 5,
 } brama_compile_block_type;
 
 /* VM Operators */
@@ -268,6 +269,8 @@ enum brama_vm_operator {
     VM_OPT_CASE,
     VM_OPT_FUNC,
     VM_OPT_SET_TMP_LOC,
+    VM_OPT_GET_UP_VALUE,
+    VM_OPT_SET_UP_VALUE
 };
 
 /* VM CONST TYPE */
@@ -445,7 +448,9 @@ static OperatorPair VM_OPCODES[] =  {
         { "NOT", "!"},
         { "CASE", ""},
         { "FUNC", ""},
-        { "SET_TMP_LOC", ""}
+        { "SET_TMP_LOC", ""},
+        { "GET_UPVALUE", ""},
+        { "SET_UPVALUE", ""}
 };
 
 static char* KEYWORDS[] = {
@@ -559,6 +564,7 @@ typedef struct _t_storage         t_storage;
 typedef struct _t_compile_info    t_compile_info;
 typedef struct _t_get_var_info    t_get_var_info;
 typedef struct _t_compile_stack   t_compile_stack;
+typedef struct _t_compile_for     t_compile_for;
 typedef struct _t_compile_while   t_compile_while;
 typedef struct _t_compile_switch  t_compile_switch;
 typedef struct _t_compile_switch_case  t_compile_switch_case;
@@ -594,6 +600,7 @@ typedef t_storage*         t_storage_ptr;
 typedef t_compile_info*    t_compile_info_ptr;
 typedef t_get_var_info*    t_get_var_info_ptr;
 typedef t_compile_while*   t_compile_while_ptr;
+typedef t_compile_for*     t_compile_for_ptr;
 typedef t_compile_switch*  t_compile_switch_ptr;
 typedef t_compile_switch_case*  t_compile_switch_case_ptr;
 typedef t_compile_func_decl*    t_compile_func_decl_ptr;
@@ -711,7 +718,6 @@ typedef struct _t_storage {
 typedef struct _t_primative {
     brama_primative_type type;
     union {
-        int         int_;
         double      double_;
         bool        bool_;
         char*       char_ptr;
@@ -855,6 +861,7 @@ typedef struct _t_vm_object {
     bool                marked;
     t_vm_object_ptr     next;
     union {
+        t_brama_value*           value_ptr;
         char_ptr                 char_ptr;
         t_function_referance_ptr function;
     };
@@ -883,6 +890,7 @@ typedef struct _t_compile_stack {
     {
         void*                     compile_obj;
         t_compile_while_ptr       while_ptr;
+        t_compile_for_ptr         for_ptr;
         t_compile_switch_ptr      switch_ptr;
         t_compile_switch_case_ptr switch_case_ptr;
         t_compile_func_decl_ptr   func_decl_ptr;
@@ -893,6 +901,11 @@ typedef struct _t_compile_block {
     vec_int_t breaks;
     vec_int_t continues;
 } t_compile_block;
+
+typedef struct _t_compile_for {
+    vec_int_t breaks;
+    vec_int_t continues;
+} t_compile_for;
 
 typedef struct _t_compile_while {
     vec_int_t breaks;

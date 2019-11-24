@@ -444,6 +444,78 @@ MunitResult ast_compile_15(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+MunitResult ast_compile_16(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var a = 0;\r\n"
+    "var i;\r\n"
+    "for (i=1;i<10;i++) a = a + i;\r\n"
+    "result = a==45;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,           == , BRAMA_OK);
+    munit_assert_int   (var_info->type,   == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_,== , true);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_17(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var a = 0;\r\n"
+                           "for (var i=1;i<10;i++) a += i;\r\n"
+                           "result = a==45;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,           == , BRAMA_OK);
+    munit_assert_int   (var_info->type,   == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_,== , true);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_18(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "function add(x,y) { return x+y; }\n"
+                           "result = add(3,6)==9;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,           == , BRAMA_OK);
+    munit_assert_int   (var_info->type,   == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_,== , true);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_19(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "function add(x,y) { return x+y; }\n"
+                           "result = add(3,6)==9;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,           == , BRAMA_OK);
+    munit_assert_int   (var_info->type,   == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_,== , true);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+
 MunitTest COMPILE_TESTS[] = {
 
         ADD_TEST(ast_compile_1),
@@ -461,6 +533,10 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_13),
         ADD_TEST(ast_compile_14),
         ADD_TEST(ast_compile_15),
+        ADD_TEST(ast_compile_16),
+        ADD_TEST(ast_compile_17),
+        ADD_TEST(ast_compile_18),
+        ADD_TEST(ast_compile_19),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

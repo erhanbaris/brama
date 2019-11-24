@@ -2590,8 +2590,6 @@ static t_brama_native_function SYSTEM_FUNCTIONS[] = {
     {"console", "log", brama_func_console_log}
 };
 
-
-
 void brama_compile(t_context_ptr context, char_ptr data) {
     brama_status tokinizer_status = brama_tokinize(context, data);
     if (tokinizer_status != BRAMA_OK) {
@@ -2750,7 +2748,7 @@ void brama_dump_ast_internal(t_ast_ptr ast, int level) {
             break;
 
         case PRIMATIVE_INTEGER:
-            AST_PRINT_PROPERTY_DECIMAL("int", ast->primative_ptr->int_);
+            AST_PRINT_PROPERTY_FLOAT("int", ast->primative_ptr->double_);
             break;
 
         case PRIMATIVE_STRING:
@@ -3434,6 +3432,31 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             break;
         }
 
+        case AST_FOR: {
+            size_t in_definition = 0;
+            size_t in_condition  = 0;
+            size_t in_increment  = 0;
+            size_t in_body       = 0;
+
+            char_ptr var_name = BRAMA_MALLOC(sizeof(char) * 20);
+
+            /* Store loop status */
+            sprintf(var_name, "(loop #%zu)", ++storage->loop_counter);
+            var_name[19] = '\0';
+
+            add_variable(context, storage, var_name, UNDEFINED_VAL, MEMORY_PROTOTYPE_VARIABLE);
+
+            prepare_variable_memory(context, ast->for_ptr->definition, ast, storage, &in_definition);
+            prepare_variable_memory(context, ast->for_ptr->condition,  ast, storage, &in_condition);
+            prepare_variable_memory(context, ast->for_ptr->increment,  ast, storage, &in_increment);
+            prepare_variable_memory(context, ast->for_ptr->body,       ast, storage, &in_body);
+
+            *temps = FAST_MAX(in_condition,  in_body);
+            *temps = FAST_MAX(in_definition, *temps);
+            *temps = FAST_MAX(in_increment,  *temps);
+            break;
+        }
+
         case AST_WHILE: {
             size_t in_condition  = 0;
             size_t in_body       = 0;
@@ -3721,6 +3744,25 @@ void compile_keyword(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr s
         }
     }
 
+    else if (find_compile_stack(context, COMPILE_BLOCK_FOR, &compile_stack) == BRAMA_OK) {
+        switch (ast->keyword) {
+            case KEYWORD_BREAK: {
+                vec_push(context->compiler->op_codes, 0); // We will setup it later
+                vec_push(&compile_stack->for_ptr->breaks, context->compiler->op_codes->length - 1);
+                break;
+            }
+
+            case KEYWORD_CONTINUE: {
+                vec_push(context->compiler->op_codes, 0); // We will setup it later
+                vec_push(&compile_stack->for_ptr->continues, context->compiler->op_codes->length - 1);
+                break;
+            }
+
+            default:
+                context->status = BRAMA_NOK;
+        }
+    }
+
     else if (find_compile_stack(context, COMPILE_BLOCK_SWITCH_CASE, &compile_stack) == BRAMA_OK) {
         switch (ast->keyword) {
             case KEYWORD_BREAK: {
@@ -3746,6 +3788,34 @@ void compile_symbol(t_context_ptr context, char_ptr const ast, t_storage_ptr sto
     } else
         /* Return back variable index */
         compile_info->index = *index;
+}
+
+brama_status compile_is_up_value(t_context_ptr context, char_ptr const ast, t_storage_ptr storage, size_t* storage_id, size_t* variable_index) {
+    BRAMA_ASSERT(context        != NULL);
+    BRAMA_ASSERT(ast            != NULL);
+    BRAMA_ASSERT(storage        != NULL);
+    BRAMA_ASSERT(storage_id     != NULL);
+    BRAMA_ASSERT(variable_index != NULL);
+
+    if (NULL == storage->previous_storage)
+        return BRAMA_NOK;
+
+    t_storage_ptr search_storage = storage->previous_storage;
+
+    while (NULL != search_storage) {
+        size_t* index = map_get(&search_storage->variable_names, ast);
+        if (index == NULL)
+            /* We did not found variable */
+            search_storage = search_storage->previous_storage;
+        else {
+            *storage_id     = search_storage->id;
+            *variable_index = *index;
+
+            return BRAMA_OK;
+        }
+    }
+
+    return BRAMA_NOK;
 }
 
 /**
@@ -3778,13 +3848,59 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
 
         if (ast->assignment->type == AST_SYMBOL) {
             t_brama_vmdata code;
-            code.op = VM_OPT_COPY;
+            code.op   = 0;
             code.reg1 = variable_index;
-            code.reg2 = compile_info->index;
-            code.reg3 = 0;
+            code.reg2 = variable_index;
+            code.reg3 = compile_info->index;
             code.scal = 0;
-            vec_push(context->compiler->op_codes, vm_encode(code));
 
+            switch (ast->opt) {
+                case OPERATOR_ASSIGN: {
+                    size_t storage_id;
+                    size_t variable_index;
+
+                    brama_status up_value_status = compile_is_up_value(context, ast->assignment->char_ptr, storage, &storage_id, &variable_index);
+                    if (up_value_status == BRAMA_OK) {
+                        /* Our variable declerad at upper code block */
+                        code.op   = VM_OPT_GET_UP_VALUE;
+                        code.reg1 = compile_info->index;
+                        code.reg2 = storage_id;
+                        code.reg3 = variable_index;
+
+                    } else {
+                        code.op = VM_OPT_COPY;
+                        code.reg1 = variable_index;
+                        code.reg2 = compile_info->index;
+                    }
+
+                    break;
+                }
+
+                case OPERATOR_ASSIGN_ADDITION:
+                    code.op = VM_OPT_ADDITION;
+                    break;
+
+                case OPERATOR_ASSIGN_DIVISION:
+                    code.op = VM_OPT_DIVISION;
+                    break;
+
+                case OPERATOR_ASSIGN_MODULUS:
+                    code.op = VM_OPT_MODULES;
+                    break;
+
+                case OPERATOR_ASSIGN_MULTIPLICATION:
+                    code.op = VM_OPT_MULTIPLICATION;
+                    break;
+
+                case OPERATOR_ASSIGN_SUBTRACTION:
+                    code.op = VM_OPT_SUBTRACTION;
+                    break;
+
+                default:
+                    context->status = BRAMA_NOK;
+            }
+
+            vec_push(context->compiler->op_codes, vm_encode(code));
         }
         else {
             /* Do we need to insert new opcode for assignment operation or already assigned ?
@@ -3950,7 +4066,7 @@ void compile_if(t_context_ptr context, t_if_stmt_ptr const ast, t_storage_ptr st
         code.scal = context->compiler->op_codes->length - jmp_false_location - 1;
 
         /* Part of the while condition */
-        if (upper_ast == AST_WHILE) {
+        if (upper_ast == AST_WHILE || upper_ast == AST_FOR) {
             code.scal += 1;
         }
 
@@ -4022,6 +4138,133 @@ void compile_unary(t_context_ptr context, t_unary_ptr const ast, t_storage_ptr s
         BRAMA_FREE(code);
     } else
         compile_info->post_opcode = code;
+}
+
+void compile_for(t_context_ptr context, t_for_loop_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    /*                            *
+     * Else block declared so we  *
+     * need to define flow        *
+     * control like below         *
+     * -------------------------- *
+     * 1. DEFINITION STATEMENT    *
+     * -------------------------- *
+     * 2. CONTROL STATEMENT       *
+     * -------------------------- *
+     * N+1. IF CONDITION (1. VAR) *
+     * -------------------------- *
+     * N+2. JMP (FALSE)->TO N+5.  *
+     * -------------------------- *
+     * N+3. FOR BLOCK             *
+     * -------------------------- *
+     * N+4. INCREMENT STATEMENT   *
+     * -------------------------- *
+     * N+5. JMP -> TO 1.          *
+     * -------------------------- *
+     * N+5. NORMAL OPCODE         *
+     * -------------------------- */
+
+    t_compile_for_ptr compile_obj = BRAMA_MALLOC(sizeof(t_compile_for));
+    vec_init(&compile_obj->breaks);
+    vec_init(&compile_obj->continues);
+
+    t_compile_stack_ptr stack_info = new_compile_stack(context, COMPILE_BLOCK_FOR, ast, compile_obj);
+    vec_push(&context->compiler->compile_stack, stack_info);
+
+    /* Prepare definitions */
+    compile_internal(context, ast->definition, storage, compile_info, AST_FOR);
+
+    /* Define new variable to store condition information */
+    t_assign_ptr assign      = BRAMA_MALLOC(sizeof(t_assign));
+    assign->opt              = OPERATOR_ASSIGN;
+    assign->def_type         = KEYWORD_VAR;
+    assign->new_def          = true;
+    assign->object           = BRAMA_MALLOC(sizeof(t_ast));
+    assign->object->type     = AST_SYMBOL;
+    assign->object->char_ptr = BRAMA_MALLOC(sizeof(char) * 20);
+
+    /* Store loop status */
+    sprintf(assign->object->char_ptr, "(loop #%zu)", ++storage->loop_counter);
+    assign->object->char_ptr[19] = '\0';
+    assign->assignment           = ast->condition;
+
+    compile_assignment(context, assign, storage, compile_info, AST_FOR);
+    COMPILE_CHECK();
+
+    /* Build if statement */
+    vec_ast_ptr blocks   = BRAMA_MALLOC(sizeof (vec_ast));
+    if (NULL == blocks) {
+        context->status = out_of_memory_error(context);
+        return;
+    }
+
+    vec_init(blocks);
+    vec_push(blocks, ast->body);
+    vec_push(blocks, ast->increment);
+
+    t_ast_ptr ast_blocks = new_block_ast(blocks);
+    if (NULL == ast_blocks) {
+        context->status = out_of_memory_error(context);
+        return;
+    }
+
+    t_if_stmt_ptr if_stmt = BRAMA_MALLOC(sizeof(t_if_stmt));
+    if_stmt->condition    = assign->object;
+    if_stmt->true_body    = ast_blocks;
+    if_stmt->false_body   = NULL;
+
+    size_t jmp_compare_location = context->compiler->op_codes->length - 1;
+    compile_if(context, if_stmt, storage, compile_info, AST_FOR);
+    COMPILE_CHECK();
+
+    int begin_of_for_loc = jmp_compare_location - context->compiler->op_codes->length - 1;
+
+    t_brama_vmdata code;
+    code.op = VM_OPT_JMP;
+    code.reg1 = 0;
+    code.reg2 = 0;
+    code.reg3 = 0;
+    code.scal = begin_of_for_loc;
+
+    vec_push(context->compiler->op_codes, vm_encode(code));
+
+    /* continue and break commands need to refere right location */
+    int location;
+    int index;
+
+    /* change breaks reference */
+    vec_foreach(&compile_obj->breaks, location, index) {
+        code.op   = VM_OPT_JMP;
+        code.reg1 = 0;
+        code.reg2 = 0;
+        code.reg3 = 0;
+        code.scal = context->compiler->op_codes->length - 1;
+        context->compiler->op_codes->data[location] = vm_encode(code);
+    }
+
+     /* change continues reference */
+    vec_foreach(&compile_obj->continues, location, index) {
+        code.op   = VM_OPT_JMP;
+        code.reg1 = 0;
+        code.reg2 = 0;
+        code.reg3 = 0;
+        code.scal = jmp_compare_location - location - 1;
+        context->compiler->op_codes->data[location] = vm_encode(code);
+    }
+
+    /* Remove all references */
+    BRAMA_FREE(assign->object->char_ptr);
+    assign->assignment = NULL;
+    if_stmt->condition = NULL;
+    if_stmt->true_body = NULL;
+    destroy_ast_assignment(context, assign);
+    BRAMA_FREE(assign);
+
+    destroy_ast_if_stmt(context, if_stmt);
+    BRAMA_FREE(if_stmt);
+
+    vec_deinit(&compile_obj->breaks);
+    vec_deinit(&compile_obj->continues);
+    destroy_from_compile_stack(context, stack_info);
 }
 
 void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -4162,7 +4405,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
         }
     }
 
-    if (storage->temp_counter > 1 && ast->args->length != 0) {
+    if ((storage->temp_counter - ast->args->length) > 0 && ast->args->length != 0) {
         t_brama_vmdata tmp_set_code;
         tmp_set_code.op   = VM_OPT_SET_TMP_LOC;
         tmp_set_code.reg1 = storage->temp_counter - 1;
@@ -4334,12 +4577,26 @@ void compile_return(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
         storage->temp_counter = temp_counter;
 
         if (ast->ast_ptr->type == AST_SYMBOL) {
+            size_t storage_id;
+            size_t variable_index;
             t_brama_vmdata code;
-            code.op = VM_OPT_COPY;
-            code.reg1 = *return_index;
-            code.reg2 = compile_info->index;
             code.reg3 = 0;
             code.scal = 0;
+
+            brama_status up_value_status = compile_is_up_value(context, ast->ast_ptr->char_ptr, storage, &storage_id, &variable_index);
+            if (up_value_status == BRAMA_OK) {
+                /* Our variable declerad at upper code block */
+                code.op   = VM_OPT_GET_UP_VALUE;
+                code.reg1 = compile_info->index;
+                code.reg2 = storage_id;
+                code.reg3 = variable_index;
+
+            } else {
+                code.op   = VM_OPT_COPY;
+                code.reg1 = *return_index;
+                code.reg2 = compile_info->index;
+            }
+
             vec_push(context->compiler->op_codes, vm_encode(code));
 
         }
@@ -4659,6 +4916,10 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
 
         case AST_IF_STATEMENT:
             compile_if(context, ast->if_stmt_ptr, storage, compile_info, upper_ast);
+            break;
+
+        case AST_FOR:
+            compile_for(context, ast->for_ptr, storage, compile_info, upper_ast);
             break;
 
         case AST_WHILE:
@@ -5438,9 +5699,7 @@ void run(t_context_ptr context) {
             case VM_OPT_ADDITION: {
                 t_brama_value left  = *(variables + vmdata.reg2);
                 t_brama_value right = *(variables + vmdata.reg3);
-                
-                //brama_compile_dump_memory(variables, &storage->variable_names, storage->variables.length);
-                
+
                 if (IS_NUM(left) && IS_NUM(right))  {
                     tmp_data_1.bits64 = left;
                     tmp_data_2.bits64 = right;

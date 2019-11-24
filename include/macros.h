@@ -16,6 +16,8 @@
 #define TOTAL_ARGS_VAR "!total_args"
 #define RETURN_VAR "!return"
 
+#define BRAMA_ASSERT(DATA)
+
 #define vm_decode(instr, t) do {\
     (t).op   = ((instr) & OP_MASK  ) >> 24;\
     (t).reg1 = ((instr) & REG1_MASK) >> 16;\
