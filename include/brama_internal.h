@@ -26,12 +26,12 @@ bool        is_primative      (t_token_ptr token);
 bool        is_next_new_line  (t_context_ptr context);
 void        set_semicolon_and_newline(t_context_ptr context, t_ast_ptr ast);
 
-brama_status as_primative            (t_token_ptr token, t_ast_ptr_ptr ast);
+brama_status as_primative            (t_context_ptr context, t_token_ptr token, t_ast_ptr_ptr ast);
 brama_status ast_parser              (t_context_ptr context);
 brama_status ast_declaration_stmt    (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_expression          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_unary_expr          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
-brama_status ast_call                (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
+brama_status ast_func_call           (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_symbol_expr         (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_primary_expr        (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_multiplication_expr (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
@@ -48,6 +48,7 @@ brama_status ast_function_decleration(t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_assignable          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_new_object          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_while_loop          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
+brama_status ast_for_loop            (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_if_stmt             (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_return_stmt         (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_block_body          (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
@@ -59,30 +60,31 @@ brama_status ast_continue_stmt       (t_context_ptr context, t_ast_ptr_ptr ast, 
 brama_status ast_accessor_stmt       (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 brama_status ast_switch_stmt         (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
 
-bool destroy_ast                (t_ast_ptr ast);
-bool destroy_ast_vector         (vec_ast_ptr vector);
-bool destroy_ast_case_vector    (vec_case_item_ptr vector);
-bool destroy_token_vector       (vec_token_ptr vector);
-bool destroy_ast_primative      (t_primative_ptr primative);
-bool destroy_ast_assignment     (t_assign_ptr assignment);
-bool destroy_ast_binary         (t_binary_ptr binary);
-bool destroy_ast_control        (t_control_ptr binary);
-bool destroy_ast_while_loop     (t_while_loop_ptr while_ptr);
-bool destroy_ast_func_call      (t_func_call_ptr func_call_ptr);
-bool destroy_ast_unary          (t_unary_ptr unary_ptr);
-bool destroy_ast_func_decl      (t_func_decl_ptr func_decl_ptr);
-bool destroy_ast_object_creation(t_object_creation_ptr object_creation_ptr);
-bool destroy_ast_if_stmt        (t_if_stmt_ptr if_stmt_ptr);
-bool destroy_ast_accessor       (t_accessor_ptr accessor_ptr);
-bool destroy_ast_switch_stmt    (t_switch_stmt_ptr switch_stmt_ptr);
+bool destroy_ast                (t_context_ptr context, t_ast_ptr ast);
+bool destroy_ast_vector         (t_context_ptr context, vec_ast_ptr vector);
+bool destroy_ast_case_vector    (t_context_ptr context, vec_case_item_ptr vector);
+bool destroy_token_vector       (t_context_ptr context, vec_token_ptr vector);
+bool destroy_ast_primative      (t_context_ptr context, t_primative_ptr primative);
+bool destroy_ast_assignment     (t_context_ptr context, t_assign_ptr assignment);
+bool destroy_ast_binary         (t_context_ptr context, t_binary_ptr binary);
+bool destroy_ast_control        (t_context_ptr context, t_control_ptr binary);
+bool destroy_ast_while_loop     (t_context_ptr context, t_while_loop_ptr while_ptr);
+bool destroy_ast_for_loop       (t_context_ptr context, t_for_loop_ptr for_ptr);
+bool destroy_ast_func_call      (t_context_ptr context, t_func_call_ptr func_call_ptr);
+bool destroy_ast_unary          (t_context_ptr context, t_unary_ptr unary_ptr);
+bool destroy_ast_func_decl      (t_context_ptr context, t_func_decl_ptr func_decl_ptr);
+bool destroy_ast_object_creation(t_context_ptr context, t_object_creation_ptr object_creation_ptr);
+bool destroy_ast_if_stmt        (t_context_ptr context, t_if_stmt_ptr if_stmt_ptr);
+bool destroy_ast_accessor       (t_context_ptr context, t_accessor_ptr accessor_ptr);
+bool destroy_ast_switch_stmt    (t_context_ptr context, t_switch_stmt_ptr switch_stmt_ptr);
 
 void brama_dump_vector_internal (vec_ast_ptr vector, int level);
 void brama_dump_ast_internal    (t_ast_ptr ast, int level);
 
 void run                        (t_context_ptr context);
 void brama_compile_dump         (t_context_ptr context);
-void brama_compile_dump_storage (t_storage_ptr storage);
-void brama_compile_dump_memory  (t_brama_value* variables, map_size_t_ptr variable_names, size_t size);
+void brama_compile_dump_storage (t_context_ptr context, t_storage_ptr storage);
+void brama_compile_dump_memory  (t_context_ptr context, t_brama_value* variables, map_size_t_ptr variable_names, size_t size);
 void brama_compile_dump_codes   (t_context_ptr context);
 
 brama_status brama_get_var        (t_context_ptr context, char_ptr var_name, t_get_var_info** var_info);
@@ -101,6 +103,7 @@ void compile_binary             (t_context_ptr context, t_binary_ptr const ast, 
 void compile_control            (t_context_ptr context, t_control_ptr const ast,    t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_symbol             (t_context_ptr context, char_ptr const ast,         t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_if                 (t_context_ptr context, t_if_stmt_ptr const ast,    t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_for                (t_context_ptr context, t_for_loop_ptr const ast,   t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_while              (t_context_ptr context, t_while_loop_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_block              (t_context_ptr context, vec_ast_ptr const ast,      t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_unary              (t_context_ptr context, t_unary_ptr const ast,      t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
@@ -110,6 +113,7 @@ void compile_func_call          (t_context_ptr context, t_func_call_ptr const as
 void compile_func_decl          (t_context_ptr context, t_func_decl_ptr const ast,  t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_return             (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_switch             (t_context_ptr context, t_switch_stmt_ptr const ast,t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+brama_status compile_is_up_value(t_context_ptr context, char_ptr const ast, t_storage_ptr storage, size_t* storage_id, size_t* variable_index);
 
 t_compile_stack_ptr new_compile_stack         (t_context_ptr context, brama_compile_block_type ast_type, void_ptr ast, void_ptr compile_obj) ;
 brama_status        find_compile_stack        (t_context_ptr context, brama_compile_block_type ast_type, t_compile_stack_ptr* stack);
@@ -117,8 +121,6 @@ void                remove_from_compile_stack (t_context_ptr context, t_compile_
 void                destroy_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack);
 
 t_vm_object_ptr new_vm_object(t_context_ptr context);
-void            vm_decode    (t_brama_byte instr, t_brama_vmdata_ptr t);
-t_brama_byte    vm_encode    (t_brama_vmdata_ptr t);
 t_brama_value   numberToValue(double num);
 double          valueToNumber(t_brama_value num);
 

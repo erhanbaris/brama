@@ -15,14 +15,16 @@
 #define CHECK_STREAM_PTR(stream) if (stream == NULL) return STRING_STREAM_ERR_NULL_OBJ;
 #define CHECK_VECTOR_PTR(vector) if (vector == NULL) return STRING_STREAM_ERR_NULL_OBJ;
 
+typedef struct _t_context* t_context_ptr;
 typedef struct {
     size_t length;
     size_t text_length;
     size_t index;
     char** data;
+    t_context_ptr context;
 } t_string_stream;
 
-t_string_stream* string_stream_init       ();
+t_string_stream* string_stream_init (t_context_ptr context);
 
 int string_stream_add        (t_string_stream* stream, char const* data);
 int string_stream_add_char   (t_string_stream* stream, char data);

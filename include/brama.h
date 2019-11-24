@@ -10,6 +10,7 @@
 #include "vec.h"
 #include "macros.h"
 #include "tools.h"
+#include "allocator.h"
 
 //#if (__STDC_VERSION__ >= 201112L)
 //#endif
@@ -46,7 +47,8 @@ typedef enum brama_status  {
     BRAMA_SWITCH_NOT_VALID               = 26,
     BRAMA_DEFAULT_CASE_USED              = 27,
     BRAMA_AST_NOT_COMPILED               = 28,
-    BRAMA_FUNCTION_NOT_FOUND             = 29
+    BRAMA_FUNCTION_NOT_FOUND             = 29,
+    BRAMA_OUT_OF_MEMORY                  = 30
 
 } brama_status;
 
@@ -216,6 +218,7 @@ typedef enum brama_compile_block_type {
     COMPILE_BLOCK_SWITCH      = 2,
     COMPILE_BLOCK_SWITCH_CASE = 3,
     COMPILE_BLOCK_FUNC_DECL   = 4,
+    COMPILE_BLOCK_FOR         = 5,
 } brama_compile_block_type;
 
 /* VM Operators */
@@ -265,7 +268,9 @@ enum brama_vm_operator {
     VM_OPT_NOT,
     VM_OPT_CASE,
     VM_OPT_FUNC,
-    VM_OPT_STORAGE_ID,
+    VM_OPT_SET_TMP_LOC,
+    VM_OPT_GET_UP_VALUE,
+    VM_OPT_SET_UP_VALUE
 };
 
 /* VM CONST TYPE */
@@ -443,7 +448,9 @@ static OperatorPair VM_OPCODES[] =  {
         { "NOT", "!"},
         { "CASE", ""},
         { "FUNC", ""},
-        { "STORAGE_ID", ""}
+        { "SET_TMP_LOC", ""},
+        { "GET_UPVALUE", ""},
+        { "SET_UPVALUE", ""}
 };
 
 static char* KEYWORDS[] = {
@@ -498,6 +505,37 @@ static char* KEYWORDS[] = {
     "UNDEFINED"
 };
 
+typedef struct _t_compile_ast_option {
+    size_t ignore_temp_resetter;
+} t_compile_ast_option;
+
+static t_compile_ast_option COMPILE_AST_OPTIONS[] = {
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { AST_BINARY_OPERATION }, // AST_FUNCTION_CALL
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL },
+    { NULL }
+};
+
+
 /* STRUCTS */
 typedef struct _t_token           t_token;
 typedef struct _t_tokinizer       t_tokinizer;
@@ -510,6 +548,7 @@ typedef struct _t_context         t_context;
 typedef struct _t_binary          t_binary;
 typedef struct _t_func_decl       t_func_decl;
 typedef struct _t_object_creation t_object_creation;
+typedef struct _t_for_loop        t_for_loop;
 typedef struct _t_while_loop      t_while_loop;
 typedef struct _t_if_stmt         t_if_stmt;
 typedef struct _t_switch_stmt     t_switch_stmt;
@@ -525,6 +564,7 @@ typedef struct _t_storage         t_storage;
 typedef struct _t_compile_info    t_compile_info;
 typedef struct _t_get_var_info    t_get_var_info;
 typedef struct _t_compile_stack   t_compile_stack;
+typedef struct _t_compile_for     t_compile_for;
 typedef struct _t_compile_while   t_compile_while;
 typedef struct _t_compile_switch  t_compile_switch;
 typedef struct _t_compile_switch_case  t_compile_switch_case;
@@ -549,6 +589,7 @@ typedef t_ast**            t_ast_ptr_ptr;
 typedef t_context*         t_context_ptr;
 typedef t_string_stream*   t_string_stream_ptr;
 typedef t_object_creation* t_object_creation_ptr;
+typedef t_for_loop*        t_for_loop_ptr;
 typedef t_while_loop*      t_while_loop_ptr;
 typedef t_if_stmt*         t_if_stmt_ptr;
 typedef t_switch_stmt*     t_switch_stmt_ptr;
@@ -559,6 +600,7 @@ typedef t_storage*         t_storage_ptr;
 typedef t_compile_info*    t_compile_info_ptr;
 typedef t_get_var_info*    t_get_var_info_ptr;
 typedef t_compile_while*   t_compile_while_ptr;
+typedef t_compile_for*     t_compile_for_ptr;
 typedef t_compile_switch*  t_compile_switch_ptr;
 typedef t_compile_switch_case*  t_compile_switch_case_ptr;
 typedef t_compile_func_decl*    t_compile_func_decl_ptr;
@@ -570,6 +612,10 @@ typedef void*              void_ptr;
 typedef int*               int_ptr;
 typedef double*            double_ptr;
 typedef t_compile_stack*   t_compile_stack_ptr;
+
+typedef void* (*t_malloc)(void* user_data, size_t size);
+typedef void  (*t_free)  (void* user_data, void*  ptr);
+typedef void* (*t_calloc)(void* user_data, size_t count, size_t size);
 
 enum brama_vm_operator;
 
@@ -672,7 +718,6 @@ typedef struct _t_storage {
 typedef struct _t_primative {
     brama_primative_type type;
     union {
-        int         int_;
         double      double_;
         bool        bool_;
         char*       char_ptr;
@@ -732,6 +777,13 @@ typedef struct _t_accessor{
     struct _t_ast* property;
 } t_accessor;
 
+typedef struct _t_for_loop {
+    t_ast* definition;
+    t_ast* condition;
+    t_ast* increment;
+    t_ast* body;
+} t_for_loop;
+
 typedef struct _t_while_loop {
     t_ast* condition;
     t_ast* body;
@@ -757,7 +809,6 @@ typedef struct _t_ast {
     brama_ast_type type;
     bool           ends_with_newline;
     bool           ends_with_semicolon;
-    bool create_new_storage;
 
     union {
         t_func_call*           func_call_ptr;
@@ -769,6 +820,7 @@ typedef struct _t_ast {
         t_assign*              assign_ptr;
         vec_ast_ptr            vector_ptr;
         t_object_creation*     object_creation_ptr;
+        t_for_loop*            for_ptr;
         t_while_loop*          while_ptr;
         t_if_stmt*             if_stmt_ptr;
         t_accessor*            accessor_ptr;
@@ -781,6 +833,11 @@ typedef struct _t_ast {
 } t_ast;
 
 typedef struct _t_context {
+    t_malloc     malloc;
+    t_free       free;
+    t_calloc     calloc;
+
+    t_allocator* allocator;
     t_tokinizer* tokinizer;
     t_parser*    parser;
     t_compiler*  compiler;
@@ -804,6 +861,7 @@ typedef struct _t_vm_object {
     bool                marked;
     t_vm_object_ptr     next;
     union {
+        t_brama_value*           value_ptr;
         char_ptr                 char_ptr;
         t_function_referance_ptr function;
     };
@@ -832,6 +890,7 @@ typedef struct _t_compile_stack {
     {
         void*                     compile_obj;
         t_compile_while_ptr       while_ptr;
+        t_compile_for_ptr         for_ptr;
         t_compile_switch_ptr      switch_ptr;
         t_compile_switch_case_ptr switch_case_ptr;
         t_compile_func_decl_ptr   func_decl_ptr;
@@ -842,6 +901,11 @@ typedef struct _t_compile_block {
     vec_int_t breaks;
     vec_int_t continues;
 } t_compile_block;
+
+typedef struct _t_compile_for {
+    vec_int_t breaks;
+    vec_int_t continues;
+} t_compile_for;
 
 typedef struct _t_compile_while {
     vec_int_t breaks;
@@ -869,6 +933,7 @@ typedef struct _t_function_referance {
     size_t    args_length;
     size_t    storage_id;
     bool      is_native;
+    t_brama_value brama_value;
 } t_function_referance;
 
 typedef struct _t_brama_native_function {
@@ -1048,8 +1113,9 @@ static KeywordPair KEYWORDS_PAIR[] = {
    { "undefined",   KEYWORD_UNDEFINED}
  };
 
-t_context_ptr brama_init       ();
+t_context_ptr brama_init       (size_t memory);
 void          brama_compile    (t_context_ptr context, char_ptr data);
+void          brama_compile_opt(t_context_ptr context);
 void          brama_run        (t_context_ptr context);
 void_ptr      brama_last_error (t_context_ptr context);
 void          brama_dump       (t_context_ptr context);

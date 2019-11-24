@@ -36,6 +36,9 @@ if ( ENABLE_CODECOVERAGE )
 
 endif (ENABLE_CODECOVERAGE)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
+
 add_definitions( -DSTATIC_PY_VERBOSE_MODE )
 include_directories(include/)
 include_directories(tests/)
@@ -48,6 +51,8 @@ add_executable(brama
         tests/munit.c
         tests/munit.h
         src/brama.c
+        src/allocator.c
+        include/allocator.h
         include/brama.h
         include/tools.h
         include/macros.h
@@ -57,5 +62,6 @@ add_executable(brama
         tests/tests_core.h
         tests/tests_token.h
         tests/tests_ast.h
+        tests/tests_ast_2.h
         tests/tests_compile.h)
 

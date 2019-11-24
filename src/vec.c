@@ -6,6 +6,7 @@
  */
 
 #include "vec.h"
+#include "brama.h"
 
 
 int vec_expand_(char **data, int *length, int *capacity, int memsz) {

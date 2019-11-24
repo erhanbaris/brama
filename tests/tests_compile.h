@@ -7,7 +7,7 @@
 #include "brama_internal.h"
 
 MunitResult ast_compile_1(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "10 + 20");
     brama_run(context);
     munit_assert_int(context->compiler->op_codes->length, == , 2);
@@ -16,7 +16,7 @@ MunitResult ast_compile_1(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_int(context->status, == , BRAMA_OK);
 
     t_brama_vmdata vmdata;
-    vm_decode(context->compiler->op_codes->data[0], &vmdata);
+    vm_decode(context->compiler->op_codes->data[0], vmdata);
 
     munit_assert_int(vmdata.op, ==, VM_OPT_ADDITION);
     munit_assert_int(context->compiler->global_storage->variables.length, ==, 3);
@@ -30,33 +30,33 @@ MunitResult ast_compile_1(const MunitParameter params[], void* user_data_or_fixt
 }
 
 MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "var test1; var test2 = 1024; test1 = 2048;");
     brama_run(context);
 
     munit_assert_int(context->compiler->op_codes->length, == , 3);
 
     t_brama_vmdata vmdata;
-    vm_decode(context->compiler->op_codes->data[0], &vmdata);
+    vm_decode(context->compiler->op_codes->data[0], vmdata);
 
     munit_assert_int(vmdata.op,   ==, VM_OPT_INIT_VAR);
     munit_assert_int(vmdata.reg1, ==, 3);
     munit_assert_int(vmdata.reg2, ==, 0);
     munit_assert_int(vmdata.reg3, ==, 0);
 
-    vm_decode(context->compiler->op_codes->data[1], &vmdata);
+    vm_decode(context->compiler->op_codes->data[1], vmdata);
 
     munit_assert_int(vmdata.op,   ==, VM_OPT_INIT_VAR);
-    munit_assert_int(vmdata.reg1, ==, 2);
+    munit_assert_int(vmdata.reg1, ==, 4);
     munit_assert_int(vmdata.reg2, ==, 1);
     munit_assert_int(vmdata.reg3, ==, 0);
 
-    munit_assert_int(context->compiler->global_storage->variables.length, ==, 4);
+    munit_assert_int(context->compiler->global_storage->variables.length, ==, 5);
 
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 1024);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 2048);
 
-    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[2]), ==, 2048);
+    munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[4]), ==, 2048);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[3]), ==, 1024);
 
 
@@ -81,32 +81,32 @@ MunitResult ast_compile_2(const MunitParameter params[], void* user_data_or_fixt
 }
 
 MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "var test_1 = 10; var test_2 = 20; var test_3 = test_1 < test_2;");
     brama_run(context);
     munit_assert_int(context->compiler->op_codes->length, == , 4);
 
     t_brama_vmdata vmdata;
 
-    vm_decode(context->compiler->op_codes->data[0], &vmdata);
+    vm_decode(context->compiler->op_codes->data[0], vmdata);
     munit_assert_int(vmdata.op,   ==, VM_OPT_INIT_VAR);
-    munit_assert_int(vmdata.reg1, ==, 2);
+    munit_assert_int(vmdata.reg1, ==, 5);
     munit_assert_int(vmdata.reg2, ==, 0);
     munit_assert_int(vmdata.reg3, ==, 0);
 
-    vm_decode(context->compiler->op_codes->data[1], &vmdata);
+    vm_decode(context->compiler->op_codes->data[1], vmdata);
     munit_assert_int(vmdata.op,   ==, VM_OPT_INIT_VAR);
     munit_assert_int(vmdata.reg1, ==, 3);
     munit_assert_int(vmdata.reg2, ==, 1);
     munit_assert_int(vmdata.reg3, ==, 0);
 
-    vm_decode(context->compiler->op_codes->data[2], &vmdata);
+    vm_decode(context->compiler->op_codes->data[2], vmdata);
     munit_assert_int(vmdata.op,   ==, VM_OPT_LT);
     munit_assert_int(vmdata.reg1, ==, 4);
-    munit_assert_int(vmdata.reg2, ==, 2);
+    munit_assert_int(vmdata.reg2, ==, 5);
     munit_assert_int(vmdata.reg3, ==, 3);
 
-    munit_assert_int(context->compiler->global_storage->variables.length, ==, 5);
+    munit_assert_int(context->compiler->global_storage->variables.length, ==, 6);
 
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 10.0);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 20.0);
@@ -141,7 +141,7 @@ MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixt
 }
 
 MunitResult ast_compile_4(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "var test_1 = 10; "
                            "var test_2 = 20; "
                            "var test_3 = test_1 < test_2; "
@@ -176,7 +176,7 @@ MunitResult ast_compile_4(const MunitParameter params[], void* user_data_or_fixt
 }
 
 MunitResult ast_compile_5(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "var x = 0; var y = 1;\n"
                            "var count = 2 ;\n"
                            "var fib ;\n"
@@ -200,7 +200,7 @@ MunitResult ast_compile_5(const MunitParameter params[], void* user_data_or_fixt
 }
 
 MunitResult ast_compile_6(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "var test1 = 10; var test2 = -test1;");
     brama_run(context);
 
@@ -216,7 +216,7 @@ MunitResult ast_compile_6(const MunitParameter params[], void* user_data_or_fixt
 }
 
 MunitResult ast_compile_7(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "var test = 'ERHAN BARIS' + ' AYSEL BARIS'");
     brama_run(context);
 
@@ -232,7 +232,7 @@ MunitResult ast_compile_7(const MunitParameter params[], void* user_data_or_fixt
 }
 
 MunitResult ast_compile_8(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "var x = 9007199254740992;\r\n"
                            "var y = -x;\r\n"
                            "var a = x == x + 1;\r\n"
@@ -289,7 +289,7 @@ MunitResult ast_compile_8(const MunitParameter params[], void* user_data_or_fixt
 }
 
 MunitResult ast_compile_9(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "var x = 10\r\n"
                            "var a = ++x;\r\n"
                            "var b = x++;\r\n");
@@ -318,7 +318,7 @@ MunitResult ast_compile_9(const MunitParameter params[], void* user_data_or_fixt
 }
 
 MunitResult ast_compile_10(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "var a = (2<<2);\r\n"
                            "var b = (16>>3);\r\n"
                            "var c = (-1 >>> 16);\r\n"
@@ -337,7 +337,7 @@ MunitResult ast_compile_10(const MunitParameter params[], void* user_data_or_fix
 }
 
 MunitResult ast_compile_11(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "var a = 42;\n"
                            "if (a != 42)\n"
                            "  result = 0;\n"
@@ -357,7 +357,7 @@ MunitResult ast_compile_11(const MunitParameter params[], void* user_data_or_fix
 }
 
 MunitResult ast_compile_12(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "// Number definition from http://en.wikipedia.org/wiki/JavaScript_syntax\n"
                            "a = 345;    // an \"integer\", although there is only one numeric type in JavaScript\n"
                            "b = 34.5;   // a floating-point number\n"
@@ -380,7 +380,7 @@ MunitResult ast_compile_12(const MunitParameter params[], void* user_data_or_fix
 }
 
 MunitResult ast_compile_13(const MunitParameter params[], void* user_data_or_fixture) {
-    t_context* context = brama_init();
+    t_context* context = brama_init(0);
     brama_compile(context, "var test = 'erhan' + undefined; // Undefined/null from http://en.wikipedia.org/wiki/JavaScript_syntax\n"
                            "var testUndefined;        // variable declared but not defined, set to value of undefined\n"
                            "\n"
@@ -403,6 +403,119 @@ MunitResult ast_compile_13(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+
+MunitResult ast_compile_14(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "function fib(n) { "
+"  if (n < 2){ "
+"    return n "
+"  } var p1 =  fib(n - 1) ; var p2 =  fib(n - 2) ; "
+"  return p1 + p2 "
+"}; var index = 0; var total = 0; while (100 > index) { ++index; total += fib(10); }");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "total", &var_info);
+
+    munit_assert_int(status,         == , BRAMA_OK);
+    munit_assert_int(var_info->type, == , CONST_INTEGER);
+    munit_assert_int(var_info->double_, == , 5500);
+    brama_destroy_get_var(context, &var_info);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_15(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "function fib(n) { "
+"  if (n < 2){ "
+"    return n "
+"  } "
+"  return fib(n - 1) + fib(n - 2) "
+"}; var index = 0; var total = 0; while (100 > index) { ++index; total += fib(10); }");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "total", &var_info);
+
+    munit_assert_int(status,         == , BRAMA_OK);
+    munit_assert_int(var_info->type, == , CONST_INTEGER);
+    munit_assert_int(var_info->double_, == , 5500);
+    brama_destroy_get_var(context, &var_info);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_16(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var a = 0;\r\n"
+    "var i;\r\n"
+    "for (i=1;i<10;i++) a = a + i;\r\n"
+    "result = a==45;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,           == , BRAMA_OK);
+    munit_assert_int   (var_info->type,   == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_,== , true);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_17(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var a = 0;\r\n"
+                           "for (var i=1;i<10;i++) a += i;\r\n"
+                           "result = a==45;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,           == , BRAMA_OK);
+    munit_assert_int   (var_info->type,   == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_,== , true);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_18(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "function add(x,y) { return x+y; }\n"
+                           "result = add(3,6)==9;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,           == , BRAMA_OK);
+    munit_assert_int   (var_info->type,   == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_,== , true);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_19(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "function add(x,y) { return x+y; }\n"
+                           "result = add(3,6)==9;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int   (status,           == , BRAMA_OK);
+    munit_assert_int   (var_info->type,   == , CONST_BOOL);
+    munit_assert_int   (var_info->bool_,== , true);
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+
 MunitTest COMPILE_TESTS[] = {
 
         ADD_TEST(ast_compile_1),
@@ -417,6 +530,13 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_10),
         ADD_TEST(ast_compile_11),
         ADD_TEST(ast_compile_12),
+        ADD_TEST(ast_compile_13),
+        ADD_TEST(ast_compile_14),
+        ADD_TEST(ast_compile_15),
+        ADD_TEST(ast_compile_16),
+        ADD_TEST(ast_compile_17),
+        ADD_TEST(ast_compile_18),
+        ADD_TEST(ast_compile_19),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
