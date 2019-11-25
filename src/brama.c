@@ -3835,8 +3835,11 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
 
     /* Has assignment code */
     if (ast->assignment != NULL) {
-        size_t variable_index = get_variable_address(context, storage, ast->object->char_ptr);
-        size_t opcode_count   = context->compiler->op_codes->length;
+        size_t variable_index        = get_variable_address(context, storage, ast->object->char_ptr);
+        size_t opcode_count          = context->compiler->op_codes->length;
+        size_t storage_id            = 0;
+        size_t upvariable_index      = 0;
+        brama_status up_value_status = BRAMA_NOK;
 
         /* Opcode generation for assignment */
         if (ast->opt == OPERATOR_ASSIGN || ast->opt == OPERATOR_NONE)
@@ -3856,23 +3859,24 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
 
             switch (ast->opt) {
                 case OPERATOR_ASSIGN: {
-                    size_t storage_id;
-                    size_t variable_index;
 
-                    brama_status up_value_status = compile_is_up_value(context, ast->assignment->char_ptr, storage, &storage_id, &variable_index);
+                    up_value_status = compile_is_up_value(context, ast->assignment->char_ptr, storage, &storage_id, &upvariable_index);
                     if (up_value_status == BRAMA_OK) {
                         /* Our variable declerad at upper code block */
-                        code.op   = VM_OPT_GET_UP_VALUE;
-                        code.reg1 = compile_info->index;
-                        code.reg2 = storage_id;
-                        code.reg3 = variable_index;
-
-                    } else {
-                        code.op = VM_OPT_COPY;
-                        code.reg1 = variable_index;
-                        code.reg2 = compile_info->index;
+                        
+                        /*t_brama_vmdata up_code;
+                        up_code.op   = VM_OPT_GET_UP_VALUE;
+                        up_code.reg1 = compile_info->index;
+                        up_code.reg2 = storage_id;
+                        up_code.reg3 = upvariable_index;
+                        up_code.scal = 0;
+                        vec_push(context->compiler->op_codes, vm_encode(up_code));*/
                     }
-
+                                            
+                    code.op = VM_OPT_COPY;
+                    code.reg1 = variable_index;
+                    code.reg2 = compile_info->index;
+                    
                     break;
                 }
 
@@ -3959,6 +3963,19 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
 
                 vec_push(context->compiler->op_codes, vm_encode(code));
             }
+        }
+
+        up_value_status = compile_is_up_value(context, ast->object->char_ptr, storage, &storage_id, &upvariable_index);
+        if (up_value_status == BRAMA_OK) {
+            /* Our variable declerad at upper code block */
+            
+            /*t_brama_vmdata up_code;
+            up_code.op   = VM_OPT_SET_UP_VALUE;
+            up_code.reg1 = variable_index;
+            up_code.reg2 = storage_id;
+            up_code.reg3 = upvariable_index;
+            up_code.scal = 0;
+            vec_push(context->compiler->op_codes, vm_encode(up_code));*/
         }
     }
 
@@ -4426,6 +4443,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
         compile_info->index   = code.reg1;
     }
     else {
+        //storage->temp_counter = temp_counter;
         t_brama_vmdata code;
         code.op   = VM_OPT_CALL;
         code.reg1 = assignment_variable_index == -1 ? ((storage->variables.length - storage->temp_count)) + storage->temp_counter++ : assignment_variable_index;
@@ -4586,19 +4604,21 @@ void compile_return(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr st
             brama_status up_value_status = compile_is_up_value(context, ast->ast_ptr->char_ptr, storage, &storage_id, &variable_index);
             if (up_value_status == BRAMA_OK) {
                 /* Our variable declerad at upper code block */
-                code.op   = VM_OPT_GET_UP_VALUE;
-                code.reg1 = compile_info->index;
-                code.reg2 = storage_id;
-                code.reg3 = variable_index;
-
-            } else {
-                code.op   = VM_OPT_COPY;
-                code.reg1 = *return_index;
-                code.reg2 = compile_info->index;
+                
+                /*t_brama_vmdata up_code;
+                up_code.op   = VM_OPT_GET_UP_VALUE;
+                up_code.reg1 = compile_info->index;
+                up_code.reg2 = storage_id;
+                up_code.reg3 = variable_index;
+                up_code.scal = 0;
+                vec_push(context->compiler->op_codes, vm_encode(up_code));*/
             }
 
-            vec_push(context->compiler->op_codes, vm_encode(code));
+            code.op   = VM_OPT_COPY;
+            code.reg1 = *return_index;
+            code.reg2 = compile_info->index;
 
+            vec_push(context->compiler->op_codes, vm_encode(code));
         }
         else {
             bool opcode_need = true;
@@ -5389,9 +5409,16 @@ void brama_compile_dump_codes(t_context_ptr context) {
 }
 
 void run(t_context_ptr context) {
-    t_storage_ptr  storage          = context->compiler->global_storage;
-    t_storage_ptr  previous_storage = NULL;
-    t_storage_ptr* storages         = context->compiler->storages.data;
+    t_storage_ptr   storage          = context->compiler->global_storage;
+    t_storage_ptr   previous_storage = NULL;
+    t_brama_value** storage_table    = NULL;
+    t_storage_ptr*  storages         = context->compiler->storages.data;
+
+    storage_table = BRAMA_MALLOC(sizeof(t_brama_value*) * context->compiler->storages.length);
+    if (NULL == storage_table) {
+        context->status = out_of_memory_error(context);
+        return;
+    }
     
     DoubleBits tmp_data_1;
     DoubleBits tmp_data_2;
@@ -5404,6 +5431,15 @@ void run(t_context_ptr context) {
     t_brama_byte*  location_zero      = &bytes->data[0];
     size_t         temporary_location = 0;
     size_t         ticks              = 0;
+
+    t_brama_value* global_variables   = BRAMA_MALLOC(sizeof(t_brama_value) *  context->compiler->global_storage->variables.length);
+    if (NULL == variables) {
+        context->status = out_of_memory_error(context);
+        return;
+    }
+
+    memcpy(variables, context->compiler->global_storage->variables.data, context->compiler->global_storage->variables.length * sizeof(t_brama_value));
+    storage_table[0] = global_variables;
 
     while (*ipc != (int)NULL) {
         t_brama_vmdata vmdata;
@@ -5788,6 +5824,16 @@ void run(t_context_ptr context) {
                 break;
             }
 
+            case VM_OPT_GET_UP_VALUE: {
+                *(variables + vmdata.reg1) = storage_table[vmdata.reg2][vmdata.reg3];
+                break;
+            }
+
+            case VM_OPT_SET_UP_VALUE: {
+                storage_table[vmdata.reg2][vmdata.reg3] = *(variables + vmdata.reg1);
+                break;
+            }
+
             case VM_OPT_PRINT: {
                 for (size_t i = 0; i < vmdata.reg1; ++i) {
                     t_brama_value value  = *(variables + vmdata.reg2 + i);
@@ -5884,6 +5930,8 @@ void run(t_context_ptr context) {
 
                 temporary_location = 0;
 
+                storage_table[storage->id] = variables;
+
                 //brama_compile_dump_memory(variables, &storage->variable_names, storage->variables.length);
                 break;
             }
@@ -5896,6 +5944,9 @@ void run(t_context_ptr context) {
                 previous_storage             = (t_storage*)    variables[storage->variables.length + 2];
 
                 BRAMA_FREE(variables);
+
+                storage_table[storage->id]          = NULL;
+                storage_table[previous_storage->id] = tmp_variables; // For recursive call
                 
                 ipc       = tmp_ipc;
                 variables = tmp_variables;
@@ -5912,6 +5963,8 @@ void run(t_context_ptr context) {
 
         ++ipc;
     }
+
+    BRAMA_FREE(global_variables);
 }
 
 /* Compile End */

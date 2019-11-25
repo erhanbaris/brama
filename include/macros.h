@@ -198,15 +198,12 @@ do { \
     return RETURN_CODE ;   \
 } while(0)
 
-#define CLEAR_AST(AST)       if ( AST    != NULL ) do { destroy_ast   ( context, AST );        BRAMA_FREE( AST );    AST    = NULL; } while(0)
+#define CLEAR_AST(AST)       if ( AST    != NULL ) do { destroy_ast       ( context, AST );   BRAMA_FREE( AST );    AST    = NULL; } while(0)
 #define CLEAR_VECTOR(VECTOR) if ( VECTOR != NULL ) do { destroy_ast_vector(context, VECTOR ); BRAMA_FREE( VECTOR ); VECTOR = NULL; } while(0)
 
 #define vector_get(VECTOR, INDEX) VECTOR ->data[ INDEX ]
 
 #if defined(_WIN32)
-#    define _CRTDBG_MAP_ALLOC
-#    include <stdlib.h>
-#    include <crtdbg.h>
 
 #    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) context->malloc(context->allocator, SIZE)
 #    define BRAMA_CALLOC(NUM, SIZE)                 context->calloc(context->allocator, NUM , SIZE )
