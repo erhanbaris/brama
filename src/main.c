@@ -14,17 +14,15 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init(0);
-    brama_compile(context, "var a = 7;\n"
-                           "function add(x,y) { var a=x+y; return a; }\n"
-                           "result = add(3,6)==9 && a==7;");
+    brama_compile(context, "var bob = {};"
+                           "bob.add = function(x,y) { return x+y; };");
     brama_run(context);
-    brama_compile_dump(context);
 
     t_get_var_info_ptr var_info = NULL;
-    brama_status status = brama_get_var(context, "result", &var_info);
-    munit_assert_int   (status,           == , BRAMA_OK);
-    munit_assert_int   (var_info->type,   == , CONST_BOOL);
-    munit_assert_int   (var_info->bool_,== , true);
+    brama_status status = brama_get_var(context, "bob", &var_info);
+    munit_assert_int     (status,           == , BRAMA_OK);
+    munit_assert_int     (var_info->type,   == , CONST_DICT);
+    munit_assert_not_null(var_info->dict_);
     brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);

@@ -259,8 +259,8 @@ enum brama_vm_operator {
     VM_OPT_PRINT,
     VM_OPT_CALL_NATIVE,
     VM_OPT_METHOD_DEF,
-    VM_OPT_INITARRAY,
-    VM_OPT_INITDICT,
+    VM_OPT_INIT_ARRAY,
+    VM_OPT_INIT_DICT,
     VM_OPT_NOT_EQ,
     VM_OPT_APPEND,
     VM_OPT_LOOP,
@@ -281,7 +281,8 @@ typedef enum _brama_vm_const_type {
     CONST_DOUBLE    = 3,
     CONST_STRING    = 4,
     CONST_BOOL      = 5,
-    CONST_FUNCTION  = 6
+    CONST_FUNCTION  = 6,
+    CONST_DICT      = 7
 } brama_vm_const_type;
 
 typedef enum _brama_ast_extra_data_type {
@@ -439,8 +440,8 @@ static OperatorPair VM_OPCODES[] =  {
         { "PRINT", ""},
         { "CALL_NATIVE", ""},
         { "METHOD_DEF", ""},
-        { "INITARRAY", ""},
-        { "INITDICT", ""},
+        { "INIT_ARRAY", ""},
+        { "INIT_DICT", ""},
         { "NOT_EQ", "!="},
         { "APPEND", ""},
         { "LOOP", ""},
@@ -861,6 +862,7 @@ typedef struct _t_vm_object {
     bool                marked;
     t_vm_object_ptr     next;
     union {
+        map_value_ptr            dict_ptr;
         t_brama_value*           value_ptr;
         char_ptr                 char_ptr;
         t_function_referance_ptr function;
@@ -875,9 +877,10 @@ typedef struct _t_compile_info {
 typedef struct _t_get_var_info {
     brama_vm_const_type type;
     union {
-        double     double_;
-        bool       bool_;
-        char_ptr   char_ptr;
+        map_value_ptr dict_;
+        double        double_;
+        bool          bool_;
+        char_ptr      char_ptr;
     };
 } t_get_var_info;
 
@@ -970,6 +973,7 @@ typedef struct _t_memory_prototype_item {
 
 #define IS_STRING(value)   (IS_OBJ(value) && AS_OBJ(value)->type == CONST_STRING)
 #define IS_FUNCTION(value) (IS_OBJ(value) && AS_OBJ(value)->type == CONST_FUNCTION)
+#define IS_DICT(value) (IS_OBJ(value) && AS_OBJ(value)->type == CONST_DICT)
 
 #define IS_FALSE(value)     ((value) == FALSE_VAL)
 #define IS_TRUE(value)      ((value) == TRUE_VAL)

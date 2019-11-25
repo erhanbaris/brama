@@ -3571,12 +3571,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
 /* Binary Operation
  * Example : 10 + 20 - 10 * 5.5 */
 void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
-    size_t dest_id = 0;
-    if (upper_ast == AST_ASSIGNMENT)
-        dest_id = compile_info->index;
-    else        
-        dest_id = ((storage->variables.length - storage->temp_count)) + storage->temp_counter++;
-
+    size_t dest_id = compile_info->index;
     compile_info->index = -1;
     compile_internal(context, ast->left, storage, compile_info, AST_BINARY_OPERATION);
     COMPILE_CHECK();
@@ -3586,6 +3581,9 @@ void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr
     compile_internal(context, ast->right, storage, compile_info, AST_BINARY_OPERATION);
     COMPILE_CHECK();
     int right_index = compile_info->index;
+
+    if (upper_ast != AST_ASSIGNMENT)
+        dest_id = ((storage->variables.length - storage->temp_count)) + storage->temp_counter++;
 
     t_brama_vmdata code;
     code.op   = 0;
@@ -3647,12 +3645,7 @@ void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr
 }
 
 void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
-    size_t dest_id = 0;
-    if (upper_ast == AST_ASSIGNMENT || upper_ast == AST_RETURN)
-        dest_id = compile_info->index;
-    else 
-        dest_id = (storage->variables.length - storage->temp_count) + storage->temp_counter++;
-
+    size_t dest_id = compile_info->index;
     compile_info->index = -1;
     compile_internal(context, ast->left, storage, compile_info, AST_NONE);
     COMPILE_CHECK();
@@ -3662,6 +3655,9 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
     compile_internal(context, ast->right, storage, compile_info, AST_NONE);
     COMPILE_CHECK();
     int right_index = compile_info->index;
+
+    if (upper_ast != AST_ASSIGNMENT && upper_ast != AST_RETURN)
+        dest_id = (storage->variables.length - storage->temp_count) + storage->temp_counter++;
 
     t_brama_vmdata code;
     code.op   = 0;
@@ -3828,7 +3824,7 @@ brama_status compile_is_up_value(t_context_ptr context, char_ptr const ast, t_st
 */
 void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     /* We need to check variable that used on scope before */
-    if (ast->opt == OPERATOR_ASSIGN || ast->opt == OPERATOR_NONE)
+    if ((ast->opt == OPERATOR_ASSIGN || ast->opt == OPERATOR_NONE) && ast->object->type == AST_SYMBOL)
         compile_info->index = get_variable_address(context, storage, ast->object->char_ptr);
 
     size_t temp_counter = storage->temp_counter;
@@ -4904,6 +4900,19 @@ void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_stora
             break;
         }
 
+        case PRIMATIVE_DICTIONARY: {
+            if (compile_info->index != -1) {
+                t_brama_vmdata code;
+                code.op = VM_OPT_INIT_DICT;
+                code.reg1 = compile_info->index;
+                code.reg2 = 0;
+                code.reg3 = 0;
+                code.scal = 0;
+                vec_push(context->compiler->op_codes, vm_encode(code));
+            }
+            break;
+        }
+
         default:
             context->status = BRAMA_CONSTANT_NOT_FOUND;
             break;
@@ -5220,6 +5229,9 @@ brama_status brama_get_var(t_context_ptr context, char_ptr var_name, t_get_var_i
         (*var_info)->char_ptr = malloc(sizeof(char) * (strlen(AS_STRING(value)) + 1));
         strcpy((*var_info)->char_ptr, AS_STRING(value));
         (*var_info)->char_ptr[strlen(AS_STRING(value))] = '\0';
+    } else if (IS_DICT(value)) {
+        (*var_info)->type  = CONST_DICT;
+        (*var_info)->dict_ = AS_OBJ(value)->dict_ptr;
     }
 
     return  BRAMA_OK;
@@ -5290,6 +5302,8 @@ void brama_compile_dump_storage(t_context_ptr context, t_storage_ptr storage) {
                 printf ("%8d |  %-15s | '%s'\r\n", i, variable_infos[i], AS_STRING(tmp_val));
             else if (IS_FUNCTION(tmp_val))
                 printf ("%8d |  %-15s | (%s)\r\n", i, variable_infos[i], AS_FUNCTION(tmp_val)->name);
+            else if (IS_DICT(tmp_val))
+                printf ("%8d |  %-15s | (dict)\r\n", i, variable_infos[i]);
             else
                 printf ("%8d |  ERROR!\r\n", i);
             printf ("---------+------------------+-----------------------------------------\r\n");
@@ -5448,6 +5462,17 @@ void run(t_context_ptr context) {
         ++ticks;
 
         switch (vmdata.op) {
+
+            case VM_OPT_INIT_DICT: {
+
+                t_vm_object_ptr object     = new_vm_object(context);
+                object->type               = CONST_DICT;
+                object->dict_ptr           = BRAMA_MALLOC(sizeof(map_value));
+                map_init(object->dict_ptr);
+
+                *(variables + vmdata.reg1) = GET_VALUE_FROM_OBJ(object);
+                break;
+            }
 
             case VM_OPT_INIT_VAR: {
                 t_brama_value left  = *(variables + vmdata.reg2);
