@@ -3814,6 +3814,29 @@ brama_status compile_is_up_value(t_context_ptr context, char_ptr const ast, t_st
     return BRAMA_NOK;
 }
 
+
+void compile_add_to_dict(t_context_ptr context, t_assign_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    /* We need to check variable that used on scope before */
+    size_t temp_counter = storage->temp_counter;
+    t_brama_vmdata code;
+    code.op   = VM_OPT_ADD_TO_DICT;
+    code.scal = 0;
+
+    compile_internal(context, ast->object, storage, compile_info, AST_ASSIGNMENT);
+    code.reg1 = compile_info->index; /* Dictionary */
+    code.reg2 = compile_info->index_2; /* Dictionary key */
+
+    compile_info->index   = -1;
+    compile_info->index_2 = -1;
+    compile_internal(context, ast->assignment, storage, compile_info, AST_ASSIGNMENT);
+    code.reg3 = compile_info->index; /* Dictionary value */
+
+    vec_push(context->compiler->op_codes, vm_encode(code));
+
+    /* If we used temp variable, we are freeing that space for others */
+    storage->temp_counter = temp_counter;
+}
+
 /**
 * Compile assignment ast to opcode
 * @param context Brama context
@@ -3823,11 +3846,18 @@ brama_status compile_is_up_value(t_context_ptr context, char_ptr const ast, t_st
 * @param storage Stack memory storage
 */
 void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+
+    if (ast->object->type == AST_ACCESSOR)
+    {
+        compile_add_to_dict(context, ast, storage, compile_info, upper_ast);
+        return;
+    }
+
     /* We need to check variable that used on scope before */
     if ((ast->opt == OPERATOR_ASSIGN || ast->opt == OPERATOR_NONE) && ast->object->type == AST_SYMBOL)
         compile_info->index = get_variable_address(context, storage, ast->object->char_ptr);
     else if (ast->object->type == AST_ACCESSOR) {
-
+        compile_internal(context, ast->object, storage, compile_info, AST_ASSIGNMENT);
     }
 
     size_t temp_counter = storage->temp_counter;
@@ -4946,6 +4976,20 @@ void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_stora
     }
 }
 
+void compile_accessor(t_context_ptr context, t_accessor_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    size_t object_id;
+    size_t property_id;
+
+    compile_internal(context, ast->object, storage, compile_info, upper_ast);
+    object_id = compile_info->index;
+
+    compile_internal(context, ast->property, storage, compile_info, upper_ast);
+    property_id = compile_info->index;
+
+    compile_info->index   = object_id;
+    compile_info->index_2 = property_id;
+}
+
 
 void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     
@@ -5011,6 +5055,7 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
             break;
 
         case AST_ACCESSOR: {
+            compile_accessor(context, ast->accessor_ptr, storage, compile_info, upper_ast);
             break;
         }
 
@@ -5887,6 +5932,26 @@ void run(t_context_ptr context) {
 
             case VM_OPT_SET_UP_VALUE: {
                 storage_table[vmdata.reg2][vmdata.reg3] = *(variables + vmdata.reg1);
+                break;
+            }
+
+            case VM_OPT_ADD_TO_DICT: {
+                t_brama_value dictionary = *(variables + vmdata.reg1);
+                t_brama_value key        = *(variables + vmdata.reg2);
+                t_brama_value value      = *(variables + vmdata.reg3);
+
+                if (!IS_DICT(dictionary)) {
+                    context->status = BRAMA_UNDEFINED_VARIABLE;
+                    break;
+                }
+
+                map_value_ptr dict_obj = AS_DICT(dictionary);
+
+                char_ptr key_str = NULL;
+                if (IS_STRING(key))
+                    key_str = AS_STRING(key);
+
+                map_set(dict_obj, key_str, value);
                 break;
             }
 

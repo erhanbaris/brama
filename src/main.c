@@ -13,15 +13,22 @@
 #include "brama.h"
 
 int main(int argc, const char* argv[]) {
-        t_context* context = brama_init(0);
-    brama_compile(context, "var bob = {}; bob['test'] = 1024;");
+    t_context* context = brama_init(0);
+    brama_compile(context, "var bob = {};"
+    "bob['add'] = function(x,y) { return x+y; };");
     brama_run(context);
+    brama_compile_dump(context);
 
     t_get_var_info_ptr var_info = NULL;
     brama_status status = brama_get_var(context, "bob", &var_info);
     munit_assert_int     (status,           == , BRAMA_OK);
     munit_assert_int     (var_info->type,   == , CONST_DICT);
     munit_assert_not_null(var_info->dict_);
+
+    t_brama_value saved_value =  *map_get(var_info->dict_, "add");
+    munit_assert_true(IS_NUM(saved_value));
+    munit_assert_int(valueToNumber(saved_value), ==, 1024);
+
     brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);

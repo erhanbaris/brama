@@ -532,6 +532,27 @@ MunitResult ast_compile_20(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+MunitResult ast_compile_21(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var bob = {}; bob['test'] = 1024;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "bob", &var_info);
+    munit_assert_int     (status,           == , BRAMA_OK);
+    munit_assert_int     (var_info->type,   == , CONST_DICT);
+    munit_assert_not_null(var_info->dict_);
+
+    t_brama_value saved_value =  *map_get(var_info->dict_, "test");
+    munit_assert_true(IS_NUM(saved_value));
+    munit_assert_int(valueToNumber(saved_value), ==, 1024);
+
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 
 MunitTest COMPILE_TESTS[] = {
 
@@ -555,6 +576,7 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_18),
         ADD_TEST(ast_compile_19),
         ADD_TEST(ast_compile_20),
+        ADD_TEST(ast_compile_21),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

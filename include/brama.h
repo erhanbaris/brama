@@ -271,7 +271,8 @@ enum brama_vm_operator {
     VM_OPT_FUNC,
     VM_OPT_SET_TMP_LOC,
     VM_OPT_GET_UP_VALUE,
-    VM_OPT_SET_UP_VALUE
+    VM_OPT_SET_UP_VALUE,
+    VM_OPT_ADD_TO_DICT
 };
 
 /* VM CONST TYPE */
@@ -452,7 +453,8 @@ static OperatorPair VM_OPCODES[] =  {
         { "FUNC", ""},
         { "SET_TMP_LOC", ""},
         { "GET_UPVALUE", ""},
-        { "SET_UPVALUE", ""}
+        { "SET_UPVALUE", ""},
+        { "ADD_TO_DICT", ""}
 };
 
 static char* KEYWORDS[] = {
@@ -872,6 +874,7 @@ typedef struct _t_vm_object {
 
 typedef struct _t_compile_info {
     int                index;
+    int                index_2;
     t_brama_vmdata_ptr post_opcode;
 } t_compile_info;
 
@@ -1002,6 +1005,7 @@ typedef struct _t_memory_prototype_item {
 #define AS_OBJ(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))
 #define AS_STRING(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))->char_ptr
 #define AS_FUNCTION(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))->function
+#define AS_DICT(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))->dict_ptr
 
 // Singleton values.
 #define NULL_VAL      ((t_brama_value)(uint64_t)(QNAN | TAG_NULL))
