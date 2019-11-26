@@ -597,7 +597,7 @@ MunitResult ast_switch_1(const MunitParameter params[], void* user_data_or_fixtu
 }
 
 MunitResult ast_switch_2(const MunitParameter params[], void* user_data_or_fixture) {
-t_context* context = brama_init(0);
+    t_context* context = brama_init(0);
     brama_compile(context, "var a1=5;\n"
                            "var b1=6;\n"
                            "var r1=0;\n"

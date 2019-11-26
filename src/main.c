@@ -13,9 +13,8 @@
 #include "brama.h"
 
 int main(int argc, const char* argv[]) {
-    t_context* context = brama_init(0);
-    brama_compile(context, "var bob = {};"
-                           "bob.add = function(x,y) { return x+y; };");
+        t_context* context = brama_init(0);
+    brama_compile(context, "var bob = {}; bob['test'] = 1024;");
     brama_run(context);
 
     t_get_var_info_ptr var_info = NULL;
@@ -26,8 +25,11 @@ int main(int argc, const char* argv[]) {
     brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
+    return 0;
 
-    #ifdef _WIN32
+    
+    
+#ifdef _WIN32
     int test_status = munit_suite_main(&ALL_SUITE, (void*) "µnit", NULL, NULL);
     getchar();
     return test_status;

@@ -48,7 +48,8 @@ typedef enum brama_status  {
     BRAMA_DEFAULT_CASE_USED              = 27,
     BRAMA_AST_NOT_COMPILED               = 28,
     BRAMA_FUNCTION_NOT_FOUND             = 29,
-    BRAMA_OUT_OF_MEMORY                  = 30
+    BRAMA_OUT_OF_MEMORY                  = 30,
+    BRAMA_UNDEFINED_VARIABLE             = 31
 
 } brama_status;
 

@@ -1,3 +1,4 @@
+#include <stdlib.h> 
 #include <stdio.h>
 #include "allocator.h"
 #include "macros.h"

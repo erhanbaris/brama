@@ -3826,6 +3826,9 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
     /* We need to check variable that used on scope before */
     if ((ast->opt == OPERATOR_ASSIGN || ast->opt == OPERATOR_NONE) && ast->object->type == AST_SYMBOL)
         compile_info->index = get_variable_address(context, storage, ast->object->char_ptr);
+    else if (ast->object->type == AST_ACCESSOR) {
+
+    }
 
     size_t temp_counter = storage->temp_counter;
 
@@ -4440,6 +4443,30 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
     }
     else {
         //storage->temp_counter = temp_counter;
+
+        if (!IS_FUNCTION(storage->variables.data[function_variable_index])) {
+            size_t   storage_id;
+            size_t   variable_index;
+            char_ptr variable_name = NULL;
+            map_iter_t iter        = map_iter(&storage->variable_names);
+            while ((variable_name  = map_next(&storage->variable_names, &iter))) {
+                if (function_variable_index == *map_get(&storage->variable_names, variable_name))
+                    break;
+            }
+
+            brama_status up_value_status = compile_is_up_value(context, variable_name, storage, &storage_id, &variable_index);
+            if (up_value_status == BRAMA_OK) {
+                /* Our variable declerad at upper code block */
+                t_brama_vmdata up_code;
+                up_code.op   = VM_OPT_GET_UP_VALUE;
+                up_code.reg1 = function_variable_index;
+                up_code.reg2 = storage_id;
+                up_code.reg3 = variable_index;
+                up_code.scal = 0;
+                vec_push(context->compiler->op_codes, vm_encode(up_code));
+            }
+        }
+
         t_brama_vmdata code;
         code.op   = VM_OPT_CALL;
         code.reg1 = assignment_variable_index == -1 ? ((storage->variables.length - storage->temp_count)) + storage->temp_counter++ : assignment_variable_index;
@@ -4983,6 +5010,10 @@ void compile_internal(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr 
             compile_return(context, ast, storage, compile_info, upper_ast);
             break;
 
+        case AST_ACCESSOR: {
+            break;
+        }
+
         default:
             context->status = BRAMA_AST_NOT_COMPILED;
             break;
@@ -5452,7 +5483,7 @@ void run(t_context_ptr context) {
         return;
     }
 
-    memcpy(variables, context->compiler->global_storage->variables.data, context->compiler->global_storage->variables.length * sizeof(t_brama_value));
+    memcpy(global_variables, context->compiler->global_storage->variables.data, context->compiler->global_storage->variables.length * sizeof(t_brama_value));
     storage_table[0] = global_variables;
 
     while (*ipc != (int)NULL) {
@@ -5886,30 +5917,10 @@ void run(t_context_ptr context) {
 
                 t_brama_value function_value = *(variables + function_index);
                 if (IS_UNDEFINED(function_value)) {
-                    t_storage_ptr search_storage = storage;
-                    bool          function_found = false;
-                    
-                    map_iter_t iter  = map_iter(&search_storage->variable_names);
-                    char_ptr tmp_var = NULL;
-                    while ((tmp_var  = map_next(&storage->variable_names, &iter))) {
-                        if (vmdata.reg3 == *map_get(&storage->variable_names, tmp_var))
-                            break;
-                    }
-
-                    while (NULL != search_storage) {
-                        void** func_ptr = map_get(&search_storage->functions, tmp_var);
-
-                        if (NULL != func_ptr) {
-                            variables[function_index] = ((t_function_referance_ptr)(*func_ptr))->brama_value;
-                            function_value            = variables[function_index];
-                            function_found = true;
-                            break;
-                        }
-                        else
-                            search_storage = search_storage->previous_storage;
-                    }
+                    context->status = BRAMA_UNDEFINED_VARIABLE;
+                    break;
                 }
-                
+
                 t_function_referance_ptr obj = AS_FUNCTION(function_value);
                 
                 size_t arg_count = FAST_MIN((vmdata.reg2), (obj->args_length));
