@@ -91,7 +91,7 @@ brama_status brama_get_var        (t_context_ptr context, char_ptr var_name, t_g
 brama_status brama_destroy_get_var(t_context_ptr context, t_get_var_info** var_info);
 
 int    get_constant_address  (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
-size_t add_constant          (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
+void   add_constant          (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
 int    get_variable_address  (t_context_ptr context, t_storage_ptr storage, char_ptr name);
 void   add_variable          (t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value, memory_prototype_item_type type);
 void   locate_variables_to_memory(t_context_ptr context, t_storage_ptr storage);
@@ -114,6 +114,7 @@ void compile_func_decl          (t_context_ptr context, t_func_decl_ptr const as
 void compile_return             (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_switch             (t_context_ptr context, t_switch_stmt_ptr const ast,t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_add_to_dict        (t_context_ptr context, t_assign_ptr const ast,     t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_get_from_dict      (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_accessor           (t_context_ptr context, t_accessor_ptr const ast,   t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 brama_status compile_is_up_value(t_context_ptr context, char_ptr const ast,         t_storage_ptr storage, size_t* storage_id, size_t* variable_index);
 

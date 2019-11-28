@@ -272,7 +272,8 @@ enum brama_vm_operator {
     VM_OPT_SET_TMP_LOC,
     VM_OPT_GET_UP_VALUE,
     VM_OPT_SET_UP_VALUE,
-    VM_OPT_ADD_TO_DICT
+    VM_OPT_ADD_TO_DICT,
+    VM_OPT_GET_FROM_DICT
 };
 
 /* VM CONST TYPE */
@@ -454,7 +455,8 @@ static OperatorPair VM_OPCODES[] =  {
         { "SET_TMP_LOC", ""},
         { "GET_UPVALUE", ""},
         { "SET_UPVALUE", ""},
-        { "ADD_TO_DICT", ""}
+        { "ADD_TO_DICT", ""}, 
+        { "GET_FROM_DICT", ""}
 };
 
 static char* KEYWORDS[] = {

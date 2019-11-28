@@ -3266,8 +3266,14 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                 map_init(&new_storage->variable_names);
                 vec_push(&context->compiler->storages, new_storage);
 
-                if (ast->func_decl_ptr->name != NULL)
-                    add_variable(context, storage, ast->func_decl_ptr->name, UNDEFINED_VAL, MEMORY_PROTOTYPE_VARIABLE);
+                if (ast->func_decl_ptr->name == NULL) {
+                    ast->func_decl_ptr->name = BRAMA_MALLOC(sizeof(char) * 20);
+                    sprintf(ast->func_decl_ptr->name, "!func_%zu", ++storage->loop_counter);
+                    ast->func_decl_ptr->name[19] = NULL;
+                }
+
+                /* Add function to variable list */
+                add_variable(context, storage, ast->func_decl_ptr->name, UNDEFINED_VAL, MEMORY_PROTOTYPE_VARIABLE);
 
                 /* Create a new variable corresponding to return value */
                 add_variable(context, new_storage, RETURN_VAR, UNDEFINED_VAL, MEMORY_PROTOTYPE_RETURN_VAR);
@@ -3830,6 +3836,24 @@ void compile_add_to_dict(t_context_ptr context, t_assign_ptr const ast, t_storag
     compile_info->index_2 = -1;
     compile_internal(context, ast->assignment, storage, compile_info, AST_ASSIGNMENT);
     code.reg3 = compile_info->index; /* Dictionary value */
+
+    vec_push(context->compiler->op_codes, vm_encode(code));
+
+    /* If we used temp variable, we are freeing that space for others */
+    storage->temp_counter = temp_counter;
+}
+
+void compile_get_from_dict(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+    /* We need to check variable that used on scope before */
+    size_t temp_counter = storage->temp_counter;
+    t_brama_vmdata code;
+    code.op   = VM_OPT_GET_FROM_DICT;
+    code.reg1 = compile_info->index;
+    code.scal = 0;
+
+    compile_internal(context, ast, storage, compile_info, AST_NONE);
+    code.reg2 = compile_info->index; /* Dictionary */
+    code.reg3 = compile_info->index_2; /* Dictionary key */
 
     vec_push(context->compiler->op_codes, vm_encode(code));
 
@@ -4429,7 +4453,17 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
         
         /* Check function for referance delageted
          * If variable not referanced to function location, prepare it */
-        function_variable_index = *map_get(&storage->variable_names, ast->function->char_ptr);
+        if (AST_SYMBOL == ast->function->type)
+            function_variable_index = *map_get(&storage->variable_names, ast->function->char_ptr);
+        else if (AST_ACCESSOR == ast->function->type) {
+            compile_info->index     = (storage->variables.length - storage->temp_count) + storage->temp_counter++;
+            function_variable_index = compile_info->index;
+            compile_get_from_dict(context, ast->function, storage, compile_info, AST_FUNCTION_CALL);
+        }            
+        else {
+            compile_internal(context, ast->function, storage, compile_info, AST_FUNCTION_CALL);
+            function_variable_index = compile_info->index;
+        }
     }
 
     t_ast_ptr arg;
@@ -4522,29 +4556,14 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
     /* Function referance */
     t_function_referance_ptr function_referance = BRAMA_MALLOC(sizeof(t_function_referance));
 
-    /* Anony function*/
-    bool is_anony = false;
-    if (ast->name == NULL) {
-        ast->name = BRAMA_MALLOC(sizeof(char) * 20);
-        sprintf(ast->name, "!func_%zu", ++storage->loop_counter);
-        ast->name[19] = NULL;
-        is_anony = true;
+    size_t* index = map_get(&storage->variable_names, ast->name);
 
-        /* Fully anony function, we need to create variable */
-        if (compile_info->index == -1) {
-            compile_info->index = add_constant(context, storage, UNDEFINED_VAL);
-        }
-    }
-    else {
-        size_t* index = map_get(&storage->variable_names, ast->name);
-
-        if (index == NULL) {
-            /* Variable not defined before, create new variable slot */
-            compile_info->index = get_variable_address(context, storage, ast->name);
-        } else
-            /* Assign previous variable index */
-            compile_info->index = *index;
-    }
+    if (index == NULL) {
+        /* Variable not defined before, create new variable slot */
+        compile_info->index = get_variable_address(context, storage, ast->name);
+    } else
+        /* Assign previous variable index */
+        compile_info->index = *index;
 
     function_referance->name        = ast->name;
     function_referance->is_native   = false;
@@ -4562,15 +4581,16 @@ void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_stora
 
     map_set(&storage->functions, function_referance->name, function_referance);
 
-    t_ast_ptr arg   = NULL;
-    int       index;
-    vec_foreach(ast->args, arg, index) {
-        function_referance->args[index] = arg->char_ptr;
+    t_ast_ptr arg       = NULL;
+    int       arg_index = -1;
+    vec_foreach(ast->args, arg, arg_index) {
+        function_referance->args[arg_index] = arg->char_ptr;
     }
 
     t_compile_info_ptr func_compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
     func_compile_info->post_opcode       = NULL;
     func_compile_info->index             = -1;
+    func_compile_info->index_2           = -1;
 
     /* Insert function decleration opcodes-
      * VM_OPT_FUNC opcode
@@ -4946,14 +4966,7 @@ void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_stora
                 }
             }
 
-            if (compile_info->index == -1) {
-                t_vm_object_ptr object = new_vm_object(context);
-                object->type           = CONST_STRING;
-                object->char_ptr       = strdup(ast->char_ptr);
-                compile_info->index    = add_constant(context, storage, GET_VALUE_FROM_OBJ(object));
-            }
-            else 
-                context->status = BRAMA_CONSTANT_NOT_FOUND;
+            context->status = BRAMA_CONSTANT_NOT_FOUND;
             break;
         }
 
@@ -5085,9 +5098,8 @@ int get_constant_address(t_context_ptr context, t_storage_ptr storage, t_brama_v
 * @param value Variable
 * @return Variable index in vector
 */
-size_t add_constant(t_context_ptr context, t_storage_ptr storage, t_brama_value value) {
+void add_constant(t_context_ptr context, t_storage_ptr storage, t_brama_value value) {
     add_variable(context, storage, NULL, value, MEMORY_PROTOTYPE_CONST);
-    return 0;
 }
 
 /**
@@ -5221,6 +5233,7 @@ void compile(t_context_ptr context) {
     t_compile_info_ptr compile_info = BRAMA_MALLOC(sizeof(t_compile_info));
     compile_info->post_opcode       = NULL;
     compile_info->index             = -1;
+    compile_info->index_2           = -1;
 
     /* Main application */
     t_ast_ptr main = new_block_ast(context->parser->asts);
@@ -5530,6 +5543,8 @@ void run(t_context_ptr context) {
 
     memcpy(global_variables, context->compiler->global_storage->variables.data, context->compiler->global_storage->variables.length * sizeof(t_brama_value));
     storage_table[0] = global_variables;
+
+    brama_compile_dump(context);
 
     while (*ipc != (int)NULL) {
         t_brama_vmdata vmdata;
@@ -5955,6 +5970,29 @@ void run(t_context_ptr context) {
                 break;
             }
 
+            case VM_OPT_GET_FROM_DICT: {
+                t_brama_value dictionary = *(variables + vmdata.reg2);
+                t_brama_value key        = *(variables + vmdata.reg3);
+
+                if (!IS_DICT(dictionary)) {
+                    context->status = BRAMA_UNDEFINED_VARIABLE;
+                    break;
+                }
+
+                char_ptr key_str = NULL;
+                if (IS_STRING(key))
+                    key_str = AS_STRING(key);
+
+                t_brama_value* value = map_get(AS_DICT(dictionary), key_str);
+
+                if (value == NULL) {
+                    context->status = BRAMA_UNDEFINED_VARIABLE;
+                    break;
+                }
+                *(variables + vmdata.reg1) = *value;
+                break;
+            }
+
             case VM_OPT_PRINT: {
                 for (size_t i = 0; i < vmdata.reg1; ++i) {
                     t_brama_value value  = *(variables + vmdata.reg2 + i);
@@ -5985,6 +6023,8 @@ void run(t_context_ptr context) {
                     context->status = BRAMA_UNDEFINED_VARIABLE;
                     break;
                 }
+
+                brama_compile_dump(context);
 
                 t_function_referance_ptr obj = AS_FUNCTION(function_value);
                 
