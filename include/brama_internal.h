@@ -93,6 +93,7 @@ brama_status brama_destroy_get_var(t_context_ptr context, t_get_var_info** var_i
 int    get_constant_address  (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
 void   add_constant          (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
 int    get_variable_address  (t_context_ptr context, t_storage_ptr storage, char_ptr name);
+bool   is_text_defined_to_storage(t_context_ptr context, t_storage_ptr storage, char_ptr name);
 void   add_variable          (t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value, memory_prototype_item_type type);
 void   locate_variables_to_memory(t_context_ptr context, t_storage_ptr storage);
 

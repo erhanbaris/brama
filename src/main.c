@@ -15,7 +15,7 @@
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init(0);
     brama_compile(context, "var bob = {};"
-    "bob['add'] = function(x,y) { return x+y; }; var result = bob['add'](5+3)");
+    "bob['add'] = function(x,y) { return x+y; }; var result = bob['add'](5,3)");
     brama_run(context);
     brama_compile_dump(context);
 

@@ -3540,13 +3540,8 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                     break;
 
                 case PRIMATIVE_STRING: {
-                    t_brama_value tmp_value;
-                    int index = -1;
-                    vec_foreach(&storage->variables, tmp_value, index) {
-                        if (IS_STRING(tmp_value) && strcmp(ast->char_ptr, AS_OBJ(tmp_value)->char_ptr) == 0)
-                            /* Text found, exit */
-                            return;
-                    }
+                    if (is_text_defined_to_storage(context, storage, ast->primative_ptr->char_ptr))
+                        return;
 
                     /* Text not in list */
                     t_vm_object_ptr object = new_vm_object(context);
@@ -5115,6 +5110,24 @@ int get_variable_address(t_context_ptr context, t_storage_ptr storage, char_ptr 
     if (variable_index == NULL)
         return -1;
     return *variable_index;
+}
+
+bool is_text_defined_to_storage(t_context_ptr context, t_storage_ptr storage, char_ptr name) {
+    BRAMA_ASSERT(context != NULL);
+    BRAMA_ASSERT(storage != NULL);
+    BRAMA_ASSERT(name != NULL);
+
+    t_memory_prototype_item_ptr node = storage->memory_prototype_head;
+
+    if (NULL == node)
+        return false;
+
+    while(NULL != node) {
+        if (IS_STRING(node->value) && MEMORY_PROTOTYPE_CONST == node->type && 0 == strcmp(name, AS_STRING(node->value)))
+            return true;
+        node = node->next;
+    }
+    return false;
 }
 
 /**
