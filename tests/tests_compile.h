@@ -553,6 +553,55 @@ MunitResult ast_compile_21(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+MunitResult ast_compile_22(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var bob = {};"
+    "bob['add'] = function(x,y) { return x+y; }; var result_1 = bob['add'](5,3); var result_2 = bob['add']('erhan', ' baris')");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result_1", &var_info);
+    munit_assert_int     (status,            == , BRAMA_OK);
+    munit_assert_int     (var_info->type,    == , CONST_INTEGER);
+    munit_assert_int     (var_info->double_, == , 8);
+
+    brama_destroy_get_var(context, &var_info);
+
+    status = brama_get_var   (context, "result_2", &var_info);
+    munit_assert_int         (status,            == , BRAMA_OK);
+    munit_assert_int         (var_info->type,    == , CONST_STRING);
+    munit_assert_string_equal(var_info->char_ptr, "erhan baris");
+
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_23(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var bob = {};"
+    "bob.add = function(x,y) { return x+y; }; var result_1 = bob.add(5,3); var result_2 = bob.add('erhan', ' baris')");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result_1", &var_info);
+    munit_assert_int     (status,            == , BRAMA_OK);
+    munit_assert_int     (var_info->type,    == , CONST_INTEGER);
+    munit_assert_int     (var_info->double_, == , 8);
+
+    brama_destroy_get_var(context, &var_info);
+
+    status = brama_get_var   (context, "result_2", &var_info);
+    munit_assert_int         (status,            == , BRAMA_OK);
+    munit_assert_int         (var_info->type,    == , CONST_STRING);
+    munit_assert_string_equal(var_info->char_ptr, "erhan baris");
+
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
 
 MunitTest COMPILE_TESTS[] = {
 
@@ -577,6 +626,8 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_19),
         ADD_TEST(ast_compile_20),
         ADD_TEST(ast_compile_21),
+        ADD_TEST(ast_compile_22),
+        ADD_TEST(ast_compile_23),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

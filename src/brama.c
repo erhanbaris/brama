@@ -677,6 +677,21 @@ brama_status ast_symbol_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast
     return BRAMA_DOES_NOT_MATCH_AST;
 }
 
+brama_status ast_symbol_to_primative (t_context_ptr context, t_ast_ptr_ptr ast) {
+    BRAMA_ASSERT(context      != NULL);
+    BRAMA_ASSERT(ast          != NULL);
+    BRAMA_ASSERT((*ast)->type != AST_SYMBOL);
+
+    t_ast_ptr tmp_ast = new_primative_ast_text((*ast)->char_ptr);
+    tmp_ast->ends_with_newline   = (*ast)->ends_with_newline;
+    tmp_ast->ends_with_semicolon = (*ast)->ends_with_semicolon;
+
+    BRAMA_FREE((*ast));
+    *ast = tmp_ast;
+
+    return BRAMA_OK;
+}
+
 brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data) {
     BACKUP_PARSER_INDEX();
 
@@ -701,6 +716,10 @@ brama_status ast_accessor_stmt(t_context_ptr context, t_ast_ptr_ptr ast, brama_a
         if (*ast != NULL) {
             t_accessor_ptr accessor = BRAMA_MALLOC(sizeof (t_accessor));
             if (NULL == accessor) return out_of_memory_error(context);
+
+            if (AST_SYMBOL == tmp_ast->type) {
+                ast_symbol_to_primative(context, &tmp_ast);
+            }
 
             accessor->object        = *ast;
             accessor->property      = tmp_ast;
@@ -3201,6 +3220,21 @@ void remove_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack)
     vec_remove(&context->compiler->compile_stack, stack);
 }
 
+int get_text_address(t_context_ptr context, t_storage_ptr storage, char_ptr name) {
+
+    t_brama_value value;
+    size_t value_index = -1;
+    vec_foreach(&storage->variables, value, value_index) {
+        if (storage->constant_count < value_index)
+            return -1;
+
+        if (IS_STRING(value) && 0 == strcmp(name, AS_STRING(value)))
+            return value_index;
+    }
+
+    return -1;
+}
+
 /* Calculate max temporary and normal assignment in ast. We need to allocate that mount of memory for operations. */
 void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upper_ast, t_storage_ptr storage, size_t* temps) {
     if (ast == NULL)
@@ -3219,7 +3253,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
 
                 size_t in_function = 0;
                 size_t in_property = 0;
-                int max            = 0;
+                int max_in_param   = 0;
                 int index          = 0;
                 t_ast_ptr ast_item = NULL;
                 size_t total_temp  = 0;
@@ -3229,19 +3263,19 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                     prepare_variable_memory(context, ast->func_call_ptr->function, ast, storage, &in_function);
                     vec_foreach(ast->func_call_ptr->args, ast_item, index) {
                         prepare_variable_memory(context, ast_item, ast, storage, &total_temp);
-                        max = FAST_MAX(total_temp, max);
+                        max_in_param = FAST_MAX(total_temp, max_in_param);
                     }
                 }
                 else {
                     prepare_variable_memory(context, ast->func_call_ptr->func_decl_ptr->body, ast, storage, &in_function);
                     vec_foreach(ast->func_call_ptr->func_decl_ptr->args, ast_item, index) {
                         prepare_variable_memory(context, ast_item, ast, storage, &total_temp);
-                        max = FAST_MAX(total_temp, max);
+                        max_in_param = FAST_MAX(total_temp, max_in_param);
                     }
                 }
 
                 *temps = FAST_MAX((*temps), in_property);
-                *temps = FAST_MAX((*temps), max);
+                *temps = FAST_MAX((*temps), max_in_param);
                 *temps = FAST_MAX((*temps), in_function);
 
                 if (COMPILE_AST_OPTIONS[AST_FUNCTION_CALL].ignore_temp_resetter | upper_ast->type)
@@ -3490,6 +3524,7 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
             prepare_variable_memory(context, ast->accessor_ptr->property, ast, storage, &in_property);
 
             *temps = FAST_MAX(in_body, in_property);
+            *temps += 1;
             break;
         }
 
@@ -3549,6 +3584,30 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                     object->char_ptr       = strdup(ast->primative_ptr->char_ptr);
                     add_constant(context, storage, GET_VALUE_FROM_OBJ(object));
                     break;
+                }
+
+                case PRIMATIVE_DICTIONARY: {
+                    size_t dict_max  = 0;
+                    map_iter_t iter  = map_iter(ast->primative_ptr->dict);
+                    char_ptr tmp_var = NULL;
+                    while ((tmp_var  = map_next(ast->primative_ptr->dict, &iter))) {
+                        t_ast_ptr ast_item = *map_get(ast->primative_ptr->dict, tmp_var);
+
+                        if (!is_text_defined_to_storage(context, storage, ast->primative_ptr->char_ptr)) {
+                            /* Text not in list */
+                            t_vm_object_ptr object = new_vm_object(context);
+                            object->type           = CONST_STRING;
+                            object->char_ptr       = strdup(tmp_var);
+                            add_constant(context, storage, GET_VALUE_FROM_OBJ(object));
+                        }
+
+                        size_t in_ast  = 0;
+                        prepare_variable_memory(context, ast_item, ast, storage, &in_ast);
+
+                        dict_max = FAST_MAX(in_ast, dict_max);
+                    }
+
+                    *temps = dict_max;
                 }
 
                 default:
@@ -4463,6 +4522,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
 
     t_ast_ptr arg;
     size_t    index;
+    size_t    args_temp_start_location = storage->temp_counter;
     vec_foreach(ast->args, arg, index) {
         compile_internal(context, arg, storage, compile_info, AST_FUNCTION_CALL);
         COMPILE_CHECK();
@@ -4483,7 +4543,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
     if ((storage->temp_counter - ast->args->length) > 0 && ast->args->length != 0) {
         t_brama_vmdata tmp_set_code;
         tmp_set_code.op   = VM_OPT_SET_TMP_LOC;
-        tmp_set_code.reg1 = storage->temp_counter - 1;
+        tmp_set_code.reg1 = args_temp_start_location;
         tmp_set_code.reg2 = 0;
         tmp_set_code.reg3 = 0;
         tmp_set_code.scal = 0;
@@ -4974,6 +5034,40 @@ void compile_primative(t_context_ptr context, t_primative_ptr const ast, t_stora
                 code.reg3 = 0;
                 code.scal = 0;
                 vec_push(context->compiler->op_codes, vm_encode(code));
+
+                map_iter_t iter  = map_iter(ast->dict);
+                char_ptr tmp_var = NULL;
+                index            = 0;
+                while ((tmp_var  = map_next(ast->dict, &iter))) {
+                    t_ast_ptr ast_item = *map_get(ast->dict, tmp_var);
+                    /* We need to check variable that used on scope before */
+                    size_t temp_counter = storage->temp_counter;
+                    t_brama_vmdata insert_code;
+                    insert_code.op   = VM_OPT_ADD_TO_DICT;
+                    insert_code.scal = 0;
+                    insert_code.reg1 = code.reg1;
+
+                    /* We need to check variable that used on scope before */                    
+                    size_t key_index = get_text_address(context, storage, tmp_var);
+
+                    if (key_index == -1) {
+                        /* We did not found variable */
+                        compile_info->index = 0;
+                        context->status = BRAMA_CONSTANT_NOT_FOUND;
+                    } else
+                        /* Return back variable index */
+                        insert_code.reg2 = key_index;
+
+                    compile_info->index   = -1;
+                    compile_info->index_2 = -1;
+                    compile_internal(context, ast_item, storage, compile_info, AST_ASSIGNMENT);
+                    code.reg3 = compile_info->index; /* Dictionary value */
+
+                    vec_push(context->compiler->op_codes, vm_encode(code));
+
+                    /* If we used temp variable, we are freeing that space for others */
+                    storage->temp_counter = temp_counter;
+                }
             }
             break;
         }
@@ -4991,7 +5085,7 @@ void compile_accessor(t_context_ptr context, t_accessor_ptr const ast, t_storage
     compile_internal(context, ast->object, storage, compile_info, upper_ast);
     object_id = compile_info->index;
 
-    compile_internal(context, ast->property, storage, compile_info, upper_ast);
+    compile_internal(context, ast->property, storage, compile_info, upper_ast | AST_ACCESSOR);
     property_id = compile_info->index;
 
     compile_info->index   = object_id;
@@ -5557,8 +5651,6 @@ void run(t_context_ptr context) {
     memcpy(global_variables, context->compiler->global_storage->variables.data, context->compiler->global_storage->variables.length * sizeof(t_brama_value));
     storage_table[0] = global_variables;
 
-    brama_compile_dump(context);
-
     while (*ipc != (int)NULL) {
         t_brama_vmdata vmdata;
         t_brama_byte tmp_ipc = *ipc;
@@ -6036,8 +6128,6 @@ void run(t_context_ptr context) {
                     context->status = BRAMA_UNDEFINED_VARIABLE;
                     break;
                 }
-
-                brama_compile_dump(context);
 
                 t_function_referance_ptr obj = AS_FUNCTION(function_value);
                 

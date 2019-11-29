@@ -26,6 +26,8 @@ bool        is_primative      (t_token_ptr token);
 bool        is_next_new_line  (t_context_ptr context);
 void        set_semicolon_and_newline(t_context_ptr context, t_ast_ptr ast);
 
+
+brama_status ast_symbol_to_primative (t_context_ptr context, t_ast_ptr_ptr ast);
 brama_status as_primative            (t_context_ptr context, t_token_ptr token, t_ast_ptr_ptr ast);
 brama_status ast_parser              (t_context_ptr context);
 brama_status ast_declaration_stmt    (t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_extra_data_type extra_data);
@@ -90,12 +92,12 @@ void brama_compile_dump_codes   (t_context_ptr context);
 brama_status brama_get_var        (t_context_ptr context, char_ptr var_name, t_get_var_info** var_info);
 brama_status brama_destroy_get_var(t_context_ptr context, t_get_var_info** var_info);
 
-int    get_constant_address  (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
-void   add_constant          (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
-int    get_variable_address  (t_context_ptr context, t_storage_ptr storage, char_ptr name);
-bool   is_text_defined_to_storage(t_context_ptr context, t_storage_ptr storage, char_ptr name);
-void   add_variable          (t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value, memory_prototype_item_type type);
-void   locate_variables_to_memory(t_context_ptr context, t_storage_ptr storage);
+int    get_constant_address          (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
+void   add_constant                  (t_context_ptr context, t_storage_ptr storage, t_brama_value value);
+int    get_variable_address          (t_context_ptr context, t_storage_ptr storage, char_ptr name);
+bool   is_text_defined_to_storage    (t_context_ptr context, t_storage_ptr storage, char_ptr name);
+void   add_variable                  (t_context_ptr context, t_storage_ptr storage, char_ptr name, t_brama_value value, memory_prototype_item_type type);
+void   locate_variables_to_memory    (t_context_ptr context, t_storage_ptr storage);
 
 void compile                    (t_context_ptr context);
 void compile_internal           (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
@@ -117,6 +119,7 @@ void compile_switch             (t_context_ptr context, t_switch_stmt_ptr const 
 void compile_add_to_dict        (t_context_ptr context, t_assign_ptr const ast,     t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_get_from_dict      (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_accessor           (t_context_ptr context, t_accessor_ptr const ast,   t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+int  get_text_address           (t_context_ptr context, t_storage_ptr storage,      char_ptr name);
 brama_status compile_is_up_value(t_context_ptr context, char_ptr const ast,         t_storage_ptr storage, size_t* storage_id, size_t* variable_index);
 
 t_compile_stack_ptr new_compile_stack         (t_context_ptr context, brama_compile_block_type ast_type, void_ptr ast, void_ptr compile_obj) ;

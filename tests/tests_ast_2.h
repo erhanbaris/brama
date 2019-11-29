@@ -523,8 +523,8 @@ MunitResult ast_accessor_1(const MunitParameter params[], void* user_data_or_fix
     munit_assert_string_equal(ast->accessor_ptr->object->accessor_ptr->object->char_ptr, "e");
 
     munit_assert_ptr_not_null(ast->accessor_ptr->object->accessor_ptr->property);
-    munit_assert_int         (ast->accessor_ptr->object->accessor_ptr->property->type, ==, AST_SYMBOL);
-    munit_assert_string_equal(ast->accessor_ptr->object->accessor_ptr->property->char_ptr, "data");
+    munit_assert_int         (ast->accessor_ptr->object->accessor_ptr->property->type, ==, AST_PRIMATIVE);
+    munit_assert_string_equal(ast->accessor_ptr->object->accessor_ptr->property->primative_ptr->char_ptr, "data");
 
     brama_destroy(context);
     return MUNIT_OK;
@@ -553,8 +553,8 @@ MunitResult ast_accessor_2(const MunitParameter params[], void* user_data_or_fix
     munit_assert_int         (ast->accessor_ptr->object->accessor_ptr->object->keyword, ==, KEYWORD_THIS);
 
     munit_assert_ptr_not_null(ast->accessor_ptr->object->accessor_ptr->property);
-    munit_assert_int         (ast->accessor_ptr->object->accessor_ptr->property->type, ==, AST_SYMBOL);
-    munit_assert_string_equal(ast->accessor_ptr->object->accessor_ptr->property->char_ptr, "data");
+    munit_assert_int         (ast->accessor_ptr->object->accessor_ptr->property->type, ==, AST_PRIMATIVE);
+    munit_assert_string_equal(ast->accessor_ptr->object->accessor_ptr->property->primative_ptr->char_ptr, "data");
     brama_destroy(context);
     return MUNIT_OK;
 }

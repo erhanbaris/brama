@@ -14,8 +14,8 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init(0);
-    brama_compile(context, "var bob = {};"
-    "bob['add'] = function(x,y) { return x+y; }; var result = bob['add'](5,3)");
+    brama_compile(context, "var bob = { add : function(x,y) { return x+y; } }; "
+    "result = bob.add(3,6)==9;");
     brama_run(context);
     brama_compile_dump(context);
 
@@ -24,9 +24,6 @@ int main(int argc, const char* argv[]) {
     munit_assert_int     (status,            == , BRAMA_OK);
     munit_assert_int     (var_info->type,    == , CONST_INTEGER);
     munit_assert_int     (var_info->double_, == , 8);
-
-    t_brama_value saved_value =  *map_get(var_info->dict_, "add");
-    munit_assert_true(IS_FUNCTION(saved_value));
 
     brama_destroy_get_var(context, &var_info);
 

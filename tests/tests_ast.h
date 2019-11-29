@@ -677,7 +677,7 @@ MunitResult ast_call_expr_test_2(const MunitParameter params[], void* user_data_
     munit_assert_ptr_not_null(ast->func_call_ptr);
     munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_ACCESSOR);
     munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->object->char_ptr, "test_2");
-    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->property->char_ptr, "print");
+    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->property->primative_ptr->char_ptr, "print");
     munit_assert_int         (ast->func_call_ptr->args->length, ==, 1);
     munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->type,                ==, AST_PRIMATIVE);
     munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->primative_ptr);
@@ -700,7 +700,7 @@ MunitResult ast_call_expr_test_3(const MunitParameter params[], void* user_data_
     munit_assert_ptr_not_null(ast->func_call_ptr);
     munit_assert_int         (ast->func_call_ptr->function->type, ==, AST_ACCESSOR);
     munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->object->char_ptr, "test_2");
-    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->property->char_ptr, "print");
+    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->property->primative_ptr->char_ptr, "print");
     munit_assert_int         (ast->func_call_ptr->args->length, ==, 1);
     munit_assert_int         (((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->type, ==, AST_FUNCTION_DECLARATION);
     munit_assert_ptr_not_null(((t_ast_ptr)vector_get(ast->func_call_ptr->args, 0))->func_decl_ptr);
@@ -745,10 +745,10 @@ MunitResult ast_call_expr_test_5(const MunitParameter params[], void* user_data_
     munit_assert_int         (ast->func_call_ptr->function->accessor_ptr->object->type, ==, AST_ACCESSOR);
     munit_assert_int         (ast->func_call_ptr->function->accessor_ptr->object->accessor_ptr->object->type,    ==, AST_KEYWORD);
     munit_assert_int         (ast->func_call_ptr->function->accessor_ptr->object->accessor_ptr->object->keyword, ==, KEYWORD_THIS);
-    munit_assert_int         (ast->func_call_ptr->function->accessor_ptr->object->accessor_ptr->property->type,  ==, AST_SYMBOL);
-    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->object->accessor_ptr->property->char_ptr, "call");
-    munit_assert_int         (ast->func_call_ptr->function->accessor_ptr->property->type, ==, AST_SYMBOL);
-    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->property->char_ptr, "func");
+    munit_assert_int         (ast->func_call_ptr->function->accessor_ptr->object->accessor_ptr->property->type,  ==, AST_PRIMATIVE);
+    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->object->accessor_ptr->property->primative_ptr->char_ptr, "call");
+    munit_assert_int         (ast->func_call_ptr->function->accessor_ptr->property->type, ==, AST_PRIMATIVE);
+    munit_assert_string_equal(ast->func_call_ptr->function->accessor_ptr->property->primative_ptr->char_ptr, "func");
     brama_destroy(context);
     return MUNIT_OK;
 }
