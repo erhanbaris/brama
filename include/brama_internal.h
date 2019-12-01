@@ -117,7 +117,7 @@ void compile_func_decl          (t_context_ptr context, t_func_decl_ptr const as
 void compile_return             (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_switch             (t_context_ptr context, t_switch_stmt_ptr const ast,t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_add_to_dict        (t_context_ptr context, t_assign_ptr const ast,     t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
-void compile_get_from_dict      (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
+void compile_get_value          (t_context_ptr context, t_ast_ptr const ast,        t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 void compile_accessor           (t_context_ptr context, t_accessor_ptr const ast,   t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast);
 int  get_text_address           (t_context_ptr context, t_storage_ptr storage,      char_ptr name);
 brama_status compile_is_up_value(t_context_ptr context, char_ptr const ast,         t_storage_ptr storage, size_t* storage_id, size_t* variable_index);

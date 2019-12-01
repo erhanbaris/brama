@@ -49,7 +49,9 @@ typedef enum brama_status  {
     BRAMA_AST_NOT_COMPILED               = 28,
     BRAMA_FUNCTION_NOT_FOUND             = 29,
     BRAMA_OUT_OF_MEMORY                  = 30,
-    BRAMA_UNDEFINED_VARIABLE             = 31
+    BRAMA_UNDEFINED_VARIABLE             = 31,
+    BRAMA_INDEXER_NOT_INTEGER            = 32,
+    BRAMA_INDEX_OUT_OF_RANGE             = 33
 
 } brama_status;
 
@@ -272,8 +274,8 @@ enum brama_vm_operator {
     VM_OPT_SET_TMP_LOC,
     VM_OPT_GET_UP_VALUE,
     VM_OPT_SET_UP_VALUE,
-    VM_OPT_ADD_TO_DICT,
-    VM_OPT_GET_FROM_DICT
+    VM_OPT_ADD_VALUE,
+    VM_OPT_GET_VALUE
 };
 
 /* VM CONST TYPE */
@@ -285,7 +287,8 @@ typedef enum _brama_vm_const_type {
     CONST_STRING    = 4,
     CONST_BOOL      = 5,
     CONST_FUNCTION  = 6,
-    CONST_DICT      = 7
+    CONST_DICT      = 7,
+    CONST_ARRAY     = 8
 } brama_vm_const_type;
 
 typedef enum _brama_ast_extra_data_type {
@@ -453,10 +456,10 @@ static OperatorPair VM_OPCODES[] =  {
         { "CASE", ""},
         { "FUNC", ""},
         { "SET_TMP_LOC", ""},
-        { "GET_UPVALUE", ""},
-        { "SET_UPVALUE", ""},
-        { "ADD_TO_DICT", ""}, 
-        { "GET_FROM_DICT", ""}
+        { "GET_UP", ""},
+        { "SET_UP", ""},
+        { "ADD_VALUE", ""},
+        { "GET_VALUE", ""}
 };
 
 static char* KEYWORDS[] = {
@@ -661,6 +664,7 @@ typedef vec_t(char_ptr)         vec_string;
 typedef vec_t(char_ptr)*        vec_string_ptr;
 typedef vec_t(t_compile_stack*) vec_compile_stack;
 typedef vec_t(t_brama_link_ptr) vec_link;
+typedef vec_t(bool)             vec_bool;
 typedef vec_compile_stack*      vec_compile_stack_ptr;
 
 typedef struct _t_token {
@@ -716,6 +720,7 @@ typedef struct _t_storage {
 
     map_function_referance      functions;
     vec_value                   variables;
+    vec_bool                    local_define; /* Upper stack or global stack values */
     map_size_t                  variable_names;
     t_storage_ptr               previous_storage;
     t_memory_prototype_item_ptr memory_prototype_head;
@@ -868,6 +873,7 @@ typedef struct _t_vm_object {
     t_vm_object_ptr     next;
     union {
         map_value_ptr            dict_ptr;
+        vec_value_ptr            array_ptr;
         t_brama_value*           value_ptr;
         char_ptr                 char_ptr;
         t_function_referance_ptr function;
@@ -884,6 +890,7 @@ typedef struct _t_get_var_info {
     brama_vm_const_type type;
     union {
         map_value_ptr dict_;
+        vec_value_ptr array_;
         double        double_;
         bool          bool_;
         char_ptr      char_ptr;
@@ -980,25 +987,27 @@ typedef struct _t_memory_prototype_item {
 #define IS_STRING(value)   (IS_OBJ(value) && AS_OBJ(value)->type == CONST_STRING)
 #define IS_FUNCTION(value) (IS_OBJ(value) && AS_OBJ(value)->type == CONST_FUNCTION)
 #define IS_DICT(value) (IS_OBJ(value) && AS_OBJ(value)->type == CONST_DICT)
+#define IS_ARRAY(value) (IS_OBJ(value) && AS_OBJ(value)->type == CONST_ARRAY)
 
-#define IS_FALSE(value)     ((value) == FALSE_VAL)
-#define IS_TRUE(value)      ((value) == TRUE_VAL)
-#define IS_BOOL(value)      (value == TRUE_VAL || value == FALSE_VAL)
-#define IS_NULL(value)      ((value) == NULL_VAL)
-#define IS_UNDEFINED(value) ((value) == UNDEFINED_VAL)
+#define IS_FALSE(value)        ((value) == FALSE_VAL)
+#define IS_TRUE(value)         ((value) == TRUE_VAL)
+#define IS_BOOL(value)         (value == TRUE_VAL || value == FALSE_VAL)
+#define IS_NULL(value)         ((value) == NULL_VAL)
+#define IS_UNDEFINED(value)    ((value) == UNDEFINED_VAL)
+#define IS_NO_REFERENCE(value) ((value) == NO_REFERENCE_VAL)
 
 // Masks out the tag bits used to identify the singleton value.
 #define MASK_TAG (7)
 
 // Tag values for the different singleton values.
-#define TAG_NAN       (0)
-#define TAG_NULL      (1)
-#define TAG_FALSE     (2)
-#define TAG_TRUE      (3)
-#define TAG_UNDEFINED (4)
-#define TAG_UNUSED2   (5)
-#define TAG_UNUSED3   (6)
-#define TAG_HALT      (7)
+#define TAG_NAN          (0)
+#define TAG_NULL         (1)
+#define TAG_FALSE        (2)
+#define TAG_TRUE         (3)
+#define TAG_UNDEFINED    (4)
+#define TAG_NO_REFERENCE (5)
+#define TAG_UNUSED3      (6)
+#define TAG_HALT         (7)
 
 // Value -> 0 or 1.
 #define AS_BOOL(value) ((value) == TRUE_VAL)
@@ -1008,13 +1017,15 @@ typedef struct _t_memory_prototype_item {
 #define AS_STRING(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))->char_ptr
 #define AS_FUNCTION(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))->function
 #define AS_DICT(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))->dict_ptr
+#define AS_ARRAY(value) ((t_vm_object*)(uintptr_t)((value) & ~(SIGN_BIT | QNAN)))->array_ptr
 
 // Singleton values.
-#define NULL_VAL      ((t_brama_value)(uint64_t)(QNAN | TAG_NULL))
-#define FALSE_VAL     ((t_brama_value)(uint64_t)(QNAN | TAG_FALSE))
-#define TRUE_VAL      ((t_brama_value)(uint64_t)(QNAN | TAG_TRUE))
-#define UNDEFINED_VAL ((t_brama_value)(uint64_t)(QNAN | TAG_UNDEFINED))
-#define HALT_VAL      ((t_brama_value)(uint64_t)(QNAN | TAG_HALT))
+#define NULL_VAL         ((t_brama_value)(uint64_t)(QNAN | TAG_NULL))
+#define FALSE_VAL        ((t_brama_value)(uint64_t)(QNAN | TAG_FALSE))
+#define TRUE_VAL         ((t_brama_value)(uint64_t)(QNAN | TAG_TRUE))
+#define UNDEFINED_VAL    ((t_brama_value)(uint64_t)(QNAN | TAG_UNDEFINED))
+#define HALT_VAL         ((t_brama_value)(uint64_t)(QNAN | TAG_HALT))
+#define NO_REFERENCE_VAL ((t_brama_value)(uint64_t)(QNAN | TAG_NO_REFERENCE))
 
 // Gets the singleton type tag for a Value (which must be a singleton).
 #define GET_TAG(value) ((int)((t_brama_value) & MASK_TAG))

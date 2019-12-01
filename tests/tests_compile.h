@@ -106,7 +106,7 @@ MunitResult ast_compile_3(const MunitParameter params[], void* user_data_or_fixt
     munit_assert_int(vmdata.reg2, ==, 5);
     munit_assert_int(vmdata.reg3, ==, 3);
 
-    munit_assert_int(context->compiler->global_storage->variables.length, ==, 6);
+    munit_assert_int(context->compiler->global_storage->variables.length, ==, 7);
 
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[0]), ==, 10.0);
     munit_assert_double(valueToNumber(context->compiler->global_storage->variables.data[1]), ==, 20.0);
@@ -603,6 +603,119 @@ MunitResult ast_compile_23(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+MunitResult ast_compile_24(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var bob = { add : function(x,y) { return x+y; } }; "
+                           "result = bob.add(3,6)==9;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int     (status,          == , BRAMA_OK);
+    munit_assert_int     (var_info->type,  == , CONST_BOOL);
+    munit_assert_int     (var_info->bool_, == , true);
+
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_25(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "function a(x) { return x+2; }\n"
+                           "function b(x) { return a(x)+1; }\n"
+                           "result = a(3)==5 && b(3)==6;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int     (status,          == , BRAMA_OK);
+    munit_assert_int     (var_info->type,  == , CONST_BOOL);
+    munit_assert_int     (var_info->bool_, == , true);
+
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_26(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "function a(x) { \n"
+                           "  if (x>1)\n"
+                           "    return x*a(x-1);\n"
+                           "  return 1;\n"
+                           "}\n"
+                           "result = a(5)==1*2*3*4*5;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int     (status,          == , BRAMA_OK);
+    munit_assert_int     (var_info->type,  == , CONST_BOOL);
+    munit_assert_int     (var_info->bool_, == , true);
+
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_27(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "// Variable creation and scope from http://en.wikipedia.org/wiki/JavaScript_syntax\n"
+                           "x = 0; // A global variable\n"
+                           "var y = 'Hello!'; // Another global variable\n"
+                           "z = 0; // yet another global variable\n"
+                           "\n"
+                           "function f(){\n"
+                           "  var z = 'foxes'; // A local variable\n"
+                           "  twenty = 20; // Global because keyword var is not used\n"
+                           "  return x; // We can use x here because it is global\n"
+                           "}\n"
+                           "// The value of z is no longer available\n"
+                           "\n"
+                           "\n"
+                           "// testing\n"
+                           "blah = f();\n"
+                           "result = blah==0 && z!='foxes' && twenty==20;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int     (status,            == , BRAMA_OK);
+    munit_assert_int     (var_info->type,    == , CONST_BOOL);
+    munit_assert_int     (var_info->bool_, == , true);
+
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_28(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var a = []; \r\n"
+    "a[0] = 10; \r\n"
+    "a[1] = 22; \r\n"
+    "b = a; \r\n"
+    "b[0] = 5; \r\n"
+    "result = a[0]==5 && a[1]==22 && b[1]==22;");
+    brama_run(context);
+
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status = brama_get_var(context, "result", &var_info);
+    munit_assert_int     (status,            == , BRAMA_OK);
+    munit_assert_int     (var_info->type,    == , CONST_BOOL);
+    munit_assert_int     (var_info->bool_,   == , true);
+
+    brama_destroy_get_var(context, &var_info);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 MunitTest COMPILE_TESTS[] = {
 
         ADD_TEST(ast_compile_1),
@@ -628,6 +741,11 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_21),
         ADD_TEST(ast_compile_22),
         ADD_TEST(ast_compile_23),
+        ADD_TEST(ast_compile_24),
+        ADD_TEST(ast_compile_25),
+        ADD_TEST(ast_compile_26),
+        ADD_TEST(ast_compile_27),
+        ADD_TEST(ast_compile_28),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

@@ -2,6 +2,7 @@
 #define MACROS_H
 
 #include <limits.h>
+#include <assert.h>
 
 /* Calculating absolute value with branches (if) very slow. Using bitwise operation much for faster than if.
    http://graphics.stanford.edu/~seander/bithacks.html#IntegerAbs */
@@ -16,7 +17,7 @@
 #define TOTAL_ARGS_VAR "!total_args"
 #define RETURN_VAR "!return"
 
-#define BRAMA_ASSERT(DATA)
+#define BRAMA_ASSERT(DATA) assert( DATA )
 
 #define vm_decode(instr, t) do {\
     (t).op   = ((instr) & OP_MASK  ) >> 24;\
