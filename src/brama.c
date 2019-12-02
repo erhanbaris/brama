@@ -1125,7 +1125,7 @@ brama_status ast_unary_expr(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_
 
     status = ast_func_call(context, ast, extra_data);
 
-    if (status == BRAMA_OK && (*ast)->type == AST_SYMBOL && (ast_check_operator(context, OPERATOR_INCREMENT) ||  ast_check_operator(context, OPERATOR_DECCREMENT))) {
+    if (status == BRAMA_OK && ((*ast)->type == AST_SYMBOL ||  (*ast)->type == AST_ACCESSOR) && (ast_check_operator(context, OPERATOR_INCREMENT) ||  ast_check_operator(context, OPERATOR_DECCREMENT))) {
         unary_type    = UNARY_OPERAND_AFTER;
         operator_type = get_operator_type(ast_consume(context));
         status = ast_primary_expr(context, &unary_content, extra_data);
@@ -2590,7 +2590,6 @@ t_context_ptr brama_init(size_t memory) {
     map_init(&context->compiler->global_storage->variable_names);
 
     vec_init(&context->compiler->storages);
-    vec_init(&context->compiler->links);
     vec_init(context->compiler->op_codes);
 
     /* Add global memory to memory list */
@@ -3347,13 +3346,6 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                 size_t in_function = 0;
                 prepare_variable_memory(context, func_decl->body, NULL, new_storage, &in_function);
 
-                /* Sort memory */
-                //sort_variables(context, new_storage);
-
-                /* create empty slots for temp variable counter */
-                for (size_t i = 0; i < new_storage->temp_count; ++i)
-                    add_variable(context, new_storage, NULL, UNDEFINED_VAL, MEMORY_PROTOTYPE_TEMPORARY);
-
                 locate_variables_to_memory(context, new_storage);
             }
 
@@ -3661,7 +3653,7 @@ void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr
     int right_index = compile_info->index;
 
     if (upper_ast != AST_ASSIGNMENT)
-        dest_id = ((storage->variables.length - storage->temp_count)) + storage->temp_counter++;
+        dest_id = storage->variables.length + storage->temp_counter++;
 
     t_brama_vmdata code;
     code.op   = 0;
@@ -3720,6 +3712,8 @@ void compile_binary(t_context_ptr context, t_binary_ptr const ast, t_storage_ptr
 
     compile_info->index       = dest_id;
     vec_push(context->compiler->op_codes, vm_encode(code));
+
+    storage->temp_count = FAST_MAX(storage->temp_count, storage->temp_counter);
 }
 
 void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -3735,7 +3729,7 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
     int right_index = compile_info->index;
 
     if (upper_ast != AST_ASSIGNMENT && upper_ast != AST_RETURN)
-        dest_id = (storage->variables.length - storage->temp_count) + storage->temp_counter++;
+        dest_id = storage->variables.length + storage->temp_counter++;
 
     t_brama_vmdata code;
     code.op   = 0;
@@ -3794,6 +3788,8 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
 
     compile_info->index       = dest_id;
     vec_push(context->compiler->op_codes, vm_encode(code));
+
+    storage->temp_count = FAST_MAX(storage->temp_count, storage->temp_counter);
 }
 
 void compile_keyword(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -3895,7 +3891,7 @@ brama_status compile_is_up_value(t_context_ptr context, char_ptr const ast, t_st
 }
 
 
-void compile_add_to_dict(t_context_ptr context, t_assign_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
+void compile_add_value(t_context_ptr context, t_assign_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     /* We need to check variable that used on scope before */
     size_t temp_counter = storage->temp_counter;
     t_brama_vmdata code;
@@ -3947,7 +3943,7 @@ void compile_assignment(t_context_ptr context, t_assign_ptr const ast, t_storage
 
     if (ast->object->type == AST_ACCESSOR)
     {
-        compile_add_to_dict(context, ast, storage, compile_info, upper_ast);
+        compile_add_value(context, ast, storage, compile_info, upper_ast);
         return;
     }
 
@@ -4232,7 +4228,12 @@ void compile_block(t_context_ptr context, vec_ast_ptr const ast, t_storage_ptr s
 
         /* For unary operation. Example: my_var++ */
         if (compile_info->post_opcode != NULL) {
-            vec_push(context->compiler->op_codes, vm_encode(*compile_info->post_opcode));
+
+            for (int i = 0; i < compile_info->post_opcode_len; ++i) {
+                vec_push(context->compiler->op_codes, vm_encode(*compile_info->post_opcode[i]));
+                BRAMA_FREE(compile_info->post_opcode[i]);
+            }
+
             BRAMA_FREE(compile_info->post_opcode);
             compile_info->post_opcode = NULL;
         }
@@ -4283,8 +4284,33 @@ void compile_unary(t_context_ptr context, t_unary_ptr const ast, t_storage_ptr s
     if (ast->operand_type == UNARY_OPERAND_BEFORE) {
         vec_push(context->compiler->op_codes, vm_encode(*code));
         BRAMA_FREE(code);
-    } else
-        compile_info->post_opcode = code;
+    }
+    else {
+        size_t total_post_opcode = 1;
+
+        if (AST_ACCESSOR == ast->content->type)
+            total_post_opcode = 2;
+
+        compile_info->post_opcode = BRAMA_MALLOC(sizeof(t_brama_vmdata*) * total_post_opcode);
+        compile_info->post_opcode[0]  = code;
+        if (AST_ACCESSOR == ast->content->type) {
+            t_brama_vmdata last_code;
+            t_brama_byte   last_byte = context->compiler->op_codes->data[context->compiler->op_codes->length - 1];
+            vm_decode(last_byte, last_code);
+
+            t_brama_vmdata_ptr code2 = BRAMA_MALLOC(sizeof(t_brama_vmdata));
+            code2->op   = VM_OPT_ADD_VALUE;
+            code2->scal = 0;
+
+            code2->reg1 = last_code.reg2; /* Dictionary */
+            code2->reg2 = last_code.reg3; /* Dictionary key */
+            code2->reg3 = last_code.reg1; /* Dictionary value */
+
+            compile_info->post_opcode[1]  = code2;
+        }
+
+        compile_info->post_opcode_len = total_post_opcode;
+    }
 }
 
 void compile_for(t_context_ptr context, t_for_loop_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -4527,16 +4553,16 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
     if (ast->type == FUNC_CALL_ANONY)
         compile_func_decl(context, ast->func_decl_ptr, storage, compile_info, upper_ast);
     else {
-        
+
         /* Check function for referance delageted
          * If variable not referanced to function location, prepare it */
         if (AST_SYMBOL == ast->function->type)
             function_variable_index = *map_get(&storage->variable_names, ast->function->char_ptr);
         else if (AST_ACCESSOR == ast->function->type) {
-            compile_info->index     = (storage->variables.length - storage->temp_count) + storage->temp_counter++;
+            compile_info->index     = storage->variables.length + storage->temp_counter++;
             function_variable_index = compile_info->index;
             compile_get_value(context, ast->function, storage, compile_info, AST_FUNCTION_CALL);
-        }            
+        }
         else {
             compile_internal(context, ast->function, storage, compile_info, AST_FUNCTION_CALL);
             function_variable_index = compile_info->index;
@@ -4551,11 +4577,11 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
         COMPILE_CHECK();
 
         /* If arg not located at temp location, create new opcode */
-        if (storage->variables.length - storage->temp_count > compile_info->index) {
+        if (storage->variables.length > compile_info->index) {
 
             t_brama_vmdata code;
             code.op   = VM_OPT_INIT_VAR;
-            code.reg1 = (storage->variables.length - storage->temp_count) + storage->temp_counter++;
+            code.reg1 = storage->variables.length + storage->temp_counter++;
             code.reg2 = compile_info->index;
             code.reg3 = 0;
             code.scal = 0;
@@ -4577,7 +4603,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
         t_brama_vmdata code;
         code.op   = VM_OPT_PRINT;
         code.reg1 = ast->args->length;
-        code.reg2 = (((storage->variables.length - storage->temp_count)) + storage->temp_counter) - ast->args->length;
+        code.reg2 = (storage->variables.length + storage->temp_counter) - ast->args->length;
         code.reg3 = 0;
         code.scal = 0;
         vec_push(context->compiler->op_codes, vm_encode(code));
@@ -4611,7 +4637,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
 
         t_brama_vmdata code;
         code.op   = VM_OPT_CALL;
-        code.reg1 = assignment_variable_index == -1 ? ((storage->variables.length - storage->temp_count)) + storage->temp_counter++ : assignment_variable_index;
+        code.reg1 = assignment_variable_index == -1 ? storage->variables.length + storage->temp_counter++ : assignment_variable_index;
         code.reg2 = ast->args->length;       /* Total passed arguments */
         code.reg3 = function_variable_index; /* Function address */
         code.scal = 0;
@@ -4619,6 +4645,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
         compile_info->index   = code.reg1;
     }
 
+    storage->temp_count = FAST_MAX(storage->temp_count, storage->temp_counter);
     if (!(COMPILE_AST_OPTIONS[AST_FUNCTION_CALL].ignore_temp_resetter | upper_ast))
         storage->temp_counter = temp_counter;
 }
@@ -5125,13 +5152,13 @@ void compile_accessor(t_context_ptr context, t_accessor_ptr const ast, t_storage
     compile_internal(context, ast->property, storage, compile_info, upper_ast | AST_ACCESSOR);
     property_id = compile_info->index;
 
-    if (AST_NONE != upper_ast) {
+    if (AST_ASSIGNMENT == upper_ast) {
         compile_info->index   = object_id;
         compile_info->index_2 = property_id;
     }
     else {
         if (-1 == target)
-            target = ((storage->variables.length - storage->temp_count)) + storage->temp_counter++;
+            target = storage->variables.length + storage->temp_counter++;
 
         t_brama_vmdata code;
         code.op   = VM_OPT_GET_VALUE;
@@ -5411,22 +5438,16 @@ void compile(t_context_ptr context) {
     prepare_variable_memory(context, main, NULL, context->compiler->global_storage, &max_temp);
     COMPILE_CHECK();
     
-    /* Sort memory */
-    //sort_variables(context, context->compiler->global_storage);
     locate_variables_to_memory(context, context->compiler->global_storage);
 
-    /* create empty slots for temp variable counter */
-    for (size_t i = 0; i < context->compiler->global_storage->temp_count; ++i)
-        vec_push(&context->compiler->global_storage->variables, UNDEFINED_VAL);
-    
     context->compiler->storage_index = 0;
     compile_internal(context, main, context->compiler->global_storage, compile_info, AST_NONE);
     COMPILE_CHECK();
 
-    t_brama_link_ptr link = NULL;
-    size_t link_index = -1;
-    vec_foreach(&context->compiler->links, link, link_index) {
-        *link->destination = *link->source;
+    for (size_t i = 0; i < context->compiler->storages.length; ++i) {
+        for (size_t j = 0; j < context->compiler->storages.data[i]->temp_count; ++j) {
+            vec_push(&context->compiler->storages.data[i]->variables, UNDEFINED_VAL);
+        }
     }
 
     vec_push(context->compiler->op_codes, NULL);
@@ -6298,7 +6319,6 @@ void run(t_context_ptr context) {
 
                 storage_table[storage->id] = variables;
 
-                //brama_compile_dump_memory(variables, &storage->variable_names, storage->variables.length);
                 break;
             }
 
@@ -6389,13 +6409,6 @@ void brama_destroy(t_context_ptr context) {
     if (context->error_message != NULL)
         BRAMA_FREE(context->error_message);
 
-    t_brama_link_ptr link = NULL;
-    size_t link_index = -1;
-    vec_foreach(&context->compiler->links, link, link_index) {
-        BRAMA_FREE(link);
-    }
-
-    vec_deinit(&context->compiler->links);
     vec_deinit(context->compiler->op_codes);
     BRAMA_FREE(context->compiler->op_codes);
 

@@ -697,11 +697,11 @@ MunitResult ast_compile_27(const MunitParameter params[], void* user_data_or_fix
 MunitResult ast_compile_28(const MunitParameter params[], void* user_data_or_fixture) {
     t_context* context = brama_init(0);
     brama_compile(context, "var a = []; \r\n"
-    "a[0] = 10; \r\n"
-    "a[1] = 22; \r\n"
-    "b = a; \r\n"
-    "b[0] = 5; \r\n"
-    "result = a[0]==5 && a[1]==22 && b[1]==22;");
+                           "a[0] = 10; \r\n"
+                           "a[1] = 22; \r\n"
+                           "b = a; \r\n"
+                           "b[0] = 5; \r\n"
+                           "result = a[0]==5 && a[1]==22 && b[1]==22;");
     brama_run(context);
 
     t_get_var_info_ptr var_info = NULL;
@@ -712,6 +712,36 @@ MunitResult ast_compile_28(const MunitParameter params[], void* user_data_or_fix
 
     brama_destroy_get_var(context, &var_info);
 
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_29(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var a = 42;\n"
+                           "var b = [];\n"
+                           "b[0] = 43;\n"
+                           "\n"
+                           "function foo(myarray) {\n"
+                           "  myarray[0]++;\n"
+                           "}\n"
+                           "\n"
+                           "function bar(myvalue) {\n"
+                           "  myvalue++;\n"
+                           "}\n"
+                           "\n"
+                           "foo(b);\n"
+                           "bar(a);\n"
+                           "\n"
+                           "result = a==42 && b[0]==44;");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "result", &var_info);
+
+    munit_assert_int(status,         == , BRAMA_OK);
+    munit_assert_int(var_info->type, == , CONST_BOOL);
+    munit_assert_int(var_info->bool_,== , true);
+    brama_destroy_get_var(context, &var_info);
     brama_destroy(context);
     return MUNIT_OK;
 }
@@ -746,6 +776,7 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_26),
         ADD_TEST(ast_compile_27),
         ADD_TEST(ast_compile_28),
+        ADD_TEST(ast_compile_29),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

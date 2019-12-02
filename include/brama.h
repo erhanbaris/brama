@@ -579,7 +579,6 @@ typedef struct _t_compile_switch  t_compile_switch;
 typedef struct _t_compile_switch_case  t_compile_switch_case;
 typedef struct _t_compile_func_decl  t_compile_func_decl;
 typedef struct _t_function_referance t_function_referance;
-typedef struct _t_brama_link         t_brama_link;
 typedef struct _t_memory_prototype_item t_memory_prototype_item;
 
 typedef t_vm_object*       t_vm_object_ptr;
@@ -611,10 +610,9 @@ typedef t_get_var_info*    t_get_var_info_ptr;
 typedef t_compile_while*   t_compile_while_ptr;
 typedef t_compile_for*     t_compile_for_ptr;
 typedef t_compile_switch*  t_compile_switch_ptr;
-typedef t_compile_switch_case*  t_compile_switch_case_ptr;
-typedef t_compile_func_decl*    t_compile_func_decl_ptr;
-typedef t_function_referance*   t_function_referance_ptr;
-typedef t_brama_link*           t_brama_link_ptr;
+typedef t_compile_switch_case*   t_compile_switch_case_ptr;
+typedef t_compile_func_decl*     t_compile_func_decl_ptr;
+typedef t_function_referance*    t_function_referance_ptr;
 typedef t_memory_prototype_item* t_memory_prototype_item_ptr;
 typedef char*              char_ptr;
 typedef void*              void_ptr;
@@ -663,7 +661,6 @@ typedef vec_t(t_brama_byte)*    vec_byte_ptr;
 typedef vec_t(char_ptr)         vec_string;
 typedef vec_t(char_ptr)*        vec_string_ptr;
 typedef vec_t(t_compile_stack*) vec_compile_stack;
-typedef vec_t(t_brama_link_ptr) vec_link;
 typedef vec_t(bool)             vec_bool;
 typedef vec_compile_stack*      vec_compile_stack_ptr;
 
@@ -701,7 +698,6 @@ typedef struct _t_compiler {
     t_storage_ptr     global_storage;
     vec_storage       storages;
     t_vm_object_ptr   object_head;
-    vec_link          links;
     size_t            total_object;
     size_t            storage_index;
 } t_compiler;
@@ -881,9 +877,10 @@ typedef struct _t_vm_object {
 } t_vm_object;
 
 typedef struct _t_compile_info {
-    int                index;
-    int                index_2;
-    t_brama_vmdata_ptr post_opcode;
+    int                 index;
+    int                 index_2;
+    t_brama_vmdata_ptr* post_opcode;
+    size_t              post_opcode_len;
 } t_compile_info;
 
 typedef struct _t_get_var_info {
@@ -957,11 +954,6 @@ typedef struct _t_brama_native_function {
     char_ptr                function;
     brama_function_callback callback;
 } t_brama_native_function;
-
-typedef struct _t_brama_link {
-    t_brama_value* source;
-    t_brama_value* destination;
-} t_brama_link;
 
 typedef struct _t_memory_prototype_item {
     t_brama_value               value;
