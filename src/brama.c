@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include "murmur3.h"
 
+extern brama_build_in_object BUILD_IN_OBJECTS[BUILD_IN_OBJECTS_LENGTH];
+
 static inline brama_status out_of_memory_error(t_context_ptr context) {
     return BRAMA_OUT_OF_MEMORY;
 }
@@ -820,6 +822,25 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
 
         t_func_call* func_call = BRAMA_MALLOC(sizeof (t_func_call));
         if (NULL == func_call) return out_of_memory_error(context);
+
+        if (AST_ACCESSOR == (*ast)->type && AST_SYMBOL == (*ast)->accessor_ptr->object->type) {
+
+            /* This  could be native call */
+            for (size_t i = 0; i < BUILD_IN_OBJECTS_LENGTH; ++i) {
+                if (NULL != BUILD_IN_OBJECTS[i].name && 0 == strcmp(BUILD_IN_OBJECTS[i].name, (*ast)->accessor_ptr->object->char_ptr)) {
+
+                    /* Yes it is native call */
+                    for (size_t j = 0; j < BUILD_IN_OBJECTS[i].function_length; ++j) {
+                        BRAMA_ASSERT(BUILD_IN_OBJECTS[i].functions[j]->function != NULL);
+                        BRAMA_ASSERT((*ast)->accessor_ptr->property->type == AST_PRIMATIVE);
+
+                        if (0 == strcmp(BUILD_IN_OBJECTS[i].functions[j]->function, (*ast)->accessor_ptr->object->char_ptr)) {
+
+                        }
+                    }
+                }
+            }
+        }
 
         func_call->args        = args;
         func_call->function    = *ast;
@@ -2616,10 +2637,19 @@ char_ptr brama_set_error(t_context_ptr context, int error) {
     return NULL;
 }
 
-void brama_func_console_log(t_context_ptr context, size_t param_size, t_brama_value* params);
+void build_in_number_isnan(t_context_ptr context, size_t param_size, t_brama_value* params) {
 
-static t_brama_native_function SYSTEM_FUNCTIONS[] = {
-    {"console", "log", brama_func_console_log}
+}
+
+
+/* Build-in Number functions */
+static t_brama_native_function BUILD_IN_NUMBER_FUNCTIONS[1] = { 
+    { "isNaN", build_in_number_isnan }
+};
+
+static brama_build_in_object BUILD_IN_OBJECTS[BUILD_IN_OBJECTS_LENGTH] = { 
+    { "Number", BUILD_IN_NUMBER, &BUILD_IN_NUMBER_FUNCTIONS, 1 },
+    NULL 
 };
 
 void brama_compile(t_context_ptr context, char_ptr data) {
@@ -4648,10 +4678,6 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
     storage->temp_count = FAST_MAX(storage->temp_count, storage->temp_counter);
     if (!(COMPILE_AST_OPTIONS[AST_FUNCTION_CALL].ignore_temp_resetter | upper_ast))
         storage->temp_counter = temp_counter;
-}
-
-void brama_func_console_log(t_context_ptr context, size_t param_size, t_brama_value* params) {
-    printf("console.log Function\r\n");
 }
 
 void compile_func_decl(t_context_ptr context, t_func_decl_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {

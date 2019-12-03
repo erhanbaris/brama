@@ -14,16 +14,15 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init(0);
-    brama_compile(context, "var bob = { add : function(x,y) { return x+y; } }; "
-    "result = bob.add(3,6)==9;");
+    brama_compile(context, "Number.isNaN(1024)");
     brama_run(context);
     brama_compile_dump(context);
 
     t_get_var_info_ptr var_info = NULL;
     brama_status status = brama_get_var(context, "result", &var_info);
     munit_assert_int     (status,            == , BRAMA_OK);
-    munit_assert_int     (var_info->type,    == , CONST_INTEGER);
-    munit_assert_int     (var_info->double_, == , 8);
+    munit_assert_int     (var_info->type,    == , CONST_BOOL);
+    munit_assert_int     (var_info->bool_, == , true);
 
     brama_destroy_get_var(context, &var_info);
 

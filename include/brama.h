@@ -307,7 +307,8 @@ typedef enum _brama_unary_operant_type {
 /* Function Call Type */
 typedef enum _brama_func_call_type {
     FUNC_CALL_NORMAL = 0,
-    FUNC_CALL_ANONY  = 1
+    FUNC_CALL_ANONY  = 1,
+    FUNC_CALL_NATIVE = 2
 } brama_func_call_type;
 
 /* End of line checker */
@@ -331,6 +332,43 @@ typedef enum _memory_prototype_item_type {
     MEMORY_PROTOTYPE_TEMPORARY    = 1 << 5,
     MEMORY_PROTOTYPE_LENGTH       = 1 << 6
 } memory_prototype_item_type;
+
+typedef enum _brama_build_in_object_type {
+    /* Numbers and dates */
+    BUILD_IN_NUMBER = 0,
+    BUILD_IN_MATH,
+    BUILD_IN_DATE,
+
+    /* Text processing */
+    BUILD_IN_STRING,
+    BUILD_IN_REGEXP,
+
+    /* Indexed collections */
+    BUILD_IN_ARRAY,
+
+    /* Keyed collections */
+    BUILD_IN_MAP,
+    BUILD_IN_SET,
+
+    /* Structured data */
+    BUILD_IN_JSON,
+
+    /* Fundamental objects */
+    BUILD_IN_OBJECT,
+    BUILD_IN_FUNCTION,
+    BUILD_IN_BOOLEAN,
+    BUILD_IN_SYMBOL,
+    BUILD_IN_ERROR,
+    BUILD_IN_EVAL_ERROR,
+    BUILD_IN_INTERNAL_ERROR,
+    BUILD_IN_RANGE_ERROR,
+    BUILD_IN_REFERENCE_ERROR,
+    BUILD_IN_SYNTAX_ERROR,
+    BUILD_IN_TYPE_ERROR,
+    BUILD_IN_URI_ERROR,
+
+    BUILD_IN_OBJECTS_LENGTH
+} brama_build_in_object_type;
 
 typedef struct {
     brama_status status;
@@ -634,6 +672,7 @@ typedef union              _t_brama_double { t_brama_byte bytes[8];  double doub
 typedef union              _t_brama_int    { t_brama_byte bytes[4];  int int_; } t_brama_int;
 typedef bool               t_brama_bool;
 typedef void(*brama_function_callback)(t_context_ptr context, size_t param_size, t_brama_value* params);
+typedef brama_function_callback* brama_function_callback_ptr;
 
 typedef map_t(struct _t_ast *)  map_ast_t;
 typedef map_ast_t*              map_ast_t_ptr;
@@ -763,6 +802,10 @@ typedef struct _t_func_call {
     union {
         t_ast_ptr       function;
         t_func_decl_ptr func_decl_ptr;
+        struct native_call {
+            char_ptr native_class;
+            char_ptr native_method;
+        };
     };
     brama_func_call_type type;
     vec_ast_ptr          args;
@@ -950,7 +993,6 @@ typedef struct _t_function_referance {
 } t_function_referance;
 
 typedef struct _t_brama_native_function {
-    char_ptr                _class;
     char_ptr                function;
     brama_function_callback callback;
 } t_brama_native_function;
@@ -961,6 +1003,13 @@ typedef struct _t_memory_prototype_item {
     memory_prototype_item_type  type;
     t_memory_prototype_item_ptr next;
 } t_memory_prototype_item;
+
+typedef struct _brama_build_in_object {
+    char*                       name;
+    brama_build_in_object_type  type;
+    t_brama_native_function**   functions;
+    size_t                      function_length;
+} brama_build_in_object;
 
 /* VM Defs */
 
