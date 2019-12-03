@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include "murmur3.h"
 
-extern brama_build_in_object BUILD_IN_OBJECTS[BUILD_IN_OBJECTS_LENGTH];
+static brama_build_in_object BUILD_IN_OBJECTS[BUILD_IN_OBJECTS_LENGTH];
 
 static inline brama_status out_of_memory_error(t_context_ptr context) {
     return BRAMA_OUT_OF_MEMORY;
@@ -823,6 +823,7 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
         t_func_call* func_call = BRAMA_MALLOC(sizeof (t_func_call));
         if (NULL == func_call) return out_of_memory_error(context);
 
+        bool function_declared = false;
         if (AST_ACCESSOR == (*ast)->type && AST_SYMBOL == (*ast)->accessor_ptr->object->type) {
 
             /* This  could be native call */
@@ -830,25 +831,51 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
                 if (NULL != BUILD_IN_OBJECTS[i].name && 0 == strcmp(BUILD_IN_OBJECTS[i].name, (*ast)->accessor_ptr->object->char_ptr)) {
 
                     /* Yes it is native call */
+                    if (AST_PRIMATIVE != (*ast)->accessor_ptr->property->type || PRIMATIVE_STRING != (*ast)->accessor_ptr->property->primative_ptr->type) {
+                        CLEAR_VECTOR(args);
+                        CLEAR_AST(*ast);
+                        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_METHOD_NOT_FOUND);
+                    }
+
                     for (size_t j = 0; j < BUILD_IN_OBJECTS[i].function_length; ++j) {
-                        BRAMA_ASSERT(BUILD_IN_OBJECTS[i].functions[j]->function != NULL);
+                        BRAMA_ASSERT(BUILD_IN_OBJECTS[i].functions[j].function != NULL);
                         BRAMA_ASSERT((*ast)->accessor_ptr->property->type == AST_PRIMATIVE);
 
-                        if (0 == strcmp(BUILD_IN_OBJECTS[i].functions[j]->function, (*ast)->accessor_ptr->object->char_ptr)) {
+                        if (0 == strcmp(BUILD_IN_OBJECTS[i].functions[j].function, (*ast)->accessor_ptr->property->primative_ptr->char_ptr)) {
+                            func_call->args        = args;
+                            func_call->native_call = BUILD_IN_OBJECTS[i].functions[j].callback;
+                            func_call->type        = FUNC_CALL_NATIVE;
 
+                            CLEAR_AST(*ast);
+
+                            *ast = new_func_call_ast(func_call);
+                            set_semicolon_and_newline(context, *ast);
+
+                            status            = BRAMA_OK;
+                            function_declared = true;
+                            i                 = BUILD_IN_OBJECTS_LENGTH;
+                            break;
                         }
+                    }
+
+                    if (false == function_declared) {
+                        CLEAR_VECTOR(args);
+                        CLEAR_AST(*ast);
+                        RESTORE_PARSER_INDEX_AND_RETURN(BRAMA_METHOD_NOT_FOUND);
                     }
                 }
             }
         }
 
-        func_call->args        = args;
-        func_call->function    = *ast;
-        func_call->type        = FUNC_CALL_NORMAL;
-        *ast                   = new_func_call_ast(func_call);
-        set_semicolon_and_newline(context, *ast);
+        if (false == function_declared) {
+            func_call->args        = args;
+            func_call->function    = *ast;
+            func_call->type        = FUNC_CALL_NORMAL;
+            *ast                   = new_func_call_ast(func_call);
+            set_semicolon_and_newline(context, *ast);
 
-        status = BRAMA_OK;
+            status = BRAMA_OK;
+        }
     }
 
     if (ast_match_operator(context, 1, OPERATOR_SQUARE_BRACKET_START)) {
@@ -2648,8 +2675,7 @@ static t_brama_native_function BUILD_IN_NUMBER_FUNCTIONS[1] = {
 };
 
 static brama_build_in_object BUILD_IN_OBJECTS[BUILD_IN_OBJECTS_LENGTH] = { 
-    { "Number", BUILD_IN_NUMBER, &BUILD_IN_NUMBER_FUNCTIONS, 1 },
-    NULL 
+    { "Number", BUILD_IN_NUMBER, BUILD_IN_NUMBER_FUNCTIONS, 1 }
 };
 
 void brama_compile(t_context_ptr context, char_ptr data) {

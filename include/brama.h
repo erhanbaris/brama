@@ -51,7 +51,8 @@ typedef enum brama_status  {
     BRAMA_OUT_OF_MEMORY                  = 30,
     BRAMA_UNDEFINED_VARIABLE             = 31,
     BRAMA_INDEXER_NOT_INTEGER            = 32,
-    BRAMA_INDEX_OUT_OF_RANGE             = 33
+    BRAMA_INDEX_OUT_OF_RANGE             = 33,
+    BRAMA_METHOD_NOT_FOUND               = 34
 
 } brama_status;
 
@@ -800,12 +801,9 @@ typedef struct _t_control {
 
 typedef struct _t_func_call {
     union {
-        t_ast_ptr       function;
-        t_func_decl_ptr func_decl_ptr;
-        struct native_call {
-            char_ptr native_class;
-            char_ptr native_method;
-        };
+        t_ast_ptr               function;
+        t_func_decl_ptr         func_decl_ptr;
+        brama_function_callback native_call;
     };
     brama_func_call_type type;
     vec_ast_ptr          args;
@@ -1007,7 +1005,7 @@ typedef struct _t_memory_prototype_item {
 typedef struct _brama_build_in_object {
     char*                       name;
     brama_build_in_object_type  type;
-    t_brama_native_function**   functions;
+    t_brama_native_function*    functions;
     size_t                      function_length;
 } brama_build_in_object;
 
