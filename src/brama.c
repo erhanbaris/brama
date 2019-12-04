@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <math.h>
 #include "murmur3.h"
 
 static brama_build_in_object BUILD_IN_OBJECTS[BUILD_IN_OBJECTS_LENGTH];
@@ -2664,18 +2665,54 @@ char_ptr brama_set_error(t_context_ptr context, int error) {
     return NULL;
 }
 
-void build_in_number_isnan(t_context_ptr context, size_t param_size, t_brama_value* params) {
+void build_in_number_isnan(t_context_ptr context, size_t param_size, t_brama_value* params, t_brama_value* return_value) {
+    if (param_size == 0 || !IS_NUM(*params))
+        *return_value = FALSE_VAL;
+    else {
+        t_brama_value value = *params;
+        if (isnan(valueToNumber(value)))
+            *return_value = TRUE_VAL;
+        else
+            *return_value = FALSE_VAL;
+    }
+}
 
+void build_in_number_isfinite(t_context_ptr context, size_t param_size, t_brama_value* params, t_brama_value* return_value) {
+    if (param_size == 0 || !IS_NUM(*params))
+        *return_value = FALSE_VAL;
+    else {
+        t_brama_value value = *params;
+        double num = valueToNumber(value);
+        if (isnan(num) || isinf(num))
+            *return_value = FALSE_VAL;
+        else
+            *return_value = TRUE_VAL;
+    }
+}
+
+void build_in_number_isinteger(t_context_ptr context, size_t param_size, t_brama_value* params, t_brama_value* return_value) {
+    if (param_size == 0 || !IS_NUM(*params))
+        *return_value = FALSE_VAL;
+    else {
+        t_brama_value value = *params;
+        double num = valueToNumber(value);
+        if (ceilf(num) != num)
+            *return_value = FALSE_VAL;
+        else
+            *return_value = TRUE_VAL;
+    }
 }
 
 
 /* Build-in Number functions */
-static t_brama_native_function BUILD_IN_NUMBER_FUNCTIONS[1] = { 
-    { "isNaN", build_in_number_isnan }
+static t_brama_native_function BUILD_IN_NUMBER_FUNCTIONS[] = {
+    { "isNaN",    build_in_number_isnan },
+    { "isFinite", build_in_number_isfinite },
+    { "isInteger", build_in_number_isinteger }
 };
 
 static brama_build_in_object BUILD_IN_OBJECTS[BUILD_IN_OBJECTS_LENGTH] = { 
-    { "Number", BUILD_IN_NUMBER, BUILD_IN_NUMBER_FUNCTIONS, 1 }
+    { "Number", BUILD_IN_NUMBER, BUILD_IN_NUMBER_FUNCTIONS, sizeof(BUILD_IN_NUMBER_FUNCTIONS) / sizeof(BUILD_IN_NUMBER_FUNCTIONS[0]) }
 };
 
 void brama_compile(t_context_ptr context, char_ptr data) {
@@ -3045,7 +3082,7 @@ bool destroy_ast_func_call(t_context_ptr context, t_func_call_ptr func_call_ptr)
             destroy_ast(context, func_call_ptr->function);
             BRAMA_FREE(func_call_ptr->function);
         }
-    } else {
+    } else if (func_call_ptr->type == FUNC_CALL_ANONY) {
         if (func_call_ptr->func_decl_ptr != NULL) {
             destroy_ast_func_decl(context, func_call_ptr->func_decl_ptr);
             BRAMA_FREE(func_call_ptr->func_decl_ptr);
@@ -3335,7 +3372,14 @@ void prepare_variable_memory(t_context_ptr context, t_ast_ptr ast, t_ast_ptr upp
                         max_in_param = FAST_MAX(total_temp, max_in_param);
                     }
                 }
-                else {
+                else if (ast->func_call_ptr->type == FUNC_CALL_NATIVE) {
+                    vec_foreach(ast->func_call_ptr->args, ast_item, index) {
+                        prepare_variable_memory(context, ast_item, ast, storage, &total_temp);
+                        max_in_param = FAST_MAX(total_temp, max_in_param);
+                    }
+                    add_constant(context, storage, (uint64_t)ast->func_call_ptr->native_call);
+                }
+                else if (ast->func_call_ptr->type == FUNC_CALL_ANONY) {
                     prepare_variable_memory(context, ast->func_call_ptr->func_decl_ptr->body, ast, storage, &in_function);
                     vec_foreach(ast->func_call_ptr->func_decl_ptr->args, ast_item, index) {
                         prepare_variable_memory(context, ast_item, ast, storage, &total_temp);
@@ -4608,7 +4652,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
 
     if (ast->type == FUNC_CALL_ANONY)
         compile_func_decl(context, ast->func_decl_ptr, storage, compile_info, upper_ast);
-    else {
+    else if (ast->type == FUNC_CALL_NORMAL) {
 
         /* Check function for referance delageted
          * If variable not referanced to function location, prepare it */
@@ -4655,7 +4699,7 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
         vec_push(context->compiler->op_codes, vm_encode(tmp_set_code));
     }
 
-    if (0 == strcmp(ast->function->char_ptr, "print")) {
+    if (FUNC_CALL_NORMAL == ast->type && 0 == strcmp(ast->function->char_ptr, "print")) {
         t_brama_vmdata code;
         code.op   = VM_OPT_PRINT;
         code.reg1 = ast->args->length;
@@ -4691,14 +4735,27 @@ void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_stora
             }
         }
 
-        t_brama_vmdata code;
-        code.op   = VM_OPT_CALL;
-        code.reg1 = assignment_variable_index == -1 ? storage->variables.length + storage->temp_counter++ : assignment_variable_index;
-        code.reg2 = ast->args->length;       /* Total passed arguments */
-        code.reg3 = function_variable_index; /* Function address */
-        code.scal = 0;
-        vec_push(context->compiler->op_codes, vm_encode(code));
-        compile_info->index   = code.reg1;
+        if (ast->type == FUNC_CALL_NATIVE) {
+            t_brama_vmdata code;
+            code.op   = VM_OPT_CALL_NATIVE;
+            code.reg1 = assignment_variable_index == -1 ? storage->variables.length + storage->temp_counter++ : assignment_variable_index;
+            code.reg2 = ast->args->length;       /* Total passed arguments */
+            code.reg3 = get_constant_address(context, storage, (uint64_t)ast->native_call); /* Function address */
+            code.scal = 0;
+            vec_push(context->compiler->op_codes, vm_encode(code));
+            compile_info->index   = code.reg1;
+        }
+        else {
+
+            t_brama_vmdata code;
+            code.op   = VM_OPT_CALL;
+            code.reg1 = assignment_variable_index == -1 ? storage->variables.length + storage->temp_counter++ : assignment_variable_index;
+            code.reg2 = ast->args->length;       /* Total passed arguments */
+            code.reg3 = function_variable_index; /* Function address */
+            code.scal = 0;
+            vec_push(context->compiler->op_codes, vm_encode(code));
+            compile_info->index   = code.reg1;
+        }
     }
 
     storage->temp_count = FAST_MAX(storage->temp_count, storage->temp_counter);
@@ -5749,6 +5806,7 @@ void brama_compile_dump_codes(t_context_ptr context) {
             
             /* Print scal */
             case VM_OPT_CALL:
+            case VM_OPT_CALL_NATIVE:
                 printf ("%8d |    %-12s | RetV: %-3d  Args: %-3d  Func: %-3d\r\n", index, VM_OPCODES[(int)vmdata.op].name, vmdata.reg1, vmdata.reg2, vmdata.reg3);
                 break;
                 
@@ -6345,9 +6403,6 @@ void run(t_context_ptr context) {
                 /* Find function argumen location */
                 size_t function_args_location = previous_storage->variables.length - previous_storage->temp_count;
                 
-                // size_t function_args_location = previous_storage->constant_count + 2; /* After !return and !total_args variable */
-                //size_t function_args_location = ((previous_storage->constant_count + previous_storage->variable_count) - obj->args_length);
-                
                 /* Save previous pointer location */
                 variables[array_size] = (t_brama_value)ipc;
                 
@@ -6371,6 +6426,17 @@ void run(t_context_ptr context) {
 
                 storage_table[storage->id] = variables;
 
+                break;
+            }
+
+            case VM_OPT_CALL_NATIVE: {
+                t_brama_value* target = (variables + vmdata.reg1);
+                size_t function_index = vmdata.reg3;
+
+                brama_function_callback function = (brama_function_callback)(*(variables + function_index));
+                size_t function_args_location    = storage->variables.length - storage->temp_count;
+                t_brama_value* tmp_values        = (variables + function_args_location + temporary_location);
+                function(context, vmdata.reg2, tmp_values, target);
                 break;
             }
 

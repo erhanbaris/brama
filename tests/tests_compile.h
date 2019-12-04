@@ -746,6 +746,23 @@ MunitResult ast_compile_29(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+BOOL_FALSE_TEST(ast_compile_30, "var result = Number.isFinite(1/0)")
+BOOL_TRUE_TEST(ast_compile_31,  "var result = Number.isFinite(10/5)")
+BOOL_FALSE_TEST(ast_compile_32, "var result = Number.isFinite(0/0)")
+BOOL_TRUE_TEST(ast_compile_33, "var result = Number.isNaN(0 / 0)")
+BOOL_FALSE_TEST(ast_compile_34, "var result = Number.isNaN('NaN')")
+BOOL_FALSE_TEST(ast_compile_35, "var result = Number.isNaN(undefined)")
+BOOL_FALSE_TEST(ast_compile_36, "var result = Number.isNaN({})")
+BOOL_FALSE_TEST(ast_compile_37, "var result = Number.isNaN(true)")
+BOOL_FALSE_TEST(ast_compile_38, "var result = Number.isNaN(37)")
+BOOL_FALSE_TEST(ast_compile_39, "var result = Number.isInteger('10')")
+BOOL_FALSE_TEST(ast_compile_40, "var result = Number.isInteger(true)")
+BOOL_FALSE_TEST(ast_compile_41, "var result = Number.isInteger(false)")
+BOOL_FALSE_TEST(ast_compile_42, "var result = Number.isInteger([1])")
+BOOL_TRUE_TEST(ast_compile_43, "var result = Number.isInteger(5.0)")
+BOOL_FALSE_TEST(ast_compile_44, "var result = Number.isInteger(5.000000000000001)")
+BOOL_TRUE_TEST(ast_compile_45, "var result = Number.isInteger(5.0000000000000001)")
+
 MunitTest COMPILE_TESTS[] = {
 
         ADD_TEST(ast_compile_1),
@@ -777,6 +794,22 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_27),
         ADD_TEST(ast_compile_28),
         ADD_TEST(ast_compile_29),
+        ADD_TEST(ast_compile_30),
+        ADD_TEST(ast_compile_31),
+        ADD_TEST(ast_compile_32),
+        ADD_TEST(ast_compile_33),
+        ADD_TEST(ast_compile_34),
+        ADD_TEST(ast_compile_35),
+        ADD_TEST(ast_compile_36),
+        ADD_TEST(ast_compile_37),
+        ADD_TEST(ast_compile_38),
+        ADD_TEST(ast_compile_39),
+        ADD_TEST(ast_compile_40),
+        ADD_TEST(ast_compile_41),
+        ADD_TEST(ast_compile_42),
+        ADD_TEST(ast_compile_43),
+        ADD_TEST(ast_compile_44),
+        ADD_TEST(ast_compile_45),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

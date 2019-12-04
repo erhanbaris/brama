@@ -27,6 +27,24 @@
         return MUNIT_OK;                                                           \
     }
 
+#define BOOL_TEST(NAME, TEXT, STATUS) \
+    MunitResult NAME (const MunitParameter params[], void* user_data_or_fixture) {\
+    t_context* context = brama_init(0);\
+    brama_compile(context, TEXT );\
+    brama_run(context);\
+    t_get_var_info_ptr var_info = NULL;\
+    brama_status status         = brama_get_var(context, "result", &var_info);\
+    munit_assert_int(status,         == , BRAMA_OK);\
+    munit_assert_int(var_info->type, == , CONST_BOOL);\
+    munit_assert_int(var_info->bool_,== , STATUS );\
+    brama_destroy_get_var(context, &var_info);\
+    brama_destroy(context);\
+    return MUNIT_OK;\
+}
+
+#define BOOL_TRUE_TEST(NAME, TEXT)  BOOL_TEST(NAME, TEXT, true)
+#define BOOL_FALSE_TEST(NAME, TEXT) BOOL_TEST(NAME, TEXT, false)
+
 #if defined(_WIN32)
 
 #    define _CRTDBG_MAP_ALLOC

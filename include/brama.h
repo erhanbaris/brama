@@ -672,7 +672,7 @@ typedef int8_t             t_brama_char;
 typedef union              _t_brama_double { t_brama_byte bytes[8];  double double_; } t_brama_double;
 typedef union              _t_brama_int    { t_brama_byte bytes[4];  int int_; } t_brama_int;
 typedef bool               t_brama_bool;
-typedef void(*brama_function_callback)(t_context_ptr context, size_t param_size, t_brama_value* params);
+typedef void(*brama_function_callback)(t_context_ptr context, size_t param_size, t_brama_value* params, t_brama_value* return_value);
 typedef brama_function_callback* brama_function_callback_ptr;
 
 typedef map_t(struct _t_ast *)  map_ast_t;
