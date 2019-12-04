@@ -368,6 +368,8 @@ typedef enum _brama_build_in_object_type {
     BUILD_IN_TYPE_ERROR,
     BUILD_IN_URI_ERROR,
 
+    BUILD_IN_CONSOLE,
+
     BUILD_IN_OBJECTS_LENGTH
 } brama_build_in_object_type;
 

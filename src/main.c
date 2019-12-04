@@ -14,7 +14,7 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init(0);
-    brama_compile(context, "Number.isNaN(1024)");
+    brama_compile(context, " var result = Number.isFinite(0/0); console.log(result);");
     brama_run(context);
     brama_compile_dump(context);
 
@@ -22,7 +22,7 @@ int main(int argc, const char* argv[]) {
     brama_status status = brama_get_var(context, "result", &var_info);
     munit_assert_int     (status,            == , BRAMA_OK);
     munit_assert_int     (var_info->type,    == , CONST_BOOL);
-    munit_assert_int     (var_info->bool_, == , true);
+    munit_assert_int     (var_info->bool_, == , false);
 
     brama_destroy_get_var(context, &var_info);
 

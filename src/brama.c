@@ -11,7 +11,8 @@
 #include <math.h>
 #include "murmur3.h"
 
-static brama_build_in_object BUILD_IN_OBJECTS[BUILD_IN_OBJECTS_LENGTH];
+static brama_build_in_object   BUILD_IN_OBJECTS  [BUILD_IN_OBJECTS_LENGTH];
+static t_brama_native_function BUILD_IN_FUNCTIONS[3];
 
 static inline brama_status out_of_memory_error(t_context_ptr context) {
     return BRAMA_OUT_OF_MEMORY;
@@ -2703,16 +2704,55 @@ void build_in_number_isinteger(t_context_ptr context, size_t param_size, t_brama
     }
 }
 
+void build_in_number_parsefloat(t_context_ptr context, size_t param_size, t_brama_value* params, t_brama_value* return_value) {
+
+}
+
 
 /* Build-in Number functions */
 static t_brama_native_function BUILD_IN_NUMBER_FUNCTIONS[] = {
     { "isNaN",    build_in_number_isnan },
     { "isFinite", build_in_number_isfinite },
-    { "isInteger", build_in_number_isinteger }
+    { "isInteger", build_in_number_isinteger },
+    { "parseFloat", build_in_number_isinteger }
 };
 
-static brama_build_in_object BUILD_IN_OBJECTS[BUILD_IN_OBJECTS_LENGTH] = { 
-    { "Number", BUILD_IN_NUMBER, BUILD_IN_NUMBER_FUNCTIONS, sizeof(BUILD_IN_NUMBER_FUNCTIONS) / sizeof(BUILD_IN_NUMBER_FUNCTIONS[0]) }
+
+/* Build-in Console functions */
+void build_in_console_log(t_context_ptr context, size_t param_size, t_brama_value* params, t_brama_value* return_value) {
+    for (size_t i = 0; i < param_size; ++i) {
+        t_brama_value value  = *(params + i);
+
+        if (IS_BOOL(value))
+            printf("%s\r\n", (IS_TRUE(value) ? "true" : "false"));
+        else if (IS_NUM(value))
+            printf("%f\r\n", (valueToNumber(value)));
+        else if (IS_STRING(value))
+            printf("%s\r\n", (AS_STRING(value)));
+        else if (IS_UNDEFINED(value))
+            printf("undefined\r\n");
+        else if (IS_NULL(value))
+            printf("null\r\n");
+        else if (IS_FUNCTION(value))
+            printf("function: %s\r\n", AS_FUNCTION(value)->name);
+        else if (IS_OBJ(value))
+            printf("object: %d\r\n", AS_OBJ(value)->type);
+    }
+}
+
+static t_brama_native_function BUILD_IN_CONSOLE_FUNCTIONS[] = {
+    { "log",    build_in_console_log }
+};
+
+static brama_build_in_object BUILD_IN_OBJECTS[BUILD_IN_OBJECTS_LENGTH] = {
+    { "Number",  BUILD_IN_NUMBER,  BUILD_IN_NUMBER_FUNCTIONS, sizeof(BUILD_IN_NUMBER_FUNCTIONS) / sizeof(BUILD_IN_NUMBER_FUNCTIONS[0]) },
+    { "console", BUILD_IN_CONSOLE, BUILD_IN_CONSOLE_FUNCTIONS, sizeof(BUILD_IN_CONSOLE_FUNCTIONS) / sizeof(BUILD_IN_CONSOLE_FUNCTIONS[0]) }
+};
+
+static t_brama_native_function BUILD_IN_FUNCTIONS[3] = {
+    { "isNaN",      build_in_number_isnan },
+    { "isFinite",   build_in_number_isfinite },
+    { "parseFloat", build_in_number_parsefloat }
 };
 
 void brama_compile(t_context_ptr context, char_ptr data) {
