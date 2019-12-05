@@ -14,7 +14,7 @@ t_allocator_ptr init_allocator(size_t totalSize) {
     return allocator;
 }
 
-void* stack_malloc(void* allocator, size_t size) {
+void* stack_malloc(void* allocator, size_t size, char* file_name, int line_number) {
     const size_t currentAddress = (size_t)((t_allocator_ptr)allocator)->memory + ((t_allocator_ptr)allocator)->offset;
 
     const size_t multiplier = (currentAddress >> 3) + 1; // For performance improvement: (currentAddress / 8) + 1
@@ -61,11 +61,11 @@ void* stack_malloc(void* allocator, size_t size) {
     return (void*) nextAddress;
 }
 
-void* stack_calloc(void* user_data, size_t count, size_t size) {
-    return stack_malloc(user_data, count * size);
+void* stack_calloc(void* user_data, size_t count, size_t size, char* file_name, int line_number) {
+    return stack_malloc(user_data, count * size, file_name, line_number);
 }
 
-void stack_free(void* allocator, void *ptr) {
+void stack_free(void* allocator, void *ptr, char* file_name, int line_number) {
     // Move offset back to clear address
     const size_t currentAddress = (size_t) ptr;
     const size_t headerAddress  = (size_t)((t_allocator_ptr)allocator)->memory - sizeof (struct AllocationHeader);

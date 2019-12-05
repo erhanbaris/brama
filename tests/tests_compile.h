@@ -762,6 +762,22 @@ BOOL_FALSE_TEST(ast_compile_42, "var result = Number.isInteger([1])")
 BOOL_TRUE_TEST(ast_compile_43, "var result = Number.isInteger(5.0)")
 BOOL_FALSE_TEST(ast_compile_44, "var result = Number.isInteger(5.000000000000001)")
 BOOL_TRUE_TEST(ast_compile_45, "var result = Number.isInteger(5.0000000000000001)")
+BOOL_FALSE_TEST(ast_compile_46, "var result = isFinite(1/0)")
+BOOL_TRUE_TEST(ast_compile_47,  "var result = isFinite(10/5)")
+BOOL_FALSE_TEST(ast_compile_48, "var result = isFinite(0/0)")
+BOOL_TRUE_TEST(ast_compile_49, "var result = isNaN(0 / 0)")
+BOOL_FALSE_TEST(ast_compile_50, "var result = isNaN('NaN')")
+BOOL_FALSE_TEST(ast_compile_51, "var result = isNaN(undefined)")
+BOOL_FALSE_TEST(ast_compile_52, "var result = isNaN({})")
+BOOL_FALSE_TEST(ast_compile_53, "var result = isNaN(true)")
+BOOL_FALSE_TEST(ast_compile_54, "var result = isNaN(37)")
+BOOL_FALSE_TEST(ast_compile_55, "var result = isInteger('10')")
+BOOL_FALSE_TEST(ast_compile_56, "var result = isInteger(true)")
+BOOL_FALSE_TEST(ast_compile_57, "var result = isInteger(false)")
+BOOL_FALSE_TEST(ast_compile_58, "var result = isInteger([1])")
+BOOL_TRUE_TEST(ast_compile_59, "var result = isInteger(5.0)")
+BOOL_FALSE_TEST(ast_compile_60, "var result = isInteger(5.000000000000001)")
+BOOL_TRUE_TEST(ast_compile_61, "var result = isInteger(5.0000000000000001)")
 
 MunitTest COMPILE_TESTS[] = {
 
@@ -810,6 +826,23 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_43),
         ADD_TEST(ast_compile_44),
         ADD_TEST(ast_compile_45),
+
+        ADD_TEST(ast_compile_46),
+        ADD_TEST(ast_compile_47),
+        ADD_TEST(ast_compile_48),
+        ADD_TEST(ast_compile_49),
+        ADD_TEST(ast_compile_50),
+        ADD_TEST(ast_compile_51),
+        ADD_TEST(ast_compile_52),
+        ADD_TEST(ast_compile_53),
+        ADD_TEST(ast_compile_54),
+        ADD_TEST(ast_compile_55),
+        ADD_TEST(ast_compile_56),
+        ADD_TEST(ast_compile_57),
+        ADD_TEST(ast_compile_58),
+        ADD_TEST(ast_compile_59),
+        ADD_TEST(ast_compile_60),
+        ADD_TEST(ast_compile_61),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

@@ -1,6 +1,15 @@
 #ifndef BRAMA_H
 #define BRAMA_H
 
+
+#if defined(_WIN32)
+
+#    define _CRTDBG_MAP_ALLOC
+#    include <stdlib.h>
+#    include <crtdbg.h>
+
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -661,9 +670,10 @@ typedef int*               int_ptr;
 typedef double*            double_ptr;
 typedef t_compile_stack*   t_compile_stack_ptr;
 
-typedef void* (*t_malloc)(void* user_data, size_t size);
-typedef void  (*t_free)  (void* user_data, void*  ptr);
-typedef void* (*t_calloc)(void* user_data, size_t count, size_t size);
+typedef void* (*t_malloc) (void* user_data, size_t size, char* file_name, size_t line_number);
+typedef void  (*t_free)   (void* user_data, void*  ptr, char* file_name, size_t line_number);
+typedef void* (*t_calloc) (void* user_data, size_t count, size_t size, char* file_name, size_t line_number);
+typedef void* (*t_realloc)(void* user_data, void*  ptr, size_t count, size_t size, char* file_name, size_t line_number);
 
 enum brama_vm_operator;
 
@@ -883,9 +893,10 @@ typedef struct _t_ast {
 } t_ast;
 
 typedef struct _t_context {
-    t_malloc     malloc;
-    t_free       free;
-    t_calloc     calloc;
+    t_malloc     malloc_func;
+    t_free       free_func;
+    t_calloc     calloc_func;
+    t_realloc    realloc_func;
 
     t_allocator* allocator;
     t_tokinizer* tokinizer;

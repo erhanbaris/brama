@@ -204,18 +204,9 @@ do { \
 
 #define vector_get(VECTOR, INDEX) VECTOR ->data[ INDEX ]
 
-#if defined(_WIN32)
-
-#    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) context->malloc(context->allocator, SIZE)
-#    define BRAMA_CALLOC(NUM, SIZE)                 context->calloc(context->allocator, NUM , SIZE )
-#    define BRAMA_MALLOC( SIZE )                    context->malloc(context->allocator, SIZE)
-#    define BRAMA_FREE(PTR)                         context->free  (context->allocator, PTR )
-#else
-#    define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) context->malloc(context->allocator, SIZE)
-#    define BRAMA_CALLOC(NUM, SIZE)                 context->calloc(context->allocator, NUM , SIZE )
-#    define BRAMA_MALLOC( SIZE )                    context->malloc(context->allocator, SIZE)
-#    define BRAMA_FREE(PTR)                         context->free  (context->allocator, PTR )
-
-#endif
+#define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) context->malloc_func(context->allocator, SIZE, __FILE__, __LINE__)
+#define BRAMA_CALLOC(NUM, SIZE)                 context->calloc_func(context->allocator, NUM , SIZE, __FILE__, __LINE__ )
+#define BRAMA_MALLOC( SIZE )                    context->malloc_func(context->allocator, SIZE, __FILE__, __LINE__)
+#define BRAMA_FREE(PTR)                         { context->free_func  (context->allocator, PTR, __FILE__, __LINE__ ); PTR = NULL; }
 
 #endif // MACROS_H

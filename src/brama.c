@@ -826,7 +826,35 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
         if (NULL == func_call) return out_of_memory_error(context);
 
         bool function_declared = false;
-        if (AST_ACCESSOR == (*ast)->type && AST_SYMBOL == (*ast)->accessor_ptr->object->type) {
+
+        if (AST_SYMBOL == (*ast)->type) {
+            /* Native function */
+            size_t build_in_functions_size = sizeof(BUILD_IN_FUNCTIONS) / sizeof(BUILD_IN_FUNCTIONS[0]);
+            BRAMA_ASSERT(build_in_functions_size != 0);
+
+            for (size_t i = 0; i < build_in_functions_size; ++i) {
+                BRAMA_ASSERT(BUILD_IN_FUNCTIONS[i].callback != NULL);
+
+                if (NULL != BUILD_IN_FUNCTIONS[i].function && 0 == strcmp(BUILD_IN_FUNCTIONS[i].function, (*ast)->char_ptr)) {
+                  
+                    func_call->args        = args;
+                    func_call->native_call = BUILD_IN_FUNCTIONS[i].callback;
+                    func_call->type        = FUNC_CALL_NATIVE;
+
+                    CLEAR_AST(*ast);
+
+                    *ast = new_func_call_ast(func_call);
+                    set_semicolon_and_newline(context, *ast);
+
+                    status            = BRAMA_OK;
+                    function_declared = true;
+                    i                 = BUILD_IN_OBJECTS_LENGTH;
+                    break;
+                }
+            }
+        }
+
+        if (false == function_declared && AST_ACCESSOR == (*ast)->type && AST_SYMBOL == (*ast)->accessor_ptr->object->type) {
 
             /* This  could be native call */
             for (size_t i = 0; i < BUILD_IN_OBJECTS_LENGTH; ++i) {
@@ -2532,33 +2560,60 @@ brama_status ast_parser(t_context_ptr context) {
 
 /* AST PARSER OPERATIONS END */
 
-static inline void* native_malloc(void* user_data, size_t size) {
+#if defined(_WIN32)
+
+static inline void* native_malloc(void* user_data, size_t size, char_ptr file_name, int line_number) {
+    return _malloc_dbg( size , _NORMAL_BLOCK , file_name, line_number );
+}
+
+static inline void native_free(void* user_data, void* ptr, char_ptr file_name, int line_number) {
+    _free_dbg  ( ptr , _NORMAL_BLOCK);
+}
+
+static inline void* native_calloc(void* user_data, size_t count, size_t size, char_ptr file_name, int line_number) {
+    return _calloc_dbg( count , size , _NORMAL_BLOCK , file_name, line_number );
+}
+
+static inline void* native_realloc(void* user_data, void* ptr, size_t size, char_ptr file_name, int line_number) {
+    return _realloc_dbg(ptr, size , _NORMAL_BLOCK , file_name, line_number );
+}
+
+#else
+
+static inline void* native_malloc(void* user_data, size_t size, char_ptr file_name, int line_number) {
     return malloc(size);
 }
 
-static inline void native_free(void* user_data, void* ptr) {
+static inline void native_free(void* user_data, void* ptr, char_ptr file_name, int line_number) {
     free(ptr);
 }
 
-static inline void* native_calloc(void* user_data, size_t count, size_t size) {
+static inline void* native_calloc(void* user_data, size_t count, size_t size, char_ptr file_name, int line_number) {
     return calloc(count, size);
 }
+
+static inline void* native_calloc(void* user_data, size_t size, char_ptr file_name, int line_number) {
+    return realloc(ptr, size);
+}
+
+#endif
 
 t_context_ptr brama_init(size_t memory) {
     t_context_ptr context      = (t_context_ptr)malloc(sizeof(t_context));
     context->error_message     = NULL;
     
     if (memory == 0) {
-        context->malloc = &native_malloc;
-        context->calloc = &native_calloc;
-        context->free   = &native_free;
-
-        context->allocator = NULL;
+        context->malloc_func  = &native_malloc;
+        context->calloc_func  = &native_calloc;
+        context->free_func    = &native_free;
+        context->realloc_func = &native_realloc;
+        context->allocator    = NULL;
     } else {
-        context->allocator = init_allocator(memory);
-        context->malloc  = &stack_malloc;
-        context->calloc  = &stack_calloc;
-        context->free    = &stack_free;
+        context->allocator    = init_allocator(memory);
+        context->malloc_func  = &stack_malloc;
+        context->calloc_func  = &stack_calloc;
+        context->free_func    = &stack_free;
+        context->realloc_func = &native_realloc;
     }
     
     /* tokinizer */
