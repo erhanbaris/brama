@@ -3,6 +3,7 @@
 
 #include "brama.h"
 
+
 t_token_ptr ast_consume_keyword  (t_context_ptr context, brama_keyword_type  keyword_type);
 t_token_ptr ast_consume_token    (t_context_ptr context, brama_token_type    token_type);
 t_token_ptr ast_consume_operator (t_context_ptr context, brama_operator_type operator_type);
@@ -122,7 +123,8 @@ void compile_accessor           (t_context_ptr context, t_accessor_ptr const ast
 int  get_text_address           (t_context_ptr context, t_storage_ptr storage,      char_ptr name);
 brama_status compile_is_up_value(t_context_ptr context, char_ptr const ast,         t_storage_ptr storage, size_t* storage_id, size_t* variable_index);
 
-t_compile_stack_ptr new_compile_stack         (t_context_ptr context, brama_compile_block_type ast_type, void_ptr ast, void_ptr compile_obj) ;
+#define new_compile_stack(context, ast_type, ast, compile_obj) new_compile_stack_(context, ast_type, ast, compile_obj, __FILE__, __LINE__)
+t_compile_stack_ptr new_compile_stack_        (t_context_ptr context, brama_compile_block_type ast_type, void_ptr ast, void_ptr compile_obj, char_ptr file, size_t line);
 brama_status        find_compile_stack        (t_context_ptr context, brama_compile_block_type ast_type, t_compile_stack_ptr* stack);
 void                remove_from_compile_stack (t_context_ptr context, t_compile_stack_ptr stack);
 void                destroy_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack);
@@ -130,5 +132,12 @@ void                destroy_from_compile_stack(t_context_ptr context, t_compile_
 t_vm_object_ptr new_vm_object(t_context_ptr context);
 t_brama_value   numberToValue(double num);
 double          valueToNumber(t_brama_value num);
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+void brama_malloc_monitor (void* user_data, void* ptr, size_t size, char_ptr file_name, int line_number);
+void brama_realloc_monitor(void* user_data, void* ptr, size_t size, char_ptr file_name, int line_number);
+void brama_calloc_monitor (void* user_data, void* ptr, size_t count, size_t size, char_ptr file_name, int line_number);
+void brama_free_monitor   (void* user_data, void* ptr, char_ptr file_name, int line_number);
+#endif
 
 #endif // BRAMA_INTERNAL_H

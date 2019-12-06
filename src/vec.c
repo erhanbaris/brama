@@ -6,7 +6,7 @@
  */
 
 #include "vec.h"
-#include "brama.h"
+#include "brama_internal.h"
 
 
 int vec_expand_(char **data, int *length, int *capacity, int memsz) {
@@ -17,6 +17,10 @@ int vec_expand_(char **data, int *length, int *capacity, int memsz) {
         if (ptr == NULL) return -1;
         *data = ptr;
         *capacity = n;
+
+        #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+        brama_realloc_monitor(NULL, ptr, n * memsz, "", 1);
+        #endif
     }
     return 0;
 }
@@ -29,6 +33,10 @@ int vec_reserve_(char **data, int *length, int *capacity, int memsz, int n) {
         if (ptr == NULL) return -1;
         *data = ptr;
         *capacity = n;
+
+        #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+        brama_realloc_monitor(NULL, ptr, n * memsz, "", 1);
+        #endif
     }
     return 0;
 }
@@ -43,10 +51,24 @@ int vec_reserve_po2_(
     return vec_reserve_(data, length, capacity, memsz, n2);
 }
 
+int vec_free_(char **data) {
+    #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_free_monitor(NULL, *data, "", 1);
+    #endif
+
+    free(*data);
+
+    return 0;
+}
 
 int vec_compact_(char **data, int *length, int *capacity, int memsz) {
     if (*length == 0) {
-        free(*data);
+        #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+        brama_free_monitor(NULL, *data, "", 1);
+        #endif
+
+        vec_free_(*data);
+
         *data = NULL;
         *capacity = 0;
         return 0;
@@ -57,6 +79,9 @@ int vec_compact_(char **data, int *length, int *capacity, int memsz) {
         if (ptr == NULL) return -1;
         *capacity = n;
         *data = ptr;
+        #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+        brama_realloc_monitor(NULL, ptr, n * memsz, "", 1);
+        #endif
     }
     return 0;
 }

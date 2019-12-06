@@ -14,22 +14,30 @@
 
 int main(int argc, const char* argv[]) {
     t_context* context = brama_init(0);
-    brama_compile(context, " var result = Number.isFinite(0/0); console.log(result);");
+    brama_compile(context, "var a1=5;\n"
+                           "var b1=6;\n"
+                           "var r1=0;\n"
+                           "\n"
+                           "switch(4){\n"
+                           "  case 6:\n"
+                           "    break;\n"
+                           "  case 4:\n"
+                           "    break;\n"
+                           "  case 7:\n"
+                           "    break;\n"
+                           "  default:\n"
+                           "    break;\n"
+                           "}");
     brama_run(context);
-    brama_compile_dump(context);
 
     t_get_var_info_ptr var_info = NULL;
-    brama_status status = brama_get_var(context, "result", &var_info);
-    munit_assert_int     (status,            == , BRAMA_OK);
-    munit_assert_int     (var_info->type,    == , CONST_BOOL);
-    munit_assert_int     (var_info->bool_, == , false);
-
+    brama_status status = brama_get_var(context, "r1", &var_info);
+    munit_assert_int   (status,            == , BRAMA_OK);
+    munit_assert_int   (var_info->type,    == , CONST_INTEGER);
+    munit_assert_int   (var_info->double_, == , 0);
     brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
-    return 0;
-
-    
     
 #ifdef _WIN32
     int test_status = munit_suite_main(&ALL_SUITE, (void*) "µnit", NULL, NULL);

@@ -156,6 +156,7 @@
 
 
 
+int vec_free_(char **data);
 int vec_expand_(char **data, int *length, int *capacity, int memsz);
 int vec_reserve_(char **data, int *length, int *capacity, int memsz, int n);
 int vec_reserve_po2_(char **data, int *length, int *capacity, int memsz,

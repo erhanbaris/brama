@@ -142,7 +142,7 @@ do { \
 #define new_primative_ast_dict(DATA)       new_primative_ast_dict_internal(context, DATA , __FILE__, __LINE__ )
 
 #define NEW_PRIMATIVE_DEF(EXT, TYPE, PRI_TYPE, STR_TYPE)       \
-    t_ast* new_primative_ast_##EXT##_internal ( t_context_ptr context, TYPE value, int FILE__ , char_ptr LINE__ ) {         \
+    t_ast* new_primative_ast_##EXT##_internal ( t_context_ptr context, TYPE value, char_ptr FILE__ , int LINE__ ) {         \
         t_ast* ast             = BRAMA_MALLOC_LINE(sizeof (t_ast), FILE__ , LINE__ );  \
         t_primative* primative = BRAMA_MALLOC_LINE(sizeof (t_primative), FILE__ , LINE__ ); \
         ast->primative_ptr     = primative;                    \
@@ -156,7 +156,7 @@ do { \
 
 
 #define NEW_AST_DEF(NAME, INPUT, STR_TYPE, TYPE)       \
-    t_ast* new_##NAME##_ast_internal(t_context_ptr context, INPUT variable, int FILE__ , char_ptr LINE__ ) {   \
+    t_ast* new_##NAME##_ast_internal(t_context_ptr context, INPUT variable, char_ptr FILE__ ,  int  LINE__ ) {   \
         t_ast_ptr ast           = BRAMA_MALLOC_LINE(sizeof (t_ast), FILE__ , LINE__ );  \
         ast->type               = STR_TYPE;    \
         ast-> TYPE              = variable;    \
@@ -204,7 +204,7 @@ do { \
 
 #define vector_get(VECTOR, INDEX) VECTOR ->data[ INDEX ]
 
-#define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) context->malloc_func(context->allocator, SIZE, __FILE__, __LINE__)
+#define BRAMA_MALLOC_LINE(SIZE, FILE__, LINE__) context->malloc_func(context->allocator, SIZE, FILE__, LINE__)
 #define BRAMA_CALLOC(NUM, SIZE)                 context->calloc_func(context->allocator, NUM , SIZE, __FILE__, __LINE__ )
 #define BRAMA_MALLOC( SIZE )                    context->malloc_func(context->allocator, SIZE, __FILE__, __LINE__)
 #define BRAMA_FREE(PTR)                         { context->free_func  (context->allocator, PTR, __FILE__, __LINE__ ); PTR = NULL; }

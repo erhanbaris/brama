@@ -136,8 +136,10 @@ MunitResult ast_for_loop_1(const MunitParameter params[], void* user_data_or_fix
     brama_compile(context,  "for (i=1;i<10;i++) a = a + i;");
     context->parser->index = 0;
 
-    t_ast_ptr ast = NULL;
-    munit_assert_int         (ast_declaration_stmt(context, &ast, AST_IN_NONE), == , BRAMA_OK);
+    munit_assert_int         (context->status, == , BRAMA_OK);
+    munit_assert_int         (context->parser->asts->length, == , 1);
+
+    t_ast_ptr ast = context->parser->asts->data[0];
     munit_assert_int         (ast->type, ==, AST_FOR);
     munit_assert_ptr_not_null(ast->for_ptr);
 
@@ -149,7 +151,6 @@ MunitResult ast_for_loop_1(const MunitParameter params[], void* user_data_or_fix
 
     munit_assert_ptr_not_null(ast->for_ptr->increment);
     munit_assert_int         (ast->for_ptr->increment->type, ==, AST_UNARY);
-    CLEAR_AST(ast);
 
     brama_destroy(context);
     return MUNIT_OK;
