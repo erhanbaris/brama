@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "map.h"
+#include "brama_internal.h"
 
 struct map_node_t {
   unsigned hash;
@@ -27,12 +28,15 @@ static unsigned map_hash(const char *str) {
 }
 
 
-static map_node_t *map_newnode(const char *key, void *value, int vsize) {
+static map_node_t *map_newnode(const char *key, void *value, int vsize, char* file, size_t line) {
   map_node_t *node;
   int ksize = strlen(key) + 1;
   int voffset = ksize + ((sizeof(void*) - ksize) % sizeof(void*));
   node = (map_node_t *)malloc(sizeof(*node) + voffset + vsize);
   if (!node) return NULL;
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_malloc_monitor(NULL, node, sizeof(*node) + voffset + vsize, file, line);
+#endif
   memcpy(node + 1, key, ksize);
   node->hash = map_hash(key);
   node->value = ((char*) (node + 1)) + voffset;
@@ -55,7 +59,7 @@ static void map_addnode(map_base_t *m, map_node_t *node) {
 }
 
 
-static int map_resize(map_base_t *m, int nbuckets) {
+static int map_resize(map_base_t *m, int nbuckets, char* file, size_t line) {
   map_node_t *nodes, *node, *next;
   map_node_t **buckets;
   int i;
@@ -77,6 +81,9 @@ static int map_resize(map_base_t *m, int nbuckets) {
     m->buckets = buckets;
     m->nbuckets = nbuckets;
   }
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_realloc_monitor(NULL, buckets, sizeof(*m->buckets) * nbuckets, file, line);
+#endif
   if (m->buckets) {
     memset(m->buckets, 0, sizeof(*m->buckets) * m->nbuckets);
     /* Re-add nodes to buckets */
@@ -108,7 +115,7 @@ static map_node_t **map_getref(map_base_t *m, const char *key) {
 }
 
 
-void map_deinit_(map_base_t *m) {
+void map_deinit_(map_base_t *m, char* file, size_t line) {
   map_node_t *next, *node;
   int i;
   i = m->nbuckets;
@@ -116,10 +123,20 @@ void map_deinit_(map_base_t *m) {
     node = m->buckets[i];
     while (node) {
       next = node->next;
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+        brama_free_monitor(NULL, node, file, line);
+#endif
+
       free(node);
       node = next;
     }
   }
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_free_monitor(NULL, m->buckets, file, line);
+#endif
+
   free(m->buckets);
 }
 
@@ -130,7 +147,7 @@ void *map_get_(map_base_t *m, const char *key) {
 }
 
 
-int map_set_(map_base_t *m, const char *key, void *value, int vsize) {
+int map_set_(map_base_t *m, const char *key, void *value, int vsize, char* file, size_t line) {
   int n, err;
   map_node_t **next, *node;
   /* Find & replace existing node */
@@ -140,28 +157,40 @@ int map_set_(map_base_t *m, const char *key, void *value, int vsize) {
     return 0;
   }
   /* Add new node */
-  node = map_newnode(key, value, vsize);
+  node = map_newnode(key, value, vsize, file, line);
   if (node == NULL) goto fail;
   if (m->nnodes >= m->nbuckets) {
     n = (m->nbuckets > 0) ? (m->nbuckets << 1) : 1;
-    err = map_resize(m, n);
+    err = map_resize(m, n, file, line);
     if (err) goto fail;
   }
   map_addnode(m, node);
   m->nnodes++;
   return 0;
   fail:
-  if (node) free(node);
+  if (node) {
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+      brama_free_monitor(NULL, node, file, line);
+#endif
+
+      free(node);
+  }
   return -1;
 }
 
 
-void map_remove_(map_base_t *m, const char *key) {
+void map_remove_(map_base_t *m, const char *key, char* file, size_t line) {
   map_node_t *node;
   map_node_t **next = map_getref(m, key);
   if (next) {
     node = *next;
     *next = (*next)->next;
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+      brama_free_monitor(NULL, node, file, line);
+#endif
+
     free(node);
     m->nnodes--;
   }

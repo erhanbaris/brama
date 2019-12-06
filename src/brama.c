@@ -837,7 +837,7 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
                 BRAMA_ASSERT(BUILD_IN_FUNCTIONS[i].callback != NULL);
 
                 if (NULL != BUILD_IN_FUNCTIONS[i].function && 0 == strcmp(BUILD_IN_FUNCTIONS[i].function, (*ast)->char_ptr)) {
-                  
+
                     func_call->args        = args;
                     func_call->native_call = BUILD_IN_FUNCTIONS[i].callback;
                     func_call->type        = FUNC_CALL_NATIVE;
@@ -2676,15 +2676,17 @@ void brama_free_monitor(void* user_data, void* ptr, char_ptr file_name, int line
         ptr_node = ptr_node->next;
 
     if (NULL != ptr_node && ptr_node->ptr == ptr && ptr_node->is_freed) {
-        printf("Double free detected (%d)\r\n", ptr_node->size);
+        printf("Double free detected (%zu)\r\n", ptr_node->size);
         printf("Current free location     : %s(%d)\r\n", file_name, line_number);
-        printf("Memory block already freed: %s(%d)\r\n\r\n", ptr_node->free_file, ptr_node->free_line);
+        printf("Memory block already freed: %s(%zu)\r\n\r\n", ptr_node->free_file, ptr_node->free_line);
     }
 
     if (NULL != ptr_node) {
         ptr_node->free_file = file_name;
         ptr_node->free_line = line_number;
         ptr_node->is_freed  = true;
+
+        printf("freed: %s(%zu)\r\n\r\n", ptr_node->free_file, ptr_node->free_line);
     }
 }
 #endif
@@ -2744,7 +2746,7 @@ static inline void* native_calloc(void* user_data, size_t count, size_t size, ch
     return calloc(count, size);
 }
 
-static inline void* native_calloc(void* user_data, size_t size, char_ptr file_name, int line_number) {
+static inline void* native_realloc(void* user_data, void* ptr, size_t size, char_ptr file_name, int line_number) {
     return realloc(ptr, size);
 }
 
@@ -6760,7 +6762,7 @@ void brama_destroy(t_context_ptr context) {
         t_token_ptr token = _context->tokinizer->tokens->data[i];
         if (TOKEN_TEXT == token->type ||
             TOKEN_SYMBOL == token->type)
-            BRAMA_FREE((char_ptr)token->char_ptr);
+            BRAMA_FREE(token->char_ptr);
         BRAMA_FREE(token);
     }
 

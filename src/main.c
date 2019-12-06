@@ -13,6 +13,8 @@
 #include "brama.h"
 
 int main(int argc, const char* argv[]) {
+    
+    void* ptr = realloc(NULL, 10241);
     t_context* context = brama_init(0);
     brama_compile(context, "var a1=5;\n"
                            "var b1=6;\n"
@@ -38,7 +40,6 @@ int main(int argc, const char* argv[]) {
     brama_destroy_get_var(context, &var_info);
 
     brama_destroy(context);
-    
 #ifdef _WIN32
     int test_status = munit_suite_main(&ALL_SUITE, (void*) "µnit", NULL, NULL);
     getchar();

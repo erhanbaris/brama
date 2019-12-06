@@ -9,7 +9,7 @@
 #include "brama_internal.h"
 
 
-int vec_expand_(char **data, int *length, int *capacity, int memsz) {
+int vec_expand_(char **data, int *length, int *capacity, int memsz, char* file, size_t line) {
     if (*length + 1 > *capacity) {
         void *ptr;
         int n = (*capacity == 0) ? 1 : *capacity << 1;
@@ -19,14 +19,14 @@ int vec_expand_(char **data, int *length, int *capacity, int memsz) {
         *capacity = n;
 
         #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
-        brama_realloc_monitor(NULL, ptr, n * memsz, "", 1);
+        brama_realloc_monitor(NULL, ptr, n * memsz, file, line);
         #endif
     }
     return 0;
 }
 
 
-int vec_reserve_(char **data, int *length, int *capacity, int memsz, int n) {
+int vec_reserve_(char **data, int *length, int *capacity, int memsz, int n, char* file, size_t line) {
     (void) length;
     if (n > *capacity) {
         void *ptr = realloc(*data, n * memsz);
@@ -35,25 +35,23 @@ int vec_reserve_(char **data, int *length, int *capacity, int memsz, int n) {
         *capacity = n;
 
         #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
-        brama_realloc_monitor(NULL, ptr, n * memsz, "", 1);
+        brama_realloc_monitor(NULL, ptr, n * memsz, file, line);
         #endif
     }
     return 0;
 }
 
 
-int vec_reserve_po2_(
-        char **data, int *length, int *capacity, int memsz, int n
-) {
+int vec_reserve_po2_(char **data, int *length, int *capacity, int memsz, int n, char* file, size_t line) {
     int n2 = 1;
     if (n == 0) return 0;
     while (n2 < n) n2 <<= 1;
-    return vec_reserve_(data, length, capacity, memsz, n2);
+    return vec_reserve_(data, length, capacity, memsz, n2, file, line);
 }
 
-int vec_free_(char **data) {
+int vec_free_(char *data, char* file, size_t line) {
     #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
-    brama_free_monitor(NULL, *data, "", 1);
+    brama_free_monitor(NULL, *data, file, line);
     #endif
 
     free(*data);
@@ -61,13 +59,13 @@ int vec_free_(char **data) {
     return 0;
 }
 
-int vec_compact_(char **data, int *length, int *capacity, int memsz) {
+int vec_compact_(char **data, int *length, int *capacity, int memsz, char* file, size_t line) {
     if (*length == 0) {
         #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
-        brama_free_monitor(NULL, *data, "", 1);
+        brama_free_monitor(NULL, *data, file, line);
         #endif
 
-        vec_free_(*data);
+        vec_free_(*data, file, line);
 
         *data = NULL;
         *capacity = 0;
@@ -80,17 +78,15 @@ int vec_compact_(char **data, int *length, int *capacity, int memsz) {
         *capacity = n;
         *data = ptr;
         #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
-        brama_realloc_monitor(NULL, ptr, n * memsz, "", 1);
+        brama_realloc_monitor(NULL, ptr, n * memsz, file, line);
         #endif
     }
     return 0;
 }
 
 
-int vec_insert_(char **data, int *length, int *capacity, int memsz,
-                int idx
-) {
-    int err = vec_expand_(data, length, capacity, memsz);
+int vec_insert_(char **data, int *length, int *capacity, int memsz, int idx, char* file, size_t line) {
+    int err = vec_expand_(data, length, capacity, memsz, file, line);
     if (err) return err;
     memmove(*data + (idx + 1) * memsz,
             *data + idx * memsz,
@@ -99,9 +95,7 @@ int vec_insert_(char **data, int *length, int *capacity, int memsz,
 }
 
 
-void vec_splice_(char **data, int *length, int *capacity, int memsz,
-                 int start, int count
-) {
+void vec_splice_(char **data, int *length, int *capacity, int memsz, int start, int count) {
     (void) capacity;
     memmove(*data + start * memsz,
             *data + (start + count) * memsz,
@@ -109,9 +103,7 @@ void vec_splice_(char **data, int *length, int *capacity, int memsz,
 }
 
 
-void vec_swapsplice_(char **data, int *length, int *capacity, int memsz,
-                     int start, int count
-) {
+void vec_swapsplice_(char **data, int *length, int *capacity, int memsz, int start, int count, char* file, size_t line) {
     (void) capacity;
     memmove(*data + start * memsz,
             *data + (*length - count) * memsz,
@@ -119,9 +111,7 @@ void vec_swapsplice_(char **data, int *length, int *capacity, int memsz,
 }
 
 
-void vec_swap_(char **data, int *length, int *capacity, int memsz,
-               int idx1, int idx2
-) {
+void vec_swap_(char **data, int *length, int *capacity, int memsz, int idx1, int idx2, char* file, size_t line) {
     unsigned char *a, *b, tmp;
     int count;
     (void) length;
