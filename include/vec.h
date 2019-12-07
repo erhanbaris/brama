@@ -27,12 +27,12 @@
 
 
 #define vec_deinit(v)\
-  ( free((v)->data),\
+  ( vec_free_(((v)->data), __FILE__, __LINE__),\
     vec_init(v) )
 
 
 #define vec_push(v, val)\
-  ( vec_expand_(vec_unpack_(v)) ? -1 :\
+  ( vec_expand_(vec_unpack_(v), __FILE__, __LINE__) ? -1 :\
     ((v)->data[(v)->length++] = (val), 0), 0 )
 
 
@@ -80,7 +80,7 @@
 
 
 #define vec_reserve(v, n)\
-  vec_reserve_(vec_unpack_(v), n)
+  vec_reserve_(vec_unpack_(v), n, __FILE__, __LINE__)
 
 
 #define vec_compact(v)\
@@ -156,19 +156,15 @@
 
 
 
-int vec_expand_(char **data, int *length, int *capacity, int memsz);
-int vec_reserve_(char **data, int *length, int *capacity, int memsz, int n);
-int vec_reserve_po2_(char **data, int *length, int *capacity, int memsz,
-                     int n);
-int vec_compact_(char **data, int *length, int *capacity, int memsz);
-int vec_insert_(char **data, int *length, int *capacity, int memsz,
-                int idx);
-void vec_splice_(char **data, int *length, int *capacity, int memsz,
-                 int start, int count);
-void vec_swapsplice_(char **data, int *length, int *capacity, int memsz,
-                     int start, int count);
-void vec_swap_(char **data, int *length, int *capacity, int memsz,
-               int idx1, int idx2);
+int vec_free_(void *data, char* file, size_t line);
+int vec_expand_(char **data, int *length, int *capacity, int memsz, char* file, size_t line);
+int vec_reserve_(char **data, int *length, int *capacity, int memsz, int n, char* file, size_t line);
+int vec_reserve_po2_(char **data, int *length, int *capacity, int memsz, int n, char* file, size_t line);
+int vec_compact_(char **data, int *length, int *capacity, int memsz, char* file, size_t line);
+int vec_insert_(char **data, int *length, int *capacity, int memsz, int idx, char* file, size_t line);
+void vec_splice_(char **data, int *length, int *capacity, int memsz, int start, int count);
+void vec_swapsplice_(char **data, int *length, int *capacity, int memsz, int start, int count, char* file, size_t line);
+void vec_swap_(char **data, int *length, int *capacity, int memsz, int idx1, int idx2, char* file, size_t line);
 
 
 typedef vec_t(void*) vec_void_t;

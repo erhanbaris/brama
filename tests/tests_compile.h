@@ -2,6 +2,7 @@
 #define TESTS_COMPILE_H
 
 #include <brama.h>
+#include <math.h>
 #include "tests_core.h"
 #include "brama.h"
 #include "brama_internal.h"
@@ -771,13 +772,81 @@ BOOL_FALSE_TEST(ast_compile_51, "var result = isNaN(undefined)")
 BOOL_FALSE_TEST(ast_compile_52, "var result = isNaN({})")
 BOOL_FALSE_TEST(ast_compile_53, "var result = isNaN(true)")
 BOOL_FALSE_TEST(ast_compile_54, "var result = isNaN(37)")
-BOOL_FALSE_TEST(ast_compile_55, "var result = isInteger('10')")
-BOOL_FALSE_TEST(ast_compile_56, "var result = isInteger(true)")
-BOOL_FALSE_TEST(ast_compile_57, "var result = isInteger(false)")
-BOOL_FALSE_TEST(ast_compile_58, "var result = isInteger([1])")
-BOOL_TRUE_TEST(ast_compile_59, "var result = isInteger(5.0)")
-BOOL_FALSE_TEST(ast_compile_60, "var result = isInteger(5.000000000000001)")
-BOOL_TRUE_TEST(ast_compile_61, "var result = isInteger(5.0000000000000001)")
+
+MunitResult ast_compile_55(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var result = parseFloat();");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "result", &var_info);
+
+    munit_assert_int(status,         == , BRAMA_OK);
+    munit_assert_int(var_info->type, == , CONST_DOUBLE);
+    munit_assert_int(var_info->double_,== , NAN);
+    brama_destroy_get_var(context, &var_info);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_56(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var result = Number.parseFloat()");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "result", &var_info);
+
+    munit_assert_int(status,         == , BRAMA_OK);
+    munit_assert_int(var_info->type, == , CONST_DOUBLE);
+    munit_assert_int(var_info->double_,== , NAN);
+    brama_destroy_get_var(context, &var_info);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_57(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var result = parseFloat('3.14')");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "result", &var_info);
+
+    munit_assert_int(status,           == , BRAMA_OK);
+    munit_assert_int(var_info->type,   == , CONST_DOUBLE);
+    munit_assert_double(var_info->double_,== , 3.14);
+    brama_destroy_get_var(context, &var_info);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_58(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var result = parseFloat('    3.14   ')");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "result", &var_info);
+
+    munit_assert_int(status,           == , BRAMA_OK);
+    munit_assert_int(var_info->type,   == , CONST_DOUBLE);
+    munit_assert_double(var_info->double_,== , 3.14);
+    brama_destroy_get_var(context, &var_info);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_59(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var result = parseFloat('    3.14  3 ')");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "result", &var_info);
+
+    munit_assert_int(status,           == , BRAMA_OK);
+    munit_assert_int(var_info->type,   == , CONST_DOUBLE);
+    munit_assert_double(var_info->double_,== , 3.14);
+    brama_destroy_get_var(context, &var_info);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
 
 MunitTest COMPILE_TESTS[] = {
 
@@ -841,8 +910,6 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_57),
         ADD_TEST(ast_compile_58),
         ADD_TEST(ast_compile_59),
-        ADD_TEST(ast_compile_60),
-        ADD_TEST(ast_compile_61),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };

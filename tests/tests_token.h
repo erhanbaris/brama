@@ -261,6 +261,48 @@ MunitResult number_token_6(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+MunitResult number_token_7(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "0.00314e2");
+    munit_assert_int(context->tokinizer->tokens->length, ==, 1);
+
+    t_token* token = context->tokinizer->tokens->data[0];
+
+    munit_assert_int    (token->type, ==, TOKEN_DOUBLE);
+    munit_assert_true (fabs(token->double_-0.314) < 0.0000001);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult number_token_8(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "314e2");
+    munit_assert_int(context->tokinizer->tokens->length, ==, 1);
+
+    t_token* token = context->tokinizer->tokens->data[0];
+
+    munit_assert_int    (token->type, ==, TOKEN_INTEGER);
+    munit_assert_double (token->double_, ==, 31400);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult number_token_9(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "0.314e-2");
+    munit_assert_int(context->tokinizer->tokens->length, ==, 1);
+
+    t_token* token = context->tokinizer->tokens->data[0];
+
+    munit_assert_int  (token->type, ==, TOKEN_DOUBLE);
+    munit_assert_true (fabs(token->double_-0.00314) < 0.00001);
+
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
 /* <-- NUMBER TESTS END */
 
 
@@ -556,6 +598,9 @@ MunitTest TOKEN_TESTS[] = {
     ADD_TEST(number_token_4),
     ADD_TEST(number_token_5),
     ADD_TEST(number_token_6),
+    ADD_TEST(number_token_7),
+    ADD_TEST(number_token_8),
+    ADD_TEST(number_token_9),
 
     ADD_TEST(symbol_token_1),
     ADD_TEST(symbol_token_2),

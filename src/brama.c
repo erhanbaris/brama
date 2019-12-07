@@ -89,7 +89,7 @@ int getSymbol(t_context_ptr context, t_tokinizer_ptr tokinizer) {
     char_ptr data       = NULL;
     string_stream_get(stream, &data);
     string_stream_destroy(stream);
-    free(stream);
+    BRAMA_FREE(stream);
     
     int_ptr keywordInfo = (int_ptr)map_get(&tokinizer->keywords, data);
 
@@ -106,6 +106,7 @@ int getSymbol(t_context_ptr context, t_tokinizer_ptr tokinizer) {
         token->keyword    = *keywordInfo;
 
         vec_push(tokinizer->tokens, token);
+        BRAMA_FREE(data);
     } else {
         t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
         if (NULL == token) {
@@ -150,7 +151,7 @@ int getText(t_context_ptr context, t_tokinizer_ptr tokinizer, char symbol) {
 
     if (ch != symbol) {
         string_stream_destroy(stream);
-        free(stream);
+        BRAMA_FREE(stream);
         return BRAMA_MISSING_TEXT_DELIMITER;
     }
     
@@ -158,7 +159,7 @@ int getText(t_context_ptr context, t_tokinizer_ptr tokinizer, char symbol) {
     char_ptr data = NULL;
     string_stream_get(stream, &data);
     string_stream_destroy(stream);
-    free(stream);
+    BRAMA_FREE(stream);
     
 
     t_token_ptr token  = (t_token_ptr)BRAMA_MALLOC(sizeof (t_token));
@@ -203,7 +204,7 @@ int getNumber(t_context_ptr context, t_tokinizer_ptr tokinizer) {
 
     while (!isEnd(tokinizer)) {
         if (ch == '-') {
-            if (isMinus || (beforeTheComma > 0 || afterTheComma > 0))
+            if ((isMinus || (beforeTheComma > 0 || afterTheComma > 0)) && !e_used)
                 break;
 
             isMinus = true;
@@ -297,13 +298,18 @@ int getNumber(t_context_ptr context, t_tokinizer_ptr tokinizer) {
         token->double_ = (beforeTheComma + (afterTheComma * pow(10, -1 * dotPlace)));
     }
 
-    if (e_used)
-        token->double_ = token->double_ * (double)pow((double)10, (double)e_after);
+    if (e_used) {
+        if (isMinus) {
+            token->double_ = token->double_ / (double)pow((double)10, (double)e_after);
+        } else {
+            token->double_ = token->double_ * (double)pow((double)10, (double)e_after);
+        }
+    }
 
     token->current = start;
     token->line    = tokinizer->line;
 
-    if (isMinus)
+    if (isMinus && !e_used)
         token->double_ *= -1;
 
     vec_push(tokinizer->tokens, token);
@@ -836,7 +842,7 @@ brama_status ast_func_call(t_context_ptr context, t_ast_ptr_ptr ast, brama_ast_e
                 BRAMA_ASSERT(BUILD_IN_FUNCTIONS[i].callback != NULL);
 
                 if (NULL != BUILD_IN_FUNCTIONS[i].function && 0 == strcmp(BUILD_IN_FUNCTIONS[i].function, (*ast)->char_ptr)) {
-                  
+
                     func_call->args        = args;
                     func_call->native_call = BUILD_IN_FUNCTIONS[i].callback;
                     func_call->type        = FUNC_CALL_NATIVE;
@@ -2560,40 +2566,233 @@ brama_status ast_parser(t_context_ptr context) {
 
 /* AST PARSER OPERATIONS END */
 
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+/* Temporary code for finding a issue */
+typedef struct _memory_alloc {
+    size_t size;
+    void* ptr;
+    bool is_freed;
+
+    char_ptr alloc_file;
+    char_ptr free_file;
+
+    size_t alloc_line;
+    size_t free_line;    
+
+    struct _memory_alloc* next;
+} memory_alloc;
+
+memory_alloc  head_memory;
+memory_alloc* last_memory;
+
+void brama_malloc_monitor(void* user_data, void* ptr, size_t size, char_ptr file_name, int line_number) {
+    memory_alloc* ptr_node = head_memory.next;
+    while(NULL != ptr_node && ptr_node->ptr != ptr)
+        ptr_node = ptr_node->next;
+
+    if (NULL != ptr_node) {
+        /* We are using same memory block for new malloc. */
+        
+        if (!ptr_node->is_freed) {
+            printf("Try to use unfreed memory detected (%d-malloc)\r\n", ptr_node->size);
+            printf("Current free location     : %s(%d)\r\n", file_name, line_number);
+            printf("Allocation location       : %s(%d)\r\n\r\n", ptr_node->alloc_file, ptr_node->alloc_line);
+        }
+
+        ptr_node->is_freed = false;
+        ptr_node->size     = size;
+    }
+    else {
+        memory_alloc* memory = malloc(sizeof(memory_alloc));
+        memory->alloc_file   = file_name;
+        memory->alloc_line   = line_number;
+        memory->free_file    = NULL;
+        memory->free_line    = NULL;
+        memory->is_freed     = false;
+        memory->next         = NULL;
+        memory->ptr          = ptr;
+        memory->size         = size;
+        last_memory->next    = memory;
+        last_memory          = memory;
+    }
+}
+
+void brama_realloc_monitor(void* user_data, void* ptr, size_t size, char_ptr file_name, int line_number) {
+    memory_alloc* ptr_node  = head_memory.next;
+    memory_alloc* prev_node = NULL;
+    size_t i = 0;
+    while(NULL != ptr_node && ptr_node->ptr != ptr) {
+        prev_node = ptr_node;
+        ptr_node  = ptr_node->next;
+        ++i;
+    }
+
+    if (NULL != ptr_node)
+        ptr_node->size     = size;
+    else {
+        memory_alloc* memory = malloc(sizeof(memory_alloc));
+        memory->alloc_file   = file_name;
+        memory->alloc_line   = line_number;
+        memory->free_file    = NULL;
+        memory->free_line    = NULL;
+        memory->is_freed     = false;
+        memory->next         = NULL;
+        memory->ptr          = ptr;
+        memory->size         = size;
+        last_memory->next    = memory;
+        last_memory          = memory;
+    }
+}
+
+void brama_calloc_monitor(void* user_data, void* ptr, size_t count, size_t size, char_ptr file_name, int line_number) {
+    memory_alloc* ptr_node = head_memory.next;
+    while(NULL != ptr_node && ptr_node->ptr != ptr)
+        ptr_node = ptr_node->next;
+
+    if (NULL != ptr_node) {
+        /* We are using same memory block for new malloc. */
+        
+        if (!ptr_node->is_freed) {
+            printf("Try to use unfreed memory detected (%d-calloc)\r\n", ptr_node->size);
+            printf("Current free location     : %s(%d)\r\n", file_name, line_number);
+            printf("Allocation location       : %s(%d)\r\n\r\n", ptr_node->alloc_file, ptr_node->alloc_line);
+        }
+
+        ptr_node->is_freed = false;
+        ptr_node->size     = size;
+    }
+    else {
+        memory_alloc* memory = malloc(sizeof(memory_alloc));
+        memory->alloc_file   = file_name;
+        memory->alloc_line   = line_number;
+        memory->free_file    = NULL;
+        memory->free_line    = NULL;
+        memory->is_freed     = false;
+        memory->next         = NULL;
+        memory->ptr          = ptr;
+        memory->size         = count * size;
+        last_memory->next    = memory;
+        last_memory          = memory;
+    }
+}
+
+void brama_free_monitor(void* user_data, void* ptr, char_ptr file_name, int line_number) {
+    memory_alloc* ptr_node = head_memory.next;
+    while(NULL != ptr_node && ptr_node->ptr != ptr)
+        ptr_node = ptr_node->next;
+
+    if (NULL != ptr_node && ptr_node->ptr == ptr && ptr_node->is_freed) {
+        //printf("Double free detected (%zu)\r\n", ptr_node->size);
+        //printf("Current free location     : %s(%d)\r\n", file_name, line_number);
+        //printf("Memory block already freed: %s(%zu)\r\n\r\n", ptr_node->free_file, ptr_node->free_line);
+    }
+
+    if (NULL != ptr_node) {
+        ptr_node->free_file = file_name;
+        ptr_node->free_line = line_number;
+        ptr_node->is_freed  = true;
+
+    }
+}
+
+void brama_destroy_monitor(void* user_data) {
+    memory_alloc* ptr_node = head_memory.next;
+    while(NULL != ptr_node) {
+        ptr_node = ptr_node->next;
+        void* ptr = ptr_node;
+
+        if (NULL != ptr_node && !ptr_node->is_freed) {
+            //printf("Memory leak detected (%zu)\r\n", ptr_node->size);
+            //printf("Allocation location : %s(%d)\r\n", ptr_node->alloc_file, ptr_node->alloc_line);
+        }
+
+        free(ptr);
+    }
+
+    head_memory.next = NULL;
+}
+#endif
+
 #if defined(_WIN32)
 
 static inline void* native_malloc(void* user_data, size_t size, char_ptr file_name, int line_number) {
-    return _malloc_dbg( size , _NORMAL_BLOCK , file_name, line_number );
+    void* ptr = _malloc_dbg( size , _NORMAL_BLOCK , file_name, line_number );
+    
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_malloc_monitor(user_data, ptr, size, file_name, line_number);
+#endif
+
+    return ptr;
 }
 
 static inline void native_free(void* user_data, void* ptr, char_ptr file_name, int line_number) {
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_free_monitor(user_data, ptr, file_name, line_number);
+#endif
+
     _free_dbg  ( ptr , _NORMAL_BLOCK);
 }
 
 static inline void* native_calloc(void* user_data, size_t count, size_t size, char_ptr file_name, int line_number) {
-    return _calloc_dbg( count , size , _NORMAL_BLOCK , file_name, line_number );
+    void* ptr = _calloc_dbg( count , size , _NORMAL_BLOCK , file_name, line_number );
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_calloc_monitor(user_data, ptr, count, size, file_name, line_number);
+#endif
+
+    return ptr;
 }
 
 static inline void* native_realloc(void* user_data, void* ptr, size_t size, char_ptr file_name, int line_number) {
-    return _realloc_dbg(ptr, size , _NORMAL_BLOCK , file_name, line_number );
+    void* new_ptr = _realloc_dbg(ptr, size , _NORMAL_BLOCK , file_name, line_number );
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_realloc_monitor(user_data, new_ptr, size, file_name, line_number);
+#endif
+
+    return new_ptr;
 }
 
 #else
 
 static inline void* native_malloc(void* user_data, size_t size, char_ptr file_name, int line_number) {
-    return malloc(size);
+    void* ptr =  malloc(size);
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_malloc_monitor(user_data, ptr, size, file_name, line_number);
+#endif
+
+    return ptr;
 }
 
 static inline void native_free(void* user_data, void* ptr, char_ptr file_name, int line_number) {
+
+    #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_free_monitor(user_data, ptr, file_name, line_number);
+#endif
+
     free(ptr);
 }
 
 static inline void* native_calloc(void* user_data, size_t count, size_t size, char_ptr file_name, int line_number) {
-    return calloc(count, size);
+    void* new_ptr = calloc(count, size);
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_calloc_monitor(user_data, new_ptr, count, size, file_name, line_number);
+#endif
+
+    return new_ptr;
 }
 
-static inline void* native_calloc(void* user_data, size_t size, char_ptr file_name, int line_number) {
-    return realloc(ptr, size);
+static inline void* native_realloc(void* user_data, void* ptr, size_t size, char_ptr file_name, int line_number) {
+    void* new_ptr = realloc(ptr, size);
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_realloc_monitor(user_data, new_ptr, size, file_name, line_number);
+#endif
+
+    return new_ptr;
 }
 
 #endif
@@ -2601,6 +2800,21 @@ static inline void* native_calloc(void* user_data, size_t size, char_ptr file_na
 t_context_ptr brama_init(size_t memory) {
     t_context_ptr context      = (t_context_ptr)malloc(sizeof(t_context));
     context->error_message     = NULL;
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+
+    /* Temporary code for finding a issue */
+    head_memory.alloc_file = NULL;
+    head_memory.alloc_line = 0;
+    head_memory.free_file  = NULL;
+    head_memory.free_line  = NULL;
+    head_memory.is_freed   = false;
+    head_memory.next       = NULL;
+    head_memory.ptr        = NULL;
+    head_memory.size       = 0;
+
+    last_memory            = &head_memory;
+#endif
     
     if (memory == 0) {
         context->malloc_func  = &native_malloc;
@@ -2759,8 +2973,155 @@ void build_in_number_isinteger(t_context_ptr context, size_t param_size, t_brama
     }
 }
 
-void build_in_number_parsefloat(t_context_ptr context, size_t param_size, t_brama_value* params, t_brama_value* return_value) {
+brama_status parse_number(char_ptr text, size_t length, bool parse_float, double* parsed_number) {
+    if (length == 0 || NULL == text)
+        return BRAMA_NOK;
 
+    size_t text_index  = 0;
+    size_t index       = 0;
+    bool isMinus       = false;
+    bool parserStarted = false;
+    int dotPlace       = 0;
+    double beforeTheComma = 0;
+    double afterTheComma  = 0;
+    bool isDouble      = false;
+    char ch            = text[text_index++];
+    char chNext        = length >= text_index ? text[text_index] : (char) 0;
+    number_type type   = NUMBER_NORMAL;
+
+    bool e_used        = false;
+    int e_after        = 0;
+
+
+    while (length >= text_index) {
+        if (ch == '-') {
+            if ((isMinus || (beforeTheComma > 0 || afterTheComma > 0)) && !e_used)
+                break;
+
+            isMinus = true;
+            parserStarted = true;
+        }
+
+        else if (index == 0 && ch == '0' && chNext == 'x') { // HEX
+            type = NUMBER_HEX;
+            ++text_index;
+            parserStarted = true;
+        }
+
+        else if (index != 0 && ch == 'e') {
+            e_used = true;
+        }
+
+        else if (index == 0 && ch == '0' && (chNext >= '0' && chNext <= '9')) { // OCT
+            type = NUMBER_OCTAL;
+            parserStarted = true;
+        }
+
+        else if (ch == '.') {
+            if (isDouble) {
+                return BRAMA_MULTIPLE_DOT_ON_DOUBLE;
+            }
+
+            isDouble = true;
+        }
+
+        else if (!e_used && type == NUMBER_NORMAL && (ch >= '0' && ch <= '9')) {
+            if (isDouble) {
+                ++dotPlace;
+
+                afterTheComma *= (int)pow(10, 1);
+                afterTheComma += ch - '0';
+            }
+            else {
+                beforeTheComma *= (int)pow(10, 1);
+                beforeTheComma += ch - '0';
+            }
+            parserStarted = true;
+        }
+
+        else if (!e_used && type == NUMBER_HEX && ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))) {
+            ch = (ch <= '9') ? ch - '0' : (ch & 0x7) + 9;
+
+            beforeTheComma = (uint64_t)beforeTheComma << 4;
+            beforeTheComma += (int)ch;
+            parserStarted = true;
+        }
+
+        else if (!e_used && type == NUMBER_OCTAL && ((ch >= '0' && ch <= '7'))) {
+            int num = ch - '0';
+            int dec_value = 0;
+
+            int base = 1;
+            int temp = num;
+            while (temp) {
+                int last_digit = temp % 10;
+                temp = temp / 10;
+                dec_value += last_digit * base;
+                base = base * 8;
+            }
+
+            beforeTheComma = (uint64_t)beforeTheComma << 3;
+            beforeTheComma += (int)dec_value;
+            parserStarted = true;
+        }
+
+        else if (e_used && (ch >= '0' && ch <= '9')) {
+            e_after *= (int)pow(10, 1);
+            e_after += ch - '0';
+            parserStarted = true;
+        }
+        else {
+            if (parserStarted)
+                break;
+
+            ch     = text[text_index++];
+            chNext = length >= text_index ? text[text_index] : (char) 0;
+        }
+
+        ch     = text[text_index++];
+        chNext = length >= text_index ? text[text_index] : (char) 0;
+        ++index;
+    }
+
+    if (!isDouble) {
+        //token->type = TOKEN_INTEGER;
+        *parsed_number = beforeTheComma;
+    } else {
+        //token->type    = TOKEN_DOUBLE;
+        *parsed_number = (beforeTheComma + (afterTheComma * pow(10, -1 * dotPlace)));
+    }
+
+    if (e_used) {
+        if (isMinus) {
+            *parsed_number = *parsed_number / (double)pow((double)10, (double)e_after);
+        } else {
+            *parsed_number = *parsed_number * (double)pow((double)10, (double)e_after);
+        }
+    }
+
+    if (isMinus)
+        *parsed_number *= -1;
+
+    return BRAMA_OK;
+}
+
+void build_in_number_parsefloat(t_context_ptr context, size_t param_size, t_brama_value* params, t_brama_value* return_value) {
+    if (param_size == 0 || IS_NULL(*params) || IS_UNDEFINED(*params) || IS_ARRAY(*params) || IS_BOOL(*params))
+        *return_value = numberToValue(NAN);
+    else {
+
+        t_brama_value value = *params;
+
+        if (IS_NUM(value))
+            *return_value = value;
+        else if (IS_STRING(value)) {
+            char_ptr text = AS_STRING(value);
+            double parsed_number;
+            brama_status status = parse_number(text, strlen(text), true, &parsed_number);
+            if (BRAMA_OK == status)
+                *return_value = numberToValue(parsed_number);
+        }
+    }
 }
 
 
@@ -2769,7 +3130,7 @@ static t_brama_native_function BUILD_IN_NUMBER_FUNCTIONS[] = {
     { "isNaN",    build_in_number_isnan },
     { "isFinite", build_in_number_isfinite },
     { "isInteger", build_in_number_isinteger },
-    { "parseFloat", build_in_number_isinteger }
+    { "parseFloat", build_in_number_parsefloat }
 };
 
 
@@ -3037,13 +3398,13 @@ bool destroy_ast(t_context_ptr context, t_ast_ptr ast) {
    else if (ast->type == AST_WHILE) {
        destroy_ast_while_loop(context, ast->while_ptr);
        BRAMA_FREE(ast->while_ptr);
-       ast->control_ptr = NULL;
+       ast->while_ptr = NULL;
    }
 
    else if (ast->type == AST_FOR) {
-       destroy_ast_while_loop(context, ast->while_ptr);
-       BRAMA_FREE(ast->while_ptr);
-       ast->control_ptr = NULL;
+       destroy_ast_for_loop(context, ast->for_ptr);
+       BRAMA_FREE(ast->for_ptr);
+       ast->for_ptr = NULL;
    }
 
    else if (ast->type == AST_BLOCK) {
@@ -3387,8 +3748,8 @@ bool destroy_ast_primative(t_context_ptr context, t_primative_ptr primative) {
 
 /* Compile Begin */
 
-t_compile_stack_ptr new_compile_stack(t_context_ptr context, brama_compile_block_type compile_stack_type, void_ptr ast, void_ptr compile_obj) {
-    t_compile_stack_ptr stack = BRAMA_MALLOC(sizeof(t_compile_stack));
+t_compile_stack_ptr new_compile_stack_(t_context_ptr context, brama_compile_block_type compile_stack_type, void_ptr ast, void_ptr compile_obj, char_ptr file, size_t line) {
+    t_compile_stack_ptr stack = BRAMA_MALLOC_LINE(sizeof(t_compile_stack), file, line);
     stack->ast                = ast;
     stack->compile_stack_type = compile_stack_type;
     stack->start_address      = 0;
@@ -3414,7 +3775,7 @@ brama_status find_compile_stack(t_context_ptr context, brama_compile_block_type 
 void destroy_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack) {
     
     remove_from_compile_stack(context, stack);
-    //BRAMA_FREE(stack);
+    BRAMA_FREE(stack);
 }
 
 void remove_from_compile_stack(t_context_ptr context, t_compile_stack_ptr stack) {
@@ -3990,7 +4351,7 @@ void compile_control(t_context_ptr context, t_control_ptr const ast, t_storage_p
 void compile_keyword(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
     t_compile_stack_ptr compile_stack = NULL;
 
-    if (find_compile_stack(context, COMPILE_BLOCK_WHILE, &compile_stack) == BRAMA_OK) {
+    if (upper_ast & AST_WHILE && find_compile_stack(context, COMPILE_BLOCK_WHILE, &compile_stack) == BRAMA_OK) {
         switch (ast->keyword) {
             case KEYWORD_BREAK: {
                 vec_push(context->compiler->op_codes, 0); // We will setup it later
@@ -4009,7 +4370,7 @@ void compile_keyword(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr s
         }
     }
 
-    else if (find_compile_stack(context, COMPILE_BLOCK_FOR, &compile_stack) == BRAMA_OK) {
+    else if (upper_ast & AST_FOR && find_compile_stack(context, COMPILE_BLOCK_FOR, &compile_stack) == BRAMA_OK) {
         switch (ast->keyword) {
             case KEYWORD_BREAK: {
                 vec_push(context->compiler->op_codes, 0); // We will setup it later
@@ -4028,7 +4389,7 @@ void compile_keyword(t_context_ptr context, t_ast_ptr const ast, t_storage_ptr s
         }
     }
 
-    else if (find_compile_stack(context, COMPILE_BLOCK_SWITCH_CASE, &compile_stack) == BRAMA_OK) {
+    else if (upper_ast & AST_SWITCH && find_compile_stack(context, COMPILE_BLOCK_SWITCH_CASE, &compile_stack) == BRAMA_OK) {
         switch (ast->keyword) {
             case KEYWORD_BREAK: {
                 vec_push(context->compiler->op_codes, 0); // We will setup it later
@@ -4737,6 +5098,7 @@ void compile_while(t_context_ptr context, t_while_loop_ptr const ast, t_storage_
     vec_deinit(&compile_obj->breaks);
     vec_deinit(&compile_obj->continues);
     destroy_from_compile_stack(context, stack_info);
+    BRAMA_FREE(compile_obj);
 }
 
 void compile_func_call(t_context_ptr context, t_func_call_ptr const ast, t_storage_ptr storage, t_compile_info_ptr compile_info, brama_ast_type upper_ast) {
@@ -5094,11 +5456,7 @@ void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storag
          * -------------------------- */
 
     t_case_item_ptr value;
-    size_t index = 0;  
-
-    /* case conditions location */
-    vec_int_t case_address;
-    vec_init(&case_address);
+    size_t index = 0;
 
     /* jmp code location to case code block in case condition */
     vec_int_t case_jmp_address;
@@ -5107,9 +5465,6 @@ void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storag
     /* Case conditions */
     bool last_case_is_default = false;
     vec_foreach(ast->cases, value, index) {
-
-        /* Save case location */
-        vec_push(&case_address, context->compiler->op_codes->length);
 
         /* If key is NULL, it means default case. We do not need to do compare operation for default case, system should jump to case block */
         if (value->key != NULL) {
@@ -5191,6 +5546,7 @@ void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storag
         /* else there is not break command so we need to jmp to next case block. */
 
         vec_deinit(&compile_obj->breaks);
+        BRAMA_FREE(compile_obj);
         destroy_from_compile_stack(context, stack_info);
     }
 
@@ -5219,7 +5575,6 @@ void compile_switch(t_context_ptr context, t_switch_stmt_ptr const ast, t_storag
 
     vec_deinit(&exit_jmp_address);
     vec_deinit(&case_jmp_address);
-    vec_deinit(&case_address);
 
     /* Remove all references */
     BRAMA_FREE(assign->object->char_ptr);
@@ -5657,8 +6012,8 @@ void compile(t_context_ptr context) {
     vec_push(context->compiler->op_codes, NULL);
 
     /* Clear */
-    //BRAMA_FREE(main);
-    //BRAMA_FREE(compile_info);
+    BRAMA_FREE(main);
+    BRAMA_FREE(compile_info);
 }
 
 inline t_brama_value numberToValue(double num) {
@@ -6565,6 +6920,7 @@ void run(t_context_ptr context) {
 
     memcpy(context->compiler->global_storage->variables.data, global_variables, context->compiler->global_storage->variables.length * sizeof(t_brama_value));
     BRAMA_FREE(global_variables);
+    BRAMA_FREE(storage_table);
 }
 
 /* Compile End */
@@ -6590,7 +6946,7 @@ void brama_destroy(t_context_ptr context) {
         t_token_ptr token = _context->tokinizer->tokens->data[i];
         if (TOKEN_TEXT == token->type ||
             TOKEN_SYMBOL == token->type)
-            BRAMA_FREE((char_ptr)token->char_ptr);
+            BRAMA_FREE(token->char_ptr);
         BRAMA_FREE(token);
     }
 
@@ -6625,11 +6981,20 @@ void brama_destroy(t_context_ptr context) {
     vec_deinit(context->compiler->op_codes);
     BRAMA_FREE(context->compiler->op_codes);
 
+    size_t storages_length = context->compiler->storages.length;
+    for (int i = 0; i < storages_length; ++i) {
+        t_memory_prototype_item_ptr aa = context->compiler->storages.data[i]->memory_prototype_head;
+        vec_deinit(&context->compiler->storages.data[i]->variables);
+        vec_deinit(&context->compiler->storages.data[i]->local_define);
+        map_deinit(&context->compiler->storages.data[i]->variable_names);
+
+        BRAMA_FREE(context->compiler->storages.data[i]);
+    }
+
     vec_deinit(&context->compiler->storages);
-    vec_deinit(&context->compiler->global_storage->variables);
-    vec_deinit(&context->compiler->global_storage->local_define);
+    //vec_deinit(&context->compiler->global_storage->variables);
+    //vec_deinit(&context->compiler->global_storage->local_define);
     //map_deinit(&context->compiler->global_storage->variable_names);
-    BRAMA_FREE(context->compiler->global_storage);
     vec_deinit(&context->compiler->compile_stack);
 
     vec_deinit(_context->tokinizer->tokens);
@@ -6648,6 +7013,10 @@ void brama_destroy(t_context_ptr context) {
         free(_context->allocator->memory);
         free(_context->allocator);
     }
+
+#ifdef BRAMA_INTERNAL_MEMORY_MONITOR
+    brama_destroy_monitor(NULL);
+#endif
 
     free(_context);
 }

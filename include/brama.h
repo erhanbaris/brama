@@ -1043,7 +1043,7 @@ typedef struct _brama_build_in_object {
 
 #define IS_FALSE(value)        ((value) == FALSE_VAL)
 #define IS_TRUE(value)         ((value) == TRUE_VAL)
-#define IS_BOOL(value)         (value == TRUE_VAL || value == FALSE_VAL)
+#define IS_BOOL(value)         ((value) == TRUE_VAL || (value) == FALSE_VAL)
 #define IS_NULL(value)         ((value) == NULL_VAL)
 #define IS_UNDEFINED(value)    ((value) == UNDEFINED_VAL)
 #define IS_NO_REFERENCE(value) ((value) == NO_REFERENCE_VAL)
