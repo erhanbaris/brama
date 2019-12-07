@@ -27,7 +27,7 @@
 
 
 #define vec_deinit(v)\
-  ( vec_free_((v)->data, __FILE__, __LINE__),\
+  ( vec_free_(((v)->data), __FILE__, __LINE__),\
     vec_init(v) )
 
 
@@ -156,7 +156,7 @@
 
 
 
-int vec_free_(char *data, char* file, size_t line);
+int vec_free_(void *data, char* file, size_t line);
 int vec_expand_(char **data, int *length, int *capacity, int memsz, char* file, size_t line);
 int vec_reserve_(char **data, int *length, int *capacity, int memsz, int n, char* file, size_t line);
 int vec_reserve_po2_(char **data, int *length, int *capacity, int memsz, int n, char* file, size_t line);

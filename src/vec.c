@@ -49,24 +49,22 @@ int vec_reserve_po2_(char **data, int *length, int *capacity, int memsz, int n, 
     return vec_reserve_(data, length, capacity, memsz, n2, file, line);
 }
 
-int vec_free_(char *data, char* file, size_t line) {
+int vec_free_(void *data, char* file, size_t line) {
+    if (NULL == data)
+        return 0;
+
     #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
-    brama_free_monitor(NULL, *data, file, line);
+        brama_free_monitor(NULL, data, file, line);
     #endif
 
-    free(*data);
+    free(data);
 
     return 0;
 }
 
 int vec_compact_(char **data, int *length, int *capacity, int memsz, char* file, size_t line) {
     if (*length == 0) {
-        #ifdef BRAMA_INTERNAL_MEMORY_MONITOR
-        brama_free_monitor(NULL, *data, file, line);
-        #endif
-
         vec_free_(*data, file, line);
-
         *data = NULL;
         *capacity = 0;
         return 0;

@@ -3,7 +3,6 @@
 
 #include "brama.h"
 
-#define BRAMA_INTERNAL_MEMORY_MONITOR 1
 
 t_token_ptr ast_consume_keyword  (t_context_ptr context, brama_keyword_type  keyword_type);
 t_token_ptr ast_consume_token    (t_context_ptr context, brama_token_type    token_type);
