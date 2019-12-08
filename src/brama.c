@@ -201,6 +201,7 @@ int getNumber(t_context_ptr context, t_tokinizer_ptr tokinizer) {
     bool e_used        = false;
     int e_after        = 0;
 
+    bool plus_used     = false;
 
     while (!isEnd(tokinizer)) {
         if (ch == '-') {
@@ -210,12 +211,19 @@ int getNumber(t_context_ptr context, t_tokinizer_ptr tokinizer) {
             isMinus = true;
         }
 
+        else if (ch == '+') {
+            if ((plus_used || (beforeTheComma > 0 || afterTheComma > 0)) && !e_used)
+                break;
+
+            plus_used = true;
+        }
+
         else if (index == 0 && ch == '0' && chNext == 'x') { // HEX
             type = NUMBER_HEX;
             increase(tokinizer);
         }
 
-        else if (index != 0 && ch == 'e') {
+        else if (index != 0 && (ch == 'e' || ch == 'E')) {
             e_used = true;
         }
 
@@ -2992,6 +3000,8 @@ brama_status parse_number(char_ptr text, size_t length, bool parse_float, double
     bool e_used        = false;
     int e_after        = 0;
 
+    bool plus_used        = false;
+
 
     while (length >= text_index) {
         if (ch == '-') {
@@ -3002,13 +3012,21 @@ brama_status parse_number(char_ptr text, size_t length, bool parse_float, double
             parserStarted = true;
         }
 
+        else if (ch == '+') {
+            if ((plus_used || (beforeTheComma > 0 || afterTheComma > 0)) && !e_used)
+                break;
+
+            plus_used = true;
+            parserStarted = true;
+        }
+
         else if (index == 0 && ch == '0' && chNext == 'x') { // HEX
             type = NUMBER_HEX;
             ++text_index;
             parserStarted = true;
         }
 
-        else if (index != 0 && ch == 'e') {
+        else if (index != 0 && (ch == 'e' || ch == 'E')) {
             e_used = true;
         }
 
@@ -3099,7 +3117,7 @@ brama_status parse_number(char_ptr text, size_t length, bool parse_float, double
         }
     }
 
-    if (isMinus)
+    if (isMinus && !e_used)
         *parsed_number *= -1;
 
     return BRAMA_OK;

@@ -3,6 +3,7 @@
 
 #include <brama.h>
 #include <math.h>
+#include <float.h>
 #include "tests_core.h"
 #include "brama.h"
 #include "brama_internal.h"
@@ -812,7 +813,7 @@ MunitResult ast_compile_57(const MunitParameter params[], void* user_data_or_fix
 
     munit_assert_int(status,           == , BRAMA_OK);
     munit_assert_int(var_info->type,   == , CONST_DOUBLE);
-    munit_assert_double(var_info->double_,== , 3.14);
+    munit_assert_true(fabs(var_info->double_ - 3.14) < FLT_EPSILON);
     brama_destroy_get_var(context, &var_info);
     brama_destroy(context);
     return MUNIT_OK;
@@ -827,7 +828,7 @@ MunitResult ast_compile_58(const MunitParameter params[], void* user_data_or_fix
 
     munit_assert_int(status,           == , BRAMA_OK);
     munit_assert_int(var_info->type,   == , CONST_DOUBLE);
-    munit_assert_double(var_info->double_,== , 3.14);
+    munit_assert_true(fabs(var_info->double_ - 3.14) < FLT_EPSILON);
     brama_destroy_get_var(context, &var_info);
     brama_destroy(context);
     return MUNIT_OK;
@@ -842,7 +843,52 @@ MunitResult ast_compile_59(const MunitParameter params[], void* user_data_or_fix
 
     munit_assert_int(status,           == , BRAMA_OK);
     munit_assert_int(var_info->type,   == , CONST_DOUBLE);
-    munit_assert_double(var_info->double_,== , 3.14);
+    munit_assert_true(fabs(var_info->double_ - 3.14) < FLT_EPSILON);
+    brama_destroy_get_var(context, &var_info);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_60(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var result = parseFloat('314e-2')");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "result", &var_info);
+
+    munit_assert_int(status,           == , BRAMA_OK);
+    munit_assert_int(var_info->type,   == , CONST_DOUBLE);
+    munit_assert_true(fabs(var_info->double_ - 3.14) < FLT_EPSILON);
+    brama_destroy_get_var(context, &var_info);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_61(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var result = parseFloat('0.0314E+2')");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "result", &var_info);
+
+    munit_assert_int(status,           == , BRAMA_OK);
+    munit_assert_int(var_info->type,   == , CONST_DOUBLE);
+    munit_assert_true(fabs(var_info->double_ - 3.14) < FLT_EPSILON);
+    brama_destroy_get_var(context, &var_info);
+    brama_destroy(context);
+    return MUNIT_OK;
+}
+
+MunitResult ast_compile_62(const MunitParameter params[], void* user_data_or_fixture) {
+    t_context* context = brama_init(0);
+    brama_compile(context, "var result = parseFloat('3.14some non-digit characters')");
+    brama_run(context);
+    t_get_var_info_ptr var_info = NULL;
+    brama_status status         = brama_get_var(context, "result", &var_info);
+
+    munit_assert_int(status,           == , BRAMA_OK);
+    munit_assert_int(var_info->type,   == , CONST_DOUBLE);
+    munit_assert_true(fabs(var_info->double_ - 3.14) < FLT_EPSILON);
     brama_destroy_get_var(context, &var_info);
     brama_destroy(context);
     return MUNIT_OK;
@@ -910,6 +956,8 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_57),
         ADD_TEST(ast_compile_58),
         ADD_TEST(ast_compile_59),
+        ADD_TEST(ast_compile_60),
+        ADD_TEST(ast_compile_61),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
