@@ -180,28 +180,20 @@ int getText(t_context_ptr context, t_tokinizer_ptr tokinizer, char symbol) {
     return BRAMA_OK;
 }
 
-typedef enum _number_type {
-    NUMBER_NORMAL,
-    NUMBER_HEX,
-    NUMBER_OCTAL
-} number_type;
-
 int getNumber(t_context_ptr context, t_tokinizer_ptr tokinizer) {
-    size_t index       = 0;
-    bool isMinus       = false;
-    int dotPlace       = 0;
-    double beforeTheComma = 0;
-    double afterTheComma  = 0;
-    size_t start       = tokinizer->column;
-    bool isDouble      = false;
-    char ch            = getChar(tokinizer);
-    char chNext        = getNextChar(tokinizer);
-    number_type type   = NUMBER_NORMAL;
-
-    bool e_used        = false;
-    int e_after        = 0;
-
-    bool plus_used     = false;
+    size_t index             = 0;
+    bool isMinus             = false;
+    int dotPlace             = 0;
+    double beforeTheComma    = 0;
+    double afterTheComma     = 0;
+    size_t start             = tokinizer->column;
+    bool isDouble            = false;
+    char ch                  = getChar(tokinizer);
+    char chNext              = getNextChar(tokinizer);
+    brama_number_system type = NUMBER_SYSTEM_DECIMAL;
+    bool e_used              = false;
+    int e_after              = 0;
+    bool plus_used           = false;
 
     while (!isEnd(tokinizer)) {
         if (ch == '-') {
@@ -219,7 +211,7 @@ int getNumber(t_context_ptr context, t_tokinizer_ptr tokinizer) {
         }
 
         else if (index == 0 && ch == '0' && chNext == 'x') { // HEX
-            type = NUMBER_HEX;
+            type = NUMBER_SYSTEM_HEXADECIMAL;
             increase(tokinizer);
         }
 
@@ -228,7 +220,7 @@ int getNumber(t_context_ptr context, t_tokinizer_ptr tokinizer) {
         }
 
         else if (index == 0 && ch == '0' && (chNext >= '0' && chNext <= '9')) { // OCT
-            type = NUMBER_OCTAL;
+            type = NUMBER_SYSTEM_OCTAL;
         }
 
         else if (ch == '.') {
@@ -242,7 +234,7 @@ int getNumber(t_context_ptr context, t_tokinizer_ptr tokinizer) {
             isDouble = true;
         }
 
-        else if (!e_used && type == NUMBER_NORMAL && (ch >= '0' && ch <= '9')) {
+        else if (!e_used && type == NUMBER_SYSTEM_DECIMAL && (ch >= '0' && ch <= '9')) {
             if (isDouble) {
                 ++dotPlace;
 
@@ -255,14 +247,14 @@ int getNumber(t_context_ptr context, t_tokinizer_ptr tokinizer) {
             }
         }
 
-        else if (!e_used && type == NUMBER_HEX && ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))) {
+        else if (!e_used && type == NUMBER_SYSTEM_HEXADECIMAL && ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))) {
             ch = (ch <= '9') ? ch - '0' : (ch & 0x7) + 9;
 
             beforeTheComma = (uint64_t)beforeTheComma << 4;
             beforeTheComma += (int)ch;
         }
 
-        else if (!e_used && type == NUMBER_OCTAL && ((ch >= '0' && ch <= '7'))) {
+        else if (!e_used && type == NUMBER_SYSTEM_OCTAL && ((ch >= '0' && ch <= '7'))) {
             int num = ch - '0';
             int dec_value = 0;
 
@@ -2981,7 +2973,7 @@ void build_in_number_isinteger(t_context_ptr context, size_t param_size, t_brama
     }
 }
 
-brama_status parse_number(char_ptr text, size_t length, bool parse_float, double* parsed_number) {
+brama_status text_to_float(char_ptr text, size_t length, double* parsed_number) {
     if (length == 0 || NULL == text)
         return BRAMA_NOK;
 
@@ -2995,7 +2987,6 @@ brama_status parse_number(char_ptr text, size_t length, bool parse_float, double
     bool isDouble      = false;
     char ch            = text[text_index++];
     char chNext        = length >= text_index ? text[text_index] : (char) 0;
-    number_type type   = NUMBER_NORMAL;
 
     bool e_used        = false;
     int e_after        = 0;
@@ -3020,19 +3011,8 @@ brama_status parse_number(char_ptr text, size_t length, bool parse_float, double
             parserStarted = true;
         }
 
-        else if (index == 0 && ch == '0' && chNext == 'x') { // HEX
-            type = NUMBER_HEX;
-            ++text_index;
-            parserStarted = true;
-        }
-
         else if (index != 0 && (ch == 'e' || ch == 'E')) {
             e_used = true;
-        }
-
-        else if (index == 0 && ch == '0' && (chNext >= '0' && chNext <= '9')) { // OCT
-            type = NUMBER_OCTAL;
-            parserStarted = true;
         }
 
         else if (ch == '.') {
@@ -3043,7 +3023,7 @@ brama_status parse_number(char_ptr text, size_t length, bool parse_float, double
             isDouble = true;
         }
 
-        else if (!e_used && type == NUMBER_NORMAL && (ch >= '0' && ch <= '9')) {
+        else if (!e_used && (ch >= '0' && ch <= '9')) {
             if (isDouble) {
                 ++dotPlace;
 
@@ -3057,7 +3037,121 @@ brama_status parse_number(char_ptr text, size_t length, bool parse_float, double
             parserStarted = true;
         }
 
-        else if (!e_used && type == NUMBER_HEX && ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))) {
+        else if (e_used && (ch >= '0' && ch <= '9')) {
+            e_after *= (int)pow(10, 1);
+            e_after += ch - '0';
+            parserStarted = true;
+        }
+        else {
+            if (parserStarted)
+                break;
+
+            ch     = text[text_index++];
+            chNext = length >= text_index ? text[text_index] : (char) 0;
+        }
+
+        ch     = text[text_index++];
+        chNext = length >= text_index ? text[text_index] : (char) 0;
+        ++index;
+    }
+
+    if (!isDouble) {
+        //token->type = TOKEN_INTEGER;
+        *parsed_number = beforeTheComma;
+    } else {
+        //token->type    = TOKEN_DOUBLE;
+        *parsed_number = (beforeTheComma + (afterTheComma * pow(10, -1 * dotPlace)));
+    }
+
+    if (e_used) {
+        if (isMinus) {
+            *parsed_number = *parsed_number / (double)pow((double)10, (double)e_after);
+        } else {
+            *parsed_number = *parsed_number * (double)pow((double)10, (double)e_after);
+        }
+    }
+
+    if (isMinus && !e_used)
+        *parsed_number *= -1;
+
+    return BRAMA_OK;
+}
+
+brama_status text_to_integer(char_ptr text, size_t length, size_t target_type, double* parsed_number) {
+    if (length == 0 || NULL == text)
+        return BRAMA_NOK;
+
+    size_t text_index        = 0;
+    size_t index             = 0;
+    bool isMinus             = false;
+    bool parserStarted       = false;
+    int dotPlace             = 0;
+    double beforeTheComma    = 0;
+    double afterTheComma     = 0;
+    bool isDouble            = false;
+    char ch                  = text[text_index++];
+    char chNext              = length >= text_index ? text[text_index] : (char) 0;
+    bool e_used              = false;
+    int e_after              = 0;
+    bool plus_used           = false;
+    brama_number_system type = NUMBER_SYSTEM_DECIMAL;
+
+
+    while (length >= text_index) {
+        if (ch == '-') {
+            if ((isMinus || (beforeTheComma > 0 || afterTheComma > 0)) && !e_used)
+                break;
+
+            isMinus = true;
+            parserStarted = true;
+        }
+
+        else if (ch == '+') {
+            if ((plus_used || (beforeTheComma > 0 || afterTheComma > 0)) && !e_used)
+                break;
+
+            plus_used = true;
+            parserStarted = true;
+        }
+
+        else if (index == 0 && ch == '0' && chNext == 'x') { // HEX
+            type = NUMBER_SYSTEM_HEXADECIMAL;
+            ++text_index;
+            parserStarted = true;
+        }
+
+        else if (index != 0 && (ch == 'e' || ch == 'E')) {
+            e_used = true;
+        }
+
+        else if (index == 0 && ch == '0' && (chNext >= '0' && chNext <= '9')) { // OCT
+            type = NUMBER_SYSTEM_OCTAL;
+            parserStarted = true;
+        }
+
+        else if (ch == '.') {
+            if (isDouble) {
+                return BRAMA_MULTIPLE_DOT_ON_DOUBLE;
+            }
+
+            isDouble = true;
+        }
+
+        else if (!e_used && type == NUMBER_SYSTEM_OCTAL && (ch >= '0' && ch <= '9')) {
+            if (isDouble) {
+                ++dotPlace;
+
+                afterTheComma *= (int)pow(10, 1);
+                afterTheComma += ch - '0';
+            }
+            else {
+                beforeTheComma *= (int)pow(10, 1);
+                beforeTheComma += ch - '0';
+            }
+            parserStarted = true;
+        }
+
+        else if (!e_used && type == NUMBER_SYSTEM_HEXADECIMAL && ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F'))) {
             ch = (ch <= '9') ? ch - '0' : (ch & 0x7) + 9;
 
             beforeTheComma = (uint64_t)beforeTheComma << 4;
@@ -3065,7 +3159,7 @@ brama_status parse_number(char_ptr text, size_t length, bool parse_float, double
             parserStarted = true;
         }
 
-        else if (!e_used && type == NUMBER_OCTAL && ((ch >= '0' && ch <= '7'))) {
+        else if (!e_used && type == NUMBER_SYSTEM_OCTAL && ((ch >= '0' && ch <= '7'))) {
             int num = ch - '0';
             int dec_value = 0;
 
@@ -3135,20 +3229,66 @@ void build_in_number_parsefloat(t_context_ptr context, size_t param_size, t_bram
         else if (IS_STRING(value)) {
             char_ptr text = AS_STRING(value);
             double parsed_number;
-            brama_status status = parse_number(text, strlen(text), true, &parsed_number);
+            brama_status status = text_to_float(text, strlen(text), &parsed_number);
             if (BRAMA_OK == status)
                 *return_value = numberToValue(parsed_number);
+            else
+                *return_value = numberToValue(NAN);
         }
+        else
+            *return_value = numberToValue(NAN);
+    }
+}
+
+void build_in_number_parseint(t_context_ptr context, size_t param_size, t_brama_value* params, t_brama_value* return_value) {
+    if (param_size == 0 || IS_NULL(*params) || IS_UNDEFINED(*params) || IS_ARRAY(*params) || IS_BOOL(*params))
+        *return_value = numberToValue(NAN);
+    else {
+
+        t_brama_value value = *params;
+
+        if (IS_NUM(value)) {
+            /* Define temporary variables */
+            double i;
+
+            /* Assign the value we will calculate the modf of */
+            modf(valueToNumber(value), &i);
+            *return_value = numberToValue(i);
+        }
+
+        else if (IS_STRING(value)) {
+            char_ptr text        = AS_STRING(value);
+            size_t   number_type = NUMBER_SYSTEM_NONE;
+
+            if (param_size > 1 && IS_NUM(params[1])) {
+                double tmp_number_system = valueToNumber(params[1]);
+
+                /* Number type validation */
+                if (tmp_number_system > -1)
+                    number_type = tmp_number_system;
+            }
+
+            double parsed_number;
+            brama_status status = text_to_integer(text, strlen(text), number_type, &parsed_number);
+
+            if (BRAMA_OK == status)
+                *return_value = numberToValue(parsed_number);
+            else
+                *return_value = numberToValue(NAN);
+        }
+        else
+            *return_value = numberToValue(NAN);
     }
 }
 
 
 /* Build-in Number functions */
 static t_brama_native_function BUILD_IN_NUMBER_FUNCTIONS[] = {
-    { "isNaN",    build_in_number_isnan },
-    { "isFinite", build_in_number_isfinite },
-    { "isInteger", build_in_number_isinteger },
-    { "parseFloat", build_in_number_parsefloat }
+    { "isNaN",      build_in_number_isnan },
+    { "isFinite",   build_in_number_isfinite },
+    { "isInteger",  build_in_number_isinteger },
+    { "parseFloat", build_in_number_parsefloat },
+    { "parseInt",   build_in_number_parseint }
 };
 
 
@@ -3186,7 +3326,8 @@ static brama_build_in_object BUILD_IN_OBJECTS[BUILD_IN_OBJECTS_LENGTH] = {
 static t_brama_native_function BUILD_IN_FUNCTIONS[3] = {
     { "isNaN",      build_in_number_isnan },
     { "isFinite",   build_in_number_isfinite },
-    { "parseFloat", build_in_number_parsefloat }
+    { "parseFloat", build_in_number_parsefloat },
+    { "parseInt",   build_in_number_parseint}
 };
 
 void brama_compile(t_context_ptr context, char_ptr data) {

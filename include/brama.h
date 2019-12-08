@@ -343,6 +343,14 @@ typedef enum _memory_prototype_item_type {
     MEMORY_PROTOTYPE_LENGTH       = 1 << 6
 } memory_prototype_item_type;
 
+typedef enum _brama_number_system {
+    NUMBER_SYSTEM_NONE        = 0,
+    NUMBER_SYSTEM_BINARY      = 1,
+    NUMBER_SYSTEM_OCTAL       = 2,
+    NUMBER_SYSTEM_DECIMAL     = 3,
+    NUMBER_SYSTEM_HEXADECIMAL = 4
+} brama_number_system;
+
 typedef enum _brama_build_in_object_type {
     /* Numbers and dates */
     BUILD_IN_NUMBER = 0,

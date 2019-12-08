@@ -894,6 +894,9 @@ MunitResult ast_compile_62(const MunitParameter params[], void* user_data_or_fix
     return MUNIT_OK;
 }
 
+BOOL_TRUE_TEST(ast_compile_63,  "var result = Number.parseInt(-15.1) == -15;")
+BOOL_TRUE_TEST(ast_compile_64,  "var result = Number.parseInt(123.456) == 123;")
+
 MunitTest COMPILE_TESTS[] = {
 
         ADD_TEST(ast_compile_1),
@@ -958,6 +961,9 @@ MunitTest COMPILE_TESTS[] = {
         ADD_TEST(ast_compile_59),
         ADD_TEST(ast_compile_60),
         ADD_TEST(ast_compile_61),
+        ADD_TEST(ast_compile_62),
+        ADD_TEST(ast_compile_63),
+        ADD_TEST(ast_compile_64),
 
         { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL }
 };
